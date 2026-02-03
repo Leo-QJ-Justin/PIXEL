@@ -1,0 +1,19 @@
+[project]
+name = "haro-desktop-pet"
+version = "0.1.0"
+description = "A Haro desktop pet that integrates with Telegram"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "PyQt6>=6.4.0",
+    "telethon>=1.28.0",
+    "qasync>=0.24.0",
+    "python-dotenv>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
