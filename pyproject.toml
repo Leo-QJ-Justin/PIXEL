@@ -36,7 +36,6 @@ markers = [
     "unit: Unit tests (fast, no external dependencies)",
     "ui: UI tests (require Qt)",
 ]
-qt_api = "pyqt6"
 
 [tool.ruff]
 line-length = 100

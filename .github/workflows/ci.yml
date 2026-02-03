@@ -82,12 +82,14 @@ jobs:
         run: xvfb-run -a uv run pytest -m ui -v --tb=short
         env:
           QT_QPA_PLATFORM: offscreen
+          PYTEST_QT_API: pyqt6
 
       - name: Run UI tests (Windows/macOS)
         if: runner.os != 'Linux'
         run: uv run pytest -m ui -v --tb=short
         env:
           QT_QPA_PLATFORM: offscreen
+          PYTEST_QT_API: pyqt6
 
   coverage:
     name: Coverage Report
@@ -112,6 +114,7 @@ jobs:
         run: xvfb-run -a uv run pytest --cov=src --cov=config --cov-report=xml --cov-report=term-missing
         env:
           QT_QPA_PLATFORM: offscreen
+          PYTEST_QT_API: pyqt6
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
