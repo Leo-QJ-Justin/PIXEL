@@ -1,0 +1,6 @@
+{
+  "frame_duration_ms": 100,
+  "loop": true,
+  "priority": 5,
+  "can_be_interrupted": true
+}
