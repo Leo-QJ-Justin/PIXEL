@@ -46,11 +46,17 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
 
+      - name: Install Qt dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libxkbcommon0 libxcb-cursor0 libpulse0
+
       - name: Install dependencies
         run: uv sync --all-extras
 
       - name: Run unit tests
         run: uv run pytest tests/unit -v --tb=short -p no:pytest_qt
+        env:
+          QT_QPA_PLATFORM: offscreen
 
   test-ui:
     name: UI Tests (${{ matrix.os }})
@@ -75,7 +81,7 @@ jobs:
       # Linux needs xvfb for Qt
       - name: Install xvfb (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y xvfb libegl1 libxkbcommon0
+        run: sudo apt-get update && sudo apt-get install -y xvfb libegl1 libxkbcommon0 libxcb-cursor0 libpulse0
 
       - name: Run UI tests (Linux)
         if: runner.os == 'Linux'
@@ -108,7 +114,7 @@ jobs:
         run: uv sync --all-extras
 
       - name: Install xvfb
-        run: sudo apt-get update && sudo apt-get install -y xvfb libegl1 libxkbcommon0
+        run: sudo apt-get update && sudo apt-get install -y xvfb libegl1 libxkbcommon0 libxcb-cursor0 libpulse0
 
       - name: Run tests with coverage
         run: xvfb-run -a uv run pytest --cov=src --cov=config --cov-report=xml --cov-report=term-missing
