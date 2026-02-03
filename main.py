@@ -1,17 +1,19 @@
-import sys
 import asyncio
 import logging
+import sys
+
 from PyQt6.QtWidgets import QApplication
 from qasync import QEventLoop
+
+from src.services.telegram_service import TelegramService
 from src.ui.haro_window import HaroWidget
 from src.ui.tray_icon import TrayIcon
-from src.services.telegram_service import TelegramService
 
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-    datefmt="%H:%M:%S"
+    datefmt="%H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 

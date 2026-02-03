@@ -1,11 +1,12 @@
 import logging
 import random
-from PyQt6.QtWidgets import QWidget, QMenu
-from PyQt6.QtCore import Qt, QPoint, QPropertyAnimation, QEasingCurve, pyqtSlot, QTimer
-from PyQt6.QtGui import QPainter, QPixmap, QAction, QTransform
+
+from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt, QTimer, QUrl, pyqtSlot
+from PyQt6.QtGui import QAction, QPainter, QPixmap, QTransform
 from PyQt6.QtMultimedia import QSoundEffect
-from PyQt6.QtCore import QUrl
-from config import SPRITES_DIR, SOUNDS_DIR
+from PyQt6.QtWidgets import QMenu, QWidget
+
+from config import SOUNDS_DIR, SPRITES_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -275,6 +276,7 @@ class HaroWidget(QWidget):
     def _quit_app(self):
         """Quit the application."""
         from PyQt6.QtWidgets import QApplication
+
         QApplication.quit()
 
     @pyqtSlot(str)

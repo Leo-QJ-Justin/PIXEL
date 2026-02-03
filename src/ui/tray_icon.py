@@ -1,5 +1,6 @@
-from PyQt6.QtWidgets import QSystemTrayIcon, QMenu
-from PyQt6.QtGui import QIcon, QAction
+from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtWidgets import QMenu, QSystemTrayIcon
+
 from config import SPRITES_DIR
 
 
@@ -61,4 +62,5 @@ class TrayIcon(QSystemTrayIcon):
     def _quit_app(self):
         """Quit the application."""
         from PyQt6.QtWidgets import QApplication
+
         QApplication.quit()
