@@ -5,12 +5,15 @@ from unittest.mock import patch
 import pytest
 from PyQt6.QtCore import Qt
 
+# Import the module so patch() can resolve it
+import src.ui.haro_window  # noqa: F401
+
 
 @pytest.fixture
 def mock_config_paths(mock_sprites_dir, mock_sounds_dir):
     """Patch config module paths to use test directories."""
-    with patch("src.ui.haro_window.SPRITES_DIR", mock_sprites_dir):
-        with patch("src.ui.haro_window.SOUNDS_DIR", mock_sounds_dir):
+    with patch.object(src.ui.haro_window, "SPRITES_DIR", mock_sprites_dir):
+        with patch.object(src.ui.haro_window, "SOUNDS_DIR", mock_sounds_dir):
             yield
 
 

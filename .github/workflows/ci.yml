@@ -50,7 +50,7 @@ jobs:
         run: uv sync --all-extras
 
       - name: Run unit tests
-        run: uv run pytest -m unit -v --tb=short
+        run: uv run pytest -m unit -v --tb=short -p no:pytest_qt
 
   test-ui:
     name: UI Tests (${{ matrix.os }})
