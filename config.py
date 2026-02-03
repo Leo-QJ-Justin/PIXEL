@@ -1,6 +1,7 @@
-import os
 import json
+import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -23,7 +24,7 @@ SETTINGS_FILE = BASE_DIR / "settings.json"
 def load_settings() -> dict:
     """Load settings from JSON file."""
     if SETTINGS_FILE.exists():
-        with open(SETTINGS_FILE, "r") as f:
+        with open(SETTINGS_FILE) as f:
             return json.load(f)
     return {"monitored_users": []}
 

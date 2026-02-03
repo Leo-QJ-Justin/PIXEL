@@ -1,14 +1,16 @@
 """Test script to run telegram service standalone for debugging."""
+
 import asyncio
-import sys
+
 from telethon import TelegramClient, events
-from config import API_ID, API_HASH, get_monitored_users
+
+from config import API_HASH, API_ID, get_monitored_users
 
 
 async def main():
-    print("="*50)
+    print("=" * 50)
     print("TELEGRAM SERVICE DEBUG TEST")
-    print("="*50)
+    print("=" * 50)
     print(f"API_ID configured: {bool(API_ID)}")
     print(f"API_HASH configured: {bool(API_HASH)}")
 
@@ -20,7 +22,7 @@ async def main():
     print(f"\nMonitored user IDs: {monitored}")
     if not monitored:
         print("WARNING: No monitored users! Add users via tray menu.")
-    print("="*50)
+    print("=" * 50)
 
     client = TelegramClient("haro_session", API_ID, API_HASH)
 
@@ -31,21 +33,21 @@ async def main():
         sender_name = getattr(sender, "first_name", "Unknown")
         is_monitored = sender_id in get_monitored_users()
 
-        print(f"\n{'='*50}")
-        print(f"NEW MESSAGE RECEIVED")
-        print(f"{'='*50}")
+        print(f"\n{'=' * 50}")
+        print("NEW MESSAGE RECEIVED")
+        print(f"{'=' * 50}")
         print(f"From: {sender_name}")
         print(f"Sender ID: {sender_id}")
         print(f"Message: {event.message.text[:100] if event.message.text else '[no text]'}")
-        print(f"{'='*50}")
+        print(f"{'=' * 50}")
 
         if is_monitored:
             print(">>> WOULD TRIGGER ALERT! <<<")
             print(f">>> Haro should react to: {sender_name}")
         else:
-            print(f"NOT in monitored list - no alert")
+            print("NOT in monitored list - no alert")
             print(f"To add this user, copy ID: {sender_id}")
-        print(f"{'='*50}\n")
+        print(f"{'=' * 50}\n")
 
     await client.start()
     print("\nTelegram client connected!")

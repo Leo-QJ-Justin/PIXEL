@@ -1,7 +1,9 @@
 import logging
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QMetaObject, Qt, Q_ARG
+
+from PyQt6.QtCore import Q_ARG, QMetaObject, QObject, Qt, pyqtSignal, pyqtSlot
 from telethon import TelegramClient, events
-from config import API_ID, API_HASH, get_monitored_users, add_monitored_user
+
+from config import API_HASH, API_ID, add_monitored_user, get_monitored_users
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +47,10 @@ class TelegramService(QObject):
                 logger.info(f"Monitored user detected: {sender_name}")
                 # Use QMetaObject.invokeMethod for thread-safe signal emission
                 QMetaObject.invokeMethod(
-                    self, "_emit_signal",
+                    self,
+                    "_emit_signal",
                     Qt.ConnectionType.QueuedConnection,
-                    Q_ARG(str, sender_name)
+                    Q_ARG(str, sender_name),
                 )
             else:
                 logger.debug(f"Sender {sender_id} not monitored, ignoring")
