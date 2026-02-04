@@ -60,6 +60,19 @@ class TelegramIntegration(BaseIntegration):
         monitored_users = get_monitored_users()
 
         self._client = TelegramClient("haro_session", api_id, api_hash)
+
+        # Connect first to check authorization status
+        await self._client.connect()
+
+        if not await self._client.is_user_authorized():
+            logger.error(
+                "Telegram session not authorized. "
+                "Run 'uv run python scripts/auth_telegram.py' to authenticate first."
+            )
+            await self._client.disconnect()
+            self._client = None
+            return
+
         self._running = True
 
         @self._client.on(events.NewMessage(incoming=True))
@@ -94,9 +107,7 @@ class TelegramIntegration(BaseIntegration):
             else:
                 logger.debug(f"Sender {sender_id} not monitored, ignoring")
 
-        await self._client.start()
         logger.info("Telegram integration started. Listening for messages...")
-        await self._client.run_until_disconnected()
 
     async def stop(self) -> None:
         """Stop the Telegram client."""
