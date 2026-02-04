@@ -55,10 +55,10 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["src", "config"]
+known-first-party = ["src", "config", "integrations"]
 
 [tool.coverage.run]
-source = ["src", "config"]
+source = ["src", "config", "integrations"]
 omit = ["tests/*"]
 
 [tool.coverage.report]
