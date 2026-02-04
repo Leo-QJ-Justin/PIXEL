@@ -11,6 +11,13 @@ from PyQt6.QtGui import QPixmap, QTransform
 logger = logging.getLogger(__name__)
 
 
+# Available characters and their sprite prefixes
+CHARACTERS = {
+    "haro": "",        # No prefix for Haro (default)
+    "biru": "biru_",   # Biru sprites start with "biru_"
+}
+
+
 @dataclass
 class Behavior:
     """Loaded behavior with sprites and config."""
@@ -26,7 +33,9 @@ class Behavior:
     source: str = "core"  # "core" or integration name
 
     @classmethod
-    def from_path(cls, path: Path, source: str = "core") -> "Behavior":
+    def from_path(
+        cls, path: Path, source: str = "core", character: str = "haro"
+    ) -> "Behavior":
         """Load a behavior from a directory path."""
         name = path.name
         config_path = path / "config.json"
@@ -44,11 +53,31 @@ class Behavior:
         can_be_interrupted = config.get("can_be_interrupted", True)
         sound_file = config.get("sound")
 
-        # Load sprites
+        # Get character sprite prefix
+        prefix = CHARACTERS.get(character, "")
+
+        # Load sprites matching the character prefix
         sprites_dir = path / "sprites"
         sprites = []
         if sprites_dir.exists():
-            sprite_files = sorted(sprites_dir.glob("*.png"))
+            # Filter sprites by character prefix
+            if prefix:
+                # For non-default characters, match prefix (e.g., "biru_idle_1.png")
+                pattern = f"{prefix}*.png"
+            else:
+                # For default character (haro), exclude files with other prefixes
+                pattern = "*.png"
+
+            sprite_files = sorted(sprites_dir.glob(pattern))
+
+            # If using default character, filter out sprites with known prefixes
+            if not prefix:
+                other_prefixes = [p for p in CHARACTERS.values() if p]
+                sprite_files = [
+                    f for f in sprite_files
+                    if not any(f.name.startswith(p) for p in other_prefixes)
+                ]
+
             for sprite_file in sprite_files:
                 pixmap = QPixmap(str(sprite_file))
                 if not pixmap.isNull():
@@ -104,15 +133,52 @@ class BehaviorRegistry(QObject):
     # Emitted when frame advances: (pixmap, facing_left)
     frame_changed = pyqtSignal(QPixmap, bool)
 
-    def __init__(self):
+    # Emitted when character changes: (character_name)
+    character_changed = pyqtSignal(str)
+
+    def __init__(self, character: str = "haro"):
         super().__init__()
         self._behaviors: dict[str, Behavior] = {}
         self._current_state: BehaviorState | None = None
         self._default_behavior: str = "idle"
+        self._character: str = character
+
+        # Store discovered paths for reloading on character change
+        self._behavior_paths: list[tuple[Path, str]] = []  # (path, source)
 
         # Animation timer
         self._frame_timer = QTimer()
         self._frame_timer.timeout.connect(self._advance_frame)
+
+    @property
+    def character(self) -> str:
+        """Current character name."""
+        return self._character
+
+    def set_character(self, character: str) -> None:
+        """Switch to a different character and reload all behaviors."""
+        if character not in CHARACTERS:
+            logger.warning(f"Unknown character: {character}")
+            return
+
+        if character == self._character:
+            return
+
+        logger.info(f"Switching character from {self._character} to {character}")
+        self._character = character
+
+        # Stop current animation
+        self._frame_timer.stop()
+        self._current_state = None
+
+        # Reload all behaviors with new character
+        self._behaviors.clear()
+        for path, source in self._behavior_paths:
+            self._load_behaviors_from_path(path, source)
+
+        # Emit signal and restart idle
+        self.character_changed.emit(character)
+        self.trigger(self._default_behavior)
 
     def discover_behaviors(self, paths: list[Path], source: str = "core") -> list[str]:
         """
@@ -125,19 +191,32 @@ class BehaviorRegistry(QObject):
             if not base_path.exists():
                 continue
 
-            for behavior_path in base_path.iterdir():
-                if not behavior_path.is_dir():
-                    continue
+            # Store path for reloading on character change
+            self._behavior_paths.append((base_path, source))
+            discovered.extend(self._load_behaviors_from_path(base_path, source))
 
-                # Skip if no sprites directory
-                if not (behavior_path / "sprites").exists():
-                    continue
+        return discovered
 
-                behavior = Behavior.from_path(behavior_path, source=source)
-                if behavior.sprites:
-                    self._behaviors[behavior.name] = behavior
-                    discovered.append(behavior.name)
-                    logger.info(f"Loaded behavior: {behavior.name} (source: {source})")
+    def _load_behaviors_from_path(self, base_path: Path, source: str) -> list[str]:
+        """Load behaviors from a single path."""
+        discovered = []
+        for behavior_path in base_path.iterdir():
+            if not behavior_path.is_dir():
+                continue
+
+            # Skip if no sprites directory
+            if not (behavior_path / "sprites").exists():
+                continue
+
+            behavior = Behavior.from_path(
+                behavior_path, source=source, character=self._character
+            )
+            if behavior.sprites:
+                self._behaviors[behavior.name] = behavior
+                discovered.append(behavior.name)
+                logger.info(
+                    f"Loaded behavior: {behavior.name} (source: {source}, character: {self._character})"
+                )
 
         return discovered
 
