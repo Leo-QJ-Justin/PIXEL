@@ -5,7 +5,9 @@ import sys
 from PyQt6.QtWidgets import QApplication
 from qasync import QEventLoop
 
-from src.services.telegram_service import TelegramService
+from config import BEHAVIORS_DIR, INTEGRATIONS_DIR, load_settings
+from src.core.behavior_registry import BehaviorRegistry
+from src.core.integration_manager import IntegrationManager
 from src.ui.haro_window import HaroWidget
 from src.ui.tray_icon import TrayIcon
 
@@ -24,25 +26,41 @@ def main():
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
-    # 2. Init Components
-    haro = HaroWidget()
-    tray = TrayIcon(haro)
-    bot = TelegramService()
+    # 2. Load settings
+    settings = load_settings()
 
-    # 3. Connect Signals
-    # When bot sees a message -> Haro gets excited
-    bot.message_received.connect(haro.trigger_alert)
-    logger.info("Signal connected: bot.message_received -> haro.trigger_alert")
+    # 3. Initialize behavior registry and discover core behaviors
+    behavior_registry = BehaviorRegistry()
+    core_behaviors = behavior_registry.discover_behaviors([BEHAVIORS_DIR])
+    logger.info(f"Loaded core behaviors: {core_behaviors}")
 
-    # 4. Start Bot (Non-blocking task)
-    loop.create_task(bot.start())
-    logger.info("Telegram bot task created")
+    # 4. Initialize integration manager
+    integration_manager = IntegrationManager(
+        integrations_path=INTEGRATIONS_DIR,
+        behavior_registry=behavior_registry,
+        settings=settings,
+    )
 
-    # 5. Show Window and Tray
+    # 5. Discover and load integrations (also loads their behaviors)
+    discovered = integration_manager.discover()
+    logger.info(f"Discovered integrations: {discovered}")
+
+    for name in discovered:
+        integration_manager.load(name)
+
+    # 6. Create UI components
+    haro = HaroWidget(behavior_registry)
+    tray = TrayIcon(haro, integration_manager)
+
+    # 7. Start all enabled integrations
+    loop.create_task(integration_manager.start_all_enabled())
+    logger.info("Integration startup tasks created")
+
+    # 8. Show window and tray
     haro.show()
     tray.show()
 
-    # 6. Run Loop
+    # 9. Run event loop
     with loop:
         loop.run_forever()
 

@@ -2,11 +2,12 @@ import logging
 import random
 
 from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt, QTimer, QUrl, pyqtSlot
-from PyQt6.QtGui import QAction, QPainter, QPixmap, QTransform
+from PyQt6.QtGui import QAction, QPainter, QPixmap
 from PyQt6.QtMultimedia import QSoundEffect
 from PyQt6.QtWidgets import QMenu, QWidget
 
-from config import SOUNDS_DIR, SPRITES_DIR
+from config import get_behavior_settings
+from src.core.behavior_registry import BehaviorRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -14,70 +15,52 @@ logger = logging.getLogger(__name__)
 class HaroWidget(QWidget):
     """Main Haro desktop pet widget."""
 
-    def __init__(self):
+    def __init__(self, behavior_registry: BehaviorRegistry):
         super().__init__()
+        self._behavior_registry = behavior_registry
         self._drag_position = QPoint()
         self._is_alerting = False
-        self._animation = None
-
-        # Load idle sprites (idle_1.png, idle_2.png or fallback to idle.png)
-        self._idle_sprites = []
-        for i in range(1, 3):
-            path = SPRITES_DIR / f"idle_{i}.png"
-            if path.exists():
-                self._idle_sprites.append(QPixmap(str(path)))
-        if not self._idle_sprites:
-            fallback = SPRITES_DIR / "idle.png"
-            if fallback.exists():
-                self._idle_sprites.append(QPixmap(str(fallback)))
-
-        # Load alert sprites (alert_1.png, alert_2.png or fallback to alert.png)
-        self._alert_sprites = []
-        for i in range(1, 3):
-            path = SPRITES_DIR / f"alert_{i}.png"
-            if path.exists():
-                self._alert_sprites.append(QPixmap(str(path)))
-        if not self._alert_sprites:
-            fallback = SPRITES_DIR / "alert.png"
-            if fallback.exists():
-                self._alert_sprites.append(QPixmap(str(fallback)))
-
-        self._idle_frame = 0
-        self._alert_frame = 0
-        self._current_sprite = self._idle_sprites[0] if self._idle_sprites else QPixmap()
-
-        # Load sound
-        self._alert_sound = QSoundEffect()
-        sound_path = SOUNDS_DIR / "haro_alert.wav"
-        if sound_path.exists():
-            self._alert_sound.setSource(QUrl.fromLocalFile(str(sound_path)))
-
-        # Load fly sprites for wandering animation
-        self._fly_sprites = []
-        for i in range(1, 5):
-            path = SPRITES_DIR / f"fly_{i}.png"
-            if path.exists():
-                self._fly_sprites.append(QPixmap(str(path)))
-        self._can_fly = len(self._fly_sprites) == 4
-
         self._is_wandering = False
-        self._current_frame = 0
         self._facing_left = False
 
-        # Create flipped versions for left-facing movement
-        flip_transform = QTransform().scale(-1, 1)
+        # Current sprite to display
+        self._current_sprite = QPixmap()
 
-        self._idle_sprites_flipped = []
-        for sprite in self._idle_sprites:
-            self._idle_sprites_flipped.append(sprite.transformed(flip_transform))
+        # Sound effect for alerts
+        self._alert_sound = QSoundEffect()
 
-        self._fly_sprites_flipped = []
-        for sprite in self._fly_sprites:
-            self._fly_sprites_flipped.append(sprite.transformed(flip_transform))
+        # Bounce animation for alerts
+        self._bounce_animation = QPropertyAnimation(self, b"pos")
+        self._bounce_animation.setDuration(200)
+        self._bounce_animation.setEasingCurve(QEasingCurve.Type.OutBounce)
+        self._bounce_animation.setLoopCount(10)
+
+        # Movement animation for wandering
+        self._move_animation = QPropertyAnimation(self, b"pos")
+        self._move_animation.setDuration(1500)
+        self._move_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self._move_animation.finished.connect(self._on_wander_finished)
+
+        # Wander decision timer
+        fly_settings = get_behavior_settings("fly")
+        wander_min = fly_settings.get("wander_interval_min_ms", 5000)
+        wander_max = fly_settings.get("wander_interval_max_ms", 15000)
+        self._wander_chance = fly_settings.get("wander_chance", 0.3)
+        self._wander_min_ms = wander_min
+        self._wander_max_ms = wander_max
+
+        self._wander_timer = QTimer()
+        self._wander_timer.timeout.connect(self._maybe_wander)
+        self._wander_timer.start(random.randint(wander_min, wander_max))
+
+        # Connect to behavior registry signals
+        self._behavior_registry.frame_changed.connect(self._on_frame_changed)
+        self._behavior_registry.behavior_changed.connect(self._on_behavior_changed)
 
         self._setup_window()
-        self._setup_animation()
-        self._setup_wandering()
+
+        # Start with idle behavior
+        self._behavior_registry.trigger("idle")
 
     def _setup_window(self):
         """Configure window properties for a desktop pet."""
@@ -88,14 +71,8 @@ class HaroWidget(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
-        # Set size based on largest sprite
-        max_width = 100
-        max_height = 100
-        for sprite in self._idle_sprites + self._alert_sprites + self._fly_sprites:
-            if not sprite.isNull():
-                max_width = max(max_width, sprite.width())
-                max_height = max(max_height, sprite.height())
-        self.setFixedSize(max_width, max_height)
+        # Set initial size (will be updated when first sprite loads)
+        self.setFixedSize(100, 100)
 
         # Position at bottom-right of screen
         self._move_to_default_position()
@@ -109,131 +86,107 @@ class HaroWidget(QWidget):
             y = geometry.bottom() - self.height()
             self.move(x, y)
 
-    def _setup_animation(self):
-        """Setup bounce animation for alerts."""
-        self._animation = QPropertyAnimation(self, b"pos")
-        self._animation.setDuration(200)
-        self._animation.setEasingCurve(QEasingCurve.Type.OutBounce)
-        self._animation.setLoopCount(10)
+    @pyqtSlot(QPixmap, bool)
+    def _on_frame_changed(self, pixmap: QPixmap, facing_left: bool):
+        """Handle frame change from behavior registry."""
+        self._current_sprite = pixmap
+        self._facing_left = facing_left
 
-        # Idle animation timer (cycle idle frames)
-        self._idle_timer = QTimer()
-        self._idle_timer.timeout.connect(self._next_idle_frame)
-        if len(self._idle_sprites) > 1:
-            self._idle_timer.start(500)
+        # Update window size if needed
+        if not pixmap.isNull():
+            if pixmap.width() != self.width() or pixmap.height() != self.height():
+                self.setFixedSize(pixmap.width(), pixmap.height())
 
-        # Alert animation timer (cycle alert frames)
-        self._alert_timer = QTimer()
-        self._alert_timer.timeout.connect(self._next_alert_frame)
-
-    def _next_idle_frame(self):
-        """Cycle to next idle animation frame."""
-        if self._is_alerting or self._is_wandering or not self._idle_sprites:
-            return
-        self._idle_frame = (self._idle_frame + 1) % len(self._idle_sprites)
-        sprites = self._idle_sprites_flipped if self._facing_left else self._idle_sprites
-        self._current_sprite = sprites[self._idle_frame]
         self.update()
 
-    def _next_alert_frame(self):
-        """Cycle to next alert animation frame."""
-        if not self._alert_sprites:
-            return
-        self._alert_frame = (self._alert_frame + 1) % len(self._alert_sprites)
-        self._current_sprite = self._alert_sprites[self._alert_frame]
-        self.update()
+    @pyqtSlot(str, dict)
+    def _on_behavior_changed(self, behavior_name: str, context: dict):
+        """Handle behavior change from registry."""
+        logger.debug(f"Behavior changed to: {behavior_name}")
 
-    def _setup_wandering(self):
-        """Setup timers and animations for wandering behavior."""
-        # Wander decision timer (triggers every 5-15s)
-        self._wander_timer = QTimer()
-        self._wander_timer.timeout.connect(self._maybe_wander)
-        self._wander_timer.start(random.randint(5000, 15000))
+        # Track alerting state
+        self._is_alerting = behavior_name == "alert"
 
-        # Animation frame timer (100ms per frame during flight)
-        self._frame_timer = QTimer()
-        self._frame_timer.timeout.connect(self._next_frame)
+        # Track wandering state
+        if behavior_name == "fly":
+            self._is_wandering = True
+        elif behavior_name != "fly" and self._is_wandering:
+            self._is_wandering = False
 
-        # Movement animation
-        self._move_anim = QPropertyAnimation(self, b"pos")
-        self._move_anim.setDuration(1500)
-        self._move_anim.setEasingCurve(QEasingCurve.Type.InOutQuad)
-        self._move_anim.finished.connect(self._stop_wander)
+        # Play sound if behavior has one
+        sound_path = self._behavior_registry.current_sound_path
+        if sound_path and sound_path.exists():
+            self._alert_sound.setSource(QUrl.fromLocalFile(str(sound_path)))
+            self._alert_sound.play()
+
+        # Start bounce animation for alert behavior
+        if behavior_name == "alert":
+            self._start_bounce()
+
+    def _start_bounce(self):
+        """Start the bounce animation for alerts."""
+        start_pos = self.pos()
+        bounce_pos = QPoint(start_pos.x(), start_pos.y() - 20)
+        self._bounce_animation.setStartValue(bounce_pos)
+        self._bounce_animation.setEndValue(start_pos)
+        self._bounce_animation.start()
 
     def _maybe_wander(self):
         """Randomly decide to wander."""
         # Reset timer with random interval
-        self._wander_timer.setInterval(random.randint(5000, 15000))
+        self._wander_timer.setInterval(random.randint(self._wander_min_ms, self._wander_max_ms))
 
         # Don't wander if alerting or already wandering
         if self._is_alerting or self._is_wandering:
             return
 
-        # 30% chance to wander
-        if random.random() < 0.3:
+        # Random chance to wander
+        if random.random() < self._wander_chance:
             self._start_wander()
 
     def _start_wander(self):
         """Start wandering to a random position."""
-        self._is_wandering = True
-
         # Get screen bounds
         screen = self.screen()
         if not screen:
             return
+
         geo = screen.availableGeometry()
 
-        # Pick random destination nearby (x-axis only, stay above taskbar)
+        # Pick random destination nearby (x-axis only)
         current_x = self.pos().x()
         move_distance = random.randint(50, 150) * random.choice([-1, 1])
         dest_x = current_x + move_distance
 
-        # Clamp to screen bounds with margin
+        # Clamp to screen bounds
         min_x = geo.left()
         max_x = geo.right() - self.width()
         dest_x = max(min_x, min(dest_x, max_x))
 
-        dest_y = self.pos().y()  # Keep same y position
+        dest_y = self.pos().y()
 
         # Set facing direction based on movement
-        self._facing_left = dest_x < current_x
+        facing_left = dest_x < current_x
+
+        # Trigger fly behavior
+        self._behavior_registry.trigger("fly", facing_left=facing_left)
 
         # Start movement animation
-        self._move_anim.setStartValue(self.pos())
-        self._move_anim.setEndValue(QPoint(dest_x, dest_y))
-        self._move_anim.start()
+        self._move_animation.setStartValue(self.pos())
+        self._move_animation.setEndValue(QPoint(dest_x, dest_y))
+        self._move_animation.start()
 
-        # Start frame animation if fly sprites available
-        if self._can_fly:
-            self._current_frame = 0
-            sprites = self._fly_sprites_flipped if self._facing_left else self._fly_sprites
-            self._current_sprite = sprites[0]
-            self._frame_timer.start(100)
-            self.update()
-
-    def _next_frame(self):
-        """Cycle to next fly animation frame."""
-        if not self._can_fly:
-            return
-        self._current_frame = (self._current_frame + 1) % 4
-        sprites = self._fly_sprites_flipped if self._facing_left else self._fly_sprites
-        self._current_sprite = sprites[self._current_frame]
-        self.update()
-
-    def _stop_wander(self):
-        """Stop wandering and return to idle."""
+    def _on_wander_finished(self):
+        """Handle wander movement completion."""
         self._is_wandering = False
-        self._frame_timer.stop()
-        self._idle_frame = 0
-        if self._idle_sprites:
-            sprites = self._idle_sprites_flipped if self._facing_left else self._idle_sprites
-            self._current_sprite = sprites[0]
-        else:
-            self._current_sprite = QPixmap()
-        self.update()
+        # Return to idle, keeping facing direction
+        self._behavior_registry.trigger("idle", facing_left=self._facing_left)
 
     def paintEvent(self, event):
         """Draw the current sprite centered in the widget."""
+        if self._current_sprite.isNull():
+            return
+
         painter = QPainter(self)
         x = (self.width() - self._current_sprite.width()) // 2
         y = (self.height() - self._current_sprite.height()) // 2
@@ -281,52 +234,24 @@ class HaroWidget(QWidget):
 
     @pyqtSlot(str)
     def trigger_alert(self, sender_name: str):
-        """Trigger alert animation and sound."""
+        """Trigger alert animation and sound (legacy interface for integrations)."""
         logger.debug(f"trigger_alert called for: {sender_name}")
         if self._is_alerting:
             logger.debug("Already alerting, skipping")
             return
+
         logger.info(f"Starting alert for: {sender_name}")
 
         # Stop any ongoing wander
         if self._is_wandering:
-            self._stop_wander()
-            self._move_anim.stop()
+            self._move_animation.stop()
+            self._is_wandering = False
 
-        self._is_alerting = True
-
-        # Change sprite and start alert animation
-        if self._alert_sprites:
-            self._alert_frame = 0
-            self._current_sprite = self._alert_sprites[0]
-            if len(self._alert_sprites) > 1:
-                self._alert_timer.start(300)
-            self.update()
-
-        # Play sound
-        if self._alert_sound.isLoaded():
-            self._alert_sound.play()
-
-        # Start bounce animation
-        if self._animation:
-            start_pos = self.pos()
-            bounce_pos = QPoint(start_pos.x(), start_pos.y() - 20)
-            self._animation.setStartValue(bounce_pos)
-            self._animation.setEndValue(start_pos)
-            self._animation.start()
+        # Trigger alert through behavior registry
+        self._behavior_registry.trigger("alert", {"sender": sender_name})
 
     def stop_alert(self):
         """Stop the alert and return to idle state."""
         self._is_alerting = False
-
-        # Stop alert animation timer
-        self._alert_timer.stop()
-
-        # Reset sprite to idle
-        self._idle_frame = 0
-        self._current_sprite = self._idle_sprites[0] if self._idle_sprites else QPixmap()
-        self.update()
-
-        # Stop bounce animation
-        if self._animation:
-            self._animation.stop()
+        self._bounce_animation.stop()
+        self._behavior_registry.stop_current()

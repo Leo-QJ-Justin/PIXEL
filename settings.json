@@ -1,3 +1,7 @@
 {
-  "monitored_users": []
+  "general": {
+    "always_on_top": true
+  },
+  "behaviors": {},
+  "integrations": {}
 }

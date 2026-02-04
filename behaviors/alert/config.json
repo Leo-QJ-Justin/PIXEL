@@ -1,0 +1,7 @@
+{
+  "frame_duration_ms": 300,
+  "loop": false,
+  "priority": 10,
+  "sound": "alert.wav",
+  "can_be_interrupted": false
+}
