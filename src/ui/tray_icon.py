@@ -48,7 +48,8 @@ class TrayIcon(QSystemTrayIcon):
                 # For default character, exclude other character prefixes
                 other_prefixes = [p for p in CHARACTERS.values() if p]
                 sprite_files = [
-                    f for f in sorted(idle_sprites_dir.glob("*.png"))
+                    f
+                    for f in sorted(idle_sprites_dir.glob("*.png"))
                     if not any(f.name.startswith(p) for p in other_prefixes)
                 ]
 
@@ -134,9 +135,7 @@ class TrayIcon(QSystemTrayIcon):
             action = QAction(character_name.title(), menu)
             action.setCheckable(True)
             action.setChecked(character_name == current_character)
-            action.triggered.connect(
-                lambda checked, c=character_name: self._switch_character(c)
-            )
+            action.triggered.connect(lambda checked, c=character_name: self._switch_character(c))
             menu.addAction(action)
             self._character_actions[character_name] = action
 

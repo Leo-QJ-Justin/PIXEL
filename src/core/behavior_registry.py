@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 # Available characters and their sprite prefixes
 CHARACTERS = {
-    "haro": "",        # No prefix for Haro (default)
-    "biru": "biru_",   # Biru sprites start with "biru_"
+    "haro": "",  # No prefix for Haro (default)
+    "biru": "biru_",  # Biru sprites start with "biru_"
 }
 
 
@@ -33,9 +33,7 @@ class Behavior:
     source: str = "core"  # "core" or integration name
 
     @classmethod
-    def from_path(
-        cls, path: Path, source: str = "core", character: str = "haro"
-    ) -> "Behavior":
+    def from_path(cls, path: Path, source: str = "core", character: str = "haro") -> "Behavior":
         """Load a behavior from a directory path."""
         name = path.name
         config_path = path / "config.json"
@@ -74,8 +72,7 @@ class Behavior:
             if not prefix:
                 other_prefixes = [p for p in CHARACTERS.values() if p]
                 sprite_files = [
-                    f for f in sprite_files
-                    if not any(f.name.startswith(p) for p in other_prefixes)
+                    f for f in sprite_files if not any(f.name.startswith(p) for p in other_prefixes)
                 ]
 
             for sprite_file in sprite_files:
@@ -208,9 +205,7 @@ class BehaviorRegistry(QObject):
             if not (behavior_path / "sprites").exists():
                 continue
 
-            behavior = Behavior.from_path(
-                behavior_path, source=source, character=self._character
-            )
+            behavior = Behavior.from_path(behavior_path, source=source, character=self._character)
             if behavior.sprites:
                 self._behaviors[behavior.name] = behavior
                 discovered.append(behavior.name)

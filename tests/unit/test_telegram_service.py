@@ -1,6 +1,5 @@
 """Tests for TelegramIntegration."""
 
-
 import pytest
 
 
