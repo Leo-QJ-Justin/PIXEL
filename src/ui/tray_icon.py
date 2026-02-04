@@ -4,16 +4,23 @@ from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QMenu, QSystemTrayIcon
 
 from config import BEHAVIORS_DIR
+from src.core.behavior_registry import BehaviorRegistry
 from src.core.integration_manager import IntegrationManager
 
 
 class TrayIcon(QSystemTrayIcon):
     """System tray icon for Haro desktop pet."""
 
-    def __init__(self, haro_widget, integration_manager: IntegrationManager):
+    def __init__(
+        self,
+        haro_widget,
+        integration_manager: IntegrationManager,
+        behavior_registry: BehaviorRegistry | None = None,
+    ):
         super().__init__()
         self._haro_widget = haro_widget
         self._integration_manager = integration_manager
+        self._behavior_registry = behavior_registry
         self._integration_actions: dict[str, QAction] = {}
 
         self._setup_icon()
@@ -49,6 +56,13 @@ class TrayIcon(QSystemTrayIcon):
         integrations_menu = QMenu("Integrations", menu)
         self._build_integrations_menu(integrations_menu)
         menu.addMenu(integrations_menu)
+
+        menu.addSeparator()
+
+        # Test Alert action
+        test_alert_action = QAction("Test Alert", menu)
+        test_alert_action.triggered.connect(self._test_alert)
+        menu.addAction(test_alert_action)
 
         menu.addSeparator()
 
@@ -116,6 +130,11 @@ class TrayIcon(QSystemTrayIcon):
         """Handle tray icon activation."""
         if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
             self._toggle_visibility()
+
+    def _test_alert(self):
+        """Trigger a test alert for debugging."""
+        if self._behavior_registry:
+            self._behavior_registry.trigger("alert", {"sender": "Test User"})
 
     def _quit_app(self):
         """Quit the application."""

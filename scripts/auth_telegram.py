@@ -1,8 +1,12 @@
 import asyncio
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from telethon import TelegramClient
+
+# Change to project root so session file is created there
+os.chdir(Path(__file__).parent.parent)
 
 load_dotenv()
 
