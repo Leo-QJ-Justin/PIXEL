@@ -36,7 +36,7 @@ class TelegramIntegration(BaseIntegration):
             "trigger_behavior": "alert",
         }
 
-    @pyqtSlot(str, dict)
+    @pyqtSlot(str, str)
     def _emit_behavior(self, behavior_name: str, context_str: str):
         """Thread-safe behavior trigger."""
         import json
