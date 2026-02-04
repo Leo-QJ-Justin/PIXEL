@@ -36,6 +36,7 @@ DEFAULT_SETTINGS = {
     "general": {
         "always_on_top": True,
         "start_minimized": False,
+        "sprite_default_facing": "right",  # "left" or "right"
     },
     "behaviors": {
         "fly": {
@@ -104,3 +105,9 @@ def get_general_settings() -> dict:
     """Get general application settings."""
     settings = load_settings()
     return settings.get("general", {})
+
+
+def get_sprite_default_facing() -> str:
+    """Get the default facing direction for sprites ('left' or 'right')."""
+    settings = load_settings()
+    return settings.get("general", {}).get("sprite_default_facing", "right")
