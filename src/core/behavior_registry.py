@@ -8,6 +8,8 @@ from pathlib import Path
 from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 from PyQt6.QtGui import QPixmap, QTransform
 
+from config import get_sprite_default_facing
+
 logger = logging.getLogger(__name__)
 
 
@@ -286,7 +288,11 @@ class BehaviorRegistry(QObject):
 
         frame_index = min(state.frame_index, len(behavior.sprites) - 1)
 
-        if state.facing_left:
+        # Determine if we need to flip based on default sprite orientation
+        sprites_face_left = get_sprite_default_facing() == "left"
+        need_flip = state.facing_left != sprites_face_left
+
+        if need_flip:
             pixmap = behavior.sprites_flipped[frame_index]
         else:
             pixmap = behavior.sprites[frame_index]
