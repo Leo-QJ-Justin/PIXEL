@@ -1,5 +1,6 @@
 import logging
 import random
+from datetime import datetime
 
 from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt, QTimer, QUrl, pyqtSlot
 from PyQt6.QtGui import QAction, QPainter, QPixmap
@@ -21,7 +22,9 @@ class HaroWidget(QWidget):
         self._drag_position = QPoint()
         self._is_alerting = False
         self._is_wandering = False
+        self._is_sleeping = False
         self._facing_left = False
+        self._last_activity_time = datetime.now()
 
         # Current sprite to display
         self._current_sprite = QPixmap()
@@ -52,6 +55,12 @@ class HaroWidget(QWidget):
         self._wander_timer = QTimer()
         self._wander_timer.timeout.connect(self._maybe_wander)
         self._wander_timer.start(random.randint(wander_min, wander_max))
+
+        # Sleep check timer
+        self._sleep_settings = get_behavior_settings("sleep")
+        self._sleep_check_timer = QTimer()
+        self._sleep_check_timer.timeout.connect(self._check_sleep_conditions)
+        self._sleep_check_timer.start(5000)  # Check every 5 seconds
 
         # Connect to behavior registry signals
         self._behavior_registry.frame_changed.connect(self._on_frame_changed)
@@ -113,6 +122,16 @@ class HaroWidget(QWidget):
         elif behavior_name != "wander" and self._is_wandering:
             self._is_wandering = False
 
+        # Track sleeping state
+        if behavior_name == "sleep":
+            self._is_sleeping = True
+        elif behavior_name != "sleep" and self._is_sleeping:
+            self._is_sleeping = False
+
+        # Reset activity timer on non-idle, non-sleep behaviors
+        if behavior_name in ("alert", "wander"):
+            self._last_activity_time = datetime.now()
+
         # Play sound if behavior has one
         sound_path = self._behavior_registry.current_sound_path
         if sound_path and sound_path.exists():
@@ -136,8 +155,8 @@ class HaroWidget(QWidget):
         # Reset timer with random interval
         self._wander_timer.setInterval(random.randint(self._wander_min_ms, self._wander_max_ms))
 
-        # Don't wander if alerting or already wandering
-        if self._is_alerting or self._is_wandering:
+        # Don't wander if alerting, already wandering, or sleeping
+        if self._is_alerting or self._is_wandering or self._is_sleeping:
             return
 
         # Random chance to wander
@@ -182,6 +201,50 @@ class HaroWidget(QWidget):
         # Return to idle, keeping facing direction
         self._behavior_registry.trigger("idle", facing_left=self._facing_left)
 
+    def _check_sleep_conditions(self):
+        """Periodically check if the pet should sleep."""
+        if self._is_sleeping or self._is_alerting or self._is_wandering:
+            return
+
+        # Check schedule first (if enabled)
+        if self._sleep_settings.get("schedule_enabled", False):
+            if self._is_scheduled_sleep_time():
+                self._enter_sleep()
+                return
+
+        # Check inactivity timeout
+        timeout_ms = self._sleep_settings.get("inactivity_timeout_ms", 60000)
+        elapsed_ms = (datetime.now() - self._last_activity_time).total_seconds() * 1000
+        if elapsed_ms >= timeout_ms:
+            self._enter_sleep()
+
+    def _is_scheduled_sleep_time(self) -> bool:
+        """Check if current time falls within the sleep schedule."""
+        start_str = self._sleep_settings.get("schedule_start", "22:00")
+        end_str = self._sleep_settings.get("schedule_end", "06:00")
+
+        now = datetime.now().strftime("%H:%M")
+
+        # Handle overnight wrap (e.g., 22:00 -> 06:00)
+        if start_str <= end_str:
+            return start_str <= now < end_str
+        else:
+            return now >= start_str or now < end_str
+
+    def _enter_sleep(self):
+        """Trigger the sleep behavior."""
+        logger.info("Pet is going to sleep")
+        self._behavior_registry.trigger("sleep")
+
+    def _wake_up(self):
+        """Wake from sleep, reset activity timer, return to idle."""
+        if not self._is_sleeping:
+            return
+        logger.info("Pet is waking up")
+        self._is_sleeping = False
+        self._last_activity_time = datetime.now()
+        self._behavior_registry.stop_current()
+
     def paintEvent(self, event):
         """Draw the current sprite centered in the widget."""
         if self._current_sprite.isNull():
@@ -193,10 +256,16 @@ class HaroWidget(QWidget):
         painter.drawPixmap(x, y, self._current_sprite)
 
     def mousePressEvent(self, event):
-        """Handle mouse press for dragging and alert dismissal."""
+        """Handle mouse press for dragging, alert dismissal, and waking."""
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            self._last_activity_time = datetime.now()
             event.accept()
+
+            # Wake up if sleeping
+            if self._is_sleeping:
+                self._wake_up()
+                return
 
             # Dismiss alert on click
             if self._is_alerting:
@@ -205,11 +274,16 @@ class HaroWidget(QWidget):
     def mouseMoveEvent(self, event):
         """Handle dragging the widget."""
         if event.buttons() == Qt.MouseButton.LeftButton:
+            self._last_activity_time = datetime.now()
             self.move(event.globalPosition().toPoint() - self._drag_position)
             event.accept()
 
     def contextMenuEvent(self, event):
         """Show context menu on right-click."""
+        self._last_activity_time = datetime.now()
+        if self._is_sleeping:
+            self._wake_up()
+
         menu = QMenu(self)
 
         # Reset position action
