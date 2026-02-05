@@ -168,24 +168,24 @@ class TestBehaviorRegistry:
         behaviors = behavior_registry.list_behaviors()
         assert "idle" in behaviors
         assert "alert" in behaviors
-        assert "fly" in behaviors
+        assert "wander" in behaviors
 
     def test_behavior_has_correct_priority(self, behavior_registry):
         """Behaviors should have correct priority values."""
         idle = behavior_registry.get_behavior("idle")
         alert = behavior_registry.get_behavior("alert")
-        fly = behavior_registry.get_behavior("fly")
+        wander = behavior_registry.get_behavior("wander")
 
         assert idle.priority == 0
         assert alert.priority == 10
-        assert fly.priority == 5
+        assert wander.priority == 5
 
     def test_behavior_has_sprites(self, behavior_registry):
         """Behaviors should have loaded sprites."""
         idle = behavior_registry.get_behavior("idle")
         alert = behavior_registry.get_behavior("alert")
-        fly = behavior_registry.get_behavior("fly")
+        wander = behavior_registry.get_behavior("wander")
 
         assert len(idle.sprites) == 2
         assert len(alert.sprites) == 2
-        assert len(fly.sprites) == 4
+        assert len(wander.sprites) == 4

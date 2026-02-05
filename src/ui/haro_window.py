@@ -42,10 +42,10 @@ class HaroWidget(QWidget):
         self._move_animation.finished.connect(self._on_wander_finished)
 
         # Wander decision timer
-        fly_settings = get_behavior_settings("fly")
-        wander_min = fly_settings.get("wander_interval_min_ms", 5000)
-        wander_max = fly_settings.get("wander_interval_max_ms", 15000)
-        self._wander_chance = fly_settings.get("wander_chance", 0.3)
+        wander_settings = get_behavior_settings("wander")
+        wander_min = wander_settings.get("wander_interval_min_ms", 5000)
+        wander_max = wander_settings.get("wander_interval_max_ms", 15000)
+        self._wander_chance = wander_settings.get("wander_chance", 0.3)
         self._wander_min_ms = wander_min
         self._wander_max_ms = wander_max
 
@@ -108,9 +108,9 @@ class HaroWidget(QWidget):
         self._is_alerting = behavior_name == "alert"
 
         # Track wandering state
-        if behavior_name == "fly":
+        if behavior_name == "wander":
             self._is_wandering = True
-        elif behavior_name != "fly" and self._is_wandering:
+        elif behavior_name != "wander" and self._is_wandering:
             self._is_wandering = False
 
         # Play sound if behavior has one
@@ -168,8 +168,8 @@ class HaroWidget(QWidget):
         # Set facing direction based on movement
         facing_left = dest_x < current_x
 
-        # Trigger fly behavior
-        self._behavior_registry.trigger("fly", facing_left=facing_left)
+        # Trigger wander behavior
+        self._behavior_registry.trigger("wander", facing_left=facing_left)
 
         # Start movement animation
         self._move_animation.setStartValue(self.pos())

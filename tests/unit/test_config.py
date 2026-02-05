@@ -170,7 +170,7 @@ class TestGetBehaviorSettings:
         original_file = config.SETTINGS_FILE
         try:
             config.SETTINGS_FILE = temp_settings_with_users
-            result = config.get_behavior_settings("fly")
+            result = config.get_behavior_settings("wander")
 
             assert result["wander_chance"] == 0.5
         finally:

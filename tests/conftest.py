@@ -98,7 +98,7 @@ def temp_settings_with_users(tmp_path):
     settings_file = tmp_path / "settings.json"
     settings = {
         "general": {"always_on_top": True, "start_minimized": False},
-        "behaviors": {"fly": {"wander_chance": 0.5}},
+        "behaviors": {"wander": {"wander_chance": 0.5}},
         "integrations": {"telegram": {"enabled": True, "trigger_behavior": "alert"}},
     }
     settings_file.write_text(json.dumps(settings))
@@ -145,13 +145,13 @@ def mock_behaviors_dir(tmp_path):
         )
     )
 
-    # Create fly behavior
-    fly_dir = behaviors_dir / "fly"
-    fly_sprites = fly_dir / "sprites"
-    fly_sprites.mkdir(parents=True)
+    # Create wander behavior
+    wander_dir = behaviors_dir / "wander"
+    wander_sprites = wander_dir / "sprites"
+    wander_sprites.mkdir(parents=True)
     for i in range(1, 5):
-        (fly_sprites / f"fly_{i}.png").write_bytes(MINIMAL_PNG)
-    (fly_dir / "config.json").write_text(
+        (wander_sprites / f"wander_{i}.png").write_bytes(MINIMAL_PNG)
+    (wander_dir / "config.json").write_text(
         json.dumps(
             {
                 "frame_duration_ms": 100,
