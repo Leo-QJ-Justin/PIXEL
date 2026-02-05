@@ -128,8 +128,8 @@ class HaroWidget(QWidget):
         elif behavior_name != "sleep" and self._is_sleeping:
             self._is_sleeping = False
 
-        # Reset activity timer on non-idle, non-sleep behaviors
-        if behavior_name in ("alert", "wander"):
+        # Reset activity timer on alerts (user interactions reset it separately)
+        if behavior_name == "alert":
             self._last_activity_time = datetime.now()
 
         # Play sound if behavior has one

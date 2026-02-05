@@ -2,6 +2,10 @@
   "general": {
     "always_on_top": true
   },
-  "behaviors": {},
+  "behaviors": {
+    "sleep": {
+      "inactivity_timeout_ms": 300000
+    }
+  },
   "integrations": {}
 }
