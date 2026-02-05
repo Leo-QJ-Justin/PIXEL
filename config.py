@@ -43,7 +43,13 @@ DEFAULT_SETTINGS = {
             "wander_chance": 0.3,
             "wander_interval_min_ms": 5000,
             "wander_interval_max_ms": 15000,
-        }
+        },
+        "sleep": {
+            "inactivity_timeout_ms": 60000,
+            "schedule_enabled": False,
+            "schedule_start": "22:00",
+            "schedule_end": "06:00",
+        },
     },
     "integrations": {
         "telegram": {
