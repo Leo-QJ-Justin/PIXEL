@@ -9,8 +9,8 @@ A modular desktop companion app featuring Haro from Gundam SEED. Supports plugga
 - **Pluggable integrations** - connect to external services
 - Telegram integration to monitor messages from VIP contacts
 - Visual and audio alerts when monitored users send messages
-- Animated sprites with idle, alert, and flying states
-- Wandering behavior - Haro randomly flies around your screen
+- Animated sprites with idle, alert, and wander states
+- Wandering behavior - Haro randomly wanders around your screen
 - System tray icon with integration controls
 
 ## Requirements
@@ -75,7 +75,7 @@ Start-Process '.venv\Scripts\pythonw.exe' -ArgumentList 'main.py' -WindowStyle H
 
 ### Behavior
 
-Haro will randomly wander around your screen, flying left or right every few seconds. When a monitored user sends a Telegram message, Haro will bounce and play an alert sound until you click to dismiss.
+Haro will randomly wander around your screen, moving left or right every few seconds. When a monitored user sends a Telegram message, Haro will bounce and play an alert sound until you click to dismiss.
 
 ## Configuration
 
@@ -88,7 +88,7 @@ Haro will randomly wander around your screen, flying left or right every few sec
     "start_minimized": false
   },
   "behaviors": {
-    "fly": {
+    "wander": {
       "wander_chance": 0.3,
       "wander_interval_min_ms": 5000,
       "wander_interval_max_ms": 15000
@@ -127,7 +127,7 @@ Haro will randomly wander around your screen, flying left or right every few sec
 │   │   ├── config.json
 │   │   ├── sprites/
 │   │   └── sounds/
-│   └── fly/
+│   └── wander/
 │       ├── config.json
 │       └── sprites/
 │
