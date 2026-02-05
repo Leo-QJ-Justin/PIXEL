@@ -1,22 +1,49 @@
 import asyncio
 import logging
 import sys
+from logging.handlers import RotatingFileHandler
 
 from PyQt6.QtWidgets import QApplication
 from qasync import QEventLoop
 
-from config import BEHAVIORS_DIR, INTEGRATIONS_DIR, load_settings
+from config import BASE_DIR, BEHAVIORS_DIR, INTEGRATIONS_DIR, load_settings
 from src.core.behavior_registry import BehaviorRegistry
 from src.core.integration_manager import IntegrationManager
 from src.ui.haro_window import HaroWidget
 from src.ui.tray_icon import TrayIcon
 
 # Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-    datefmt="%H:%M:%S",
-)
+LOGS_DIR = BASE_DIR / "logs"
+LOGS_DIR.mkdir(exist_ok=True)
+
+LOG_FORMAT = "%(asctime)s [%(name)s] %(levelname)s: %(message)s"
+LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+
+def setup_logging():
+    """Configure logging to both console and rotating file."""
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+
+    # Console handler (INFO level to reduce noise)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(logging.Formatter(LOG_FORMAT, LOG_DATE_FORMAT))
+    root_logger.addHandler(console_handler)
+
+    # File handler (DEBUG level for detailed logs)
+    file_handler = RotatingFileHandler(
+        LOGS_DIR / "haro.log",
+        maxBytes=5 * 1024 * 1024,  # 5 MB
+        backupCount=3,
+        encoding="utf-8",
+    )
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(logging.Formatter(LOG_FORMAT, LOG_DATE_FORMAT))
+    root_logger.addHandler(file_handler)
+
+
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -50,7 +77,7 @@ def main():
 
     # 6. Create UI components
     haro = HaroWidget(behavior_registry)
-    tray = TrayIcon(haro, integration_manager)
+    tray = TrayIcon(haro, integration_manager, behavior_registry)
 
     # 7. Start all enabled integrations
     loop.create_task(integration_manager.start_all_enabled())
