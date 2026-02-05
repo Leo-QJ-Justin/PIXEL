@@ -4,7 +4,7 @@ from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QMenu, QSystemTrayIcon
 
 from config import BEHAVIORS_DIR
-from src.core.behavior_registry import BehaviorRegistry
+from src.core.behavior_registry import CHARACTERS, BehaviorRegistry
 from src.core.integration_manager import IntegrationManager
 
 
@@ -22,19 +22,41 @@ class TrayIcon(QSystemTrayIcon):
         self._integration_manager = integration_manager
         self._behavior_registry = behavior_registry
         self._integration_actions: dict[str, QAction] = {}
+        self._character_actions: dict[str, QAction] = {}
 
         self._setup_icon()
         self._setup_menu()
 
+        # Update tray icon when character changes
+        if self._behavior_registry:
+            self._behavior_registry.character_changed.connect(self._on_character_changed)
+
     def _setup_icon(self):
-        """Set the tray icon."""
-        # Look for idle sprites in behaviors directory
+        """Set the tray icon based on current character."""
+        character = "haro"
+        if self._behavior_registry:
+            character = self._behavior_registry.character
+
+        prefix = CHARACTERS.get(character, "")
         idle_sprites_dir = BEHAVIORS_DIR / "idle" / "sprites"
+
         if idle_sprites_dir.exists():
-            idle_sprites = sorted(idle_sprites_dir.glob("*.png"))
-            if idle_sprites:
-                self.setIcon(QIcon(str(idle_sprites[0])))
-        self.setToolTip("Haro Desktop Pet")
+            # Find sprites matching current character
+            if prefix:
+                sprite_files = sorted(idle_sprites_dir.glob(f"{prefix}*.png"))
+            else:
+                # For default character, exclude other character prefixes
+                other_prefixes = [p for p in CHARACTERS.values() if p]
+                sprite_files = [
+                    f
+                    for f in sorted(idle_sprites_dir.glob("*.png"))
+                    if not any(f.name.startswith(p) for p in other_prefixes)
+                ]
+
+            if sprite_files:
+                self.setIcon(QIcon(str(sprite_files[0])))
+
+        self.setToolTip(f"{character.title()} Desktop Pet")
 
     def _setup_menu(self):
         """Create the tray icon context menu."""
@@ -56,6 +78,11 @@ class TrayIcon(QSystemTrayIcon):
         integrations_menu = QMenu("Integrations", menu)
         self._build_integrations_menu(integrations_menu)
         menu.addMenu(integrations_menu)
+
+        # Character submenu
+        character_menu = QMenu("Character", menu)
+        self._build_character_menu(character_menu)
+        menu.addMenu(character_menu)
 
         menu.addSeparator()
 
@@ -97,6 +124,34 @@ class TrayIcon(QSystemTrayIcon):
                 )
                 menu.addAction(action)
                 self._integration_actions[name] = action
+
+    def _build_character_menu(self, menu: QMenu):
+        """Build the character submenu for switching characters."""
+        current_character = "haro"
+        if self._behavior_registry:
+            current_character = self._behavior_registry.character
+
+        for character_name in CHARACTERS.keys():
+            action = QAction(character_name.title(), menu)
+            action.setCheckable(True)
+            action.setChecked(character_name == current_character)
+            action.triggered.connect(lambda checked, c=character_name: self._switch_character(c))
+            menu.addAction(action)
+            self._character_actions[character_name] = action
+
+    def _switch_character(self, character: str):
+        """Switch to a different character."""
+        if self._behavior_registry:
+            self._behavior_registry.set_character(character)
+
+    def _on_character_changed(self, character: str):
+        """Handle character change - update menu checkmarks and tray icon."""
+        # Update checkmarks
+        for name, action in self._character_actions.items():
+            action.setChecked(name == character)
+
+        # Update tray icon
+        self._setup_icon()
 
     def _toggle_integration(self, name: str, enabled: bool):
         """Toggle an integration on or off."""
