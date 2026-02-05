@@ -55,3 +55,6 @@ coverage.xml
 
 # Logs
 logs/
+
+#Local Development
+plans/
