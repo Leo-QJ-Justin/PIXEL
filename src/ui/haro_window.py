@@ -68,8 +68,9 @@ class HaroWidget(QWidget):
 
         self._setup_window()
 
-        # Start with idle behavior
+        # Start with idle behavior, then play startup greeting
         self._behavior_registry.trigger("idle")
+        self._play_startup_greeting()
 
     def _setup_window(self):
         """Configure window properties for a desktop pet."""
@@ -85,6 +86,10 @@ class HaroWidget(QWidget):
 
         # Position at bottom-right of screen
         self._move_to_default_position()
+
+    def _play_startup_greeting(self):
+        """Play wave animation on app startup."""
+        QTimer.singleShot(500, lambda: self._behavior_registry.trigger("wave"))
 
     def _move_to_default_position(self):
         """Move widget to bottom-right corner of screen."""
@@ -237,13 +242,13 @@ class HaroWidget(QWidget):
         self._behavior_registry.trigger("sleep")
 
     def _wake_up(self):
-        """Wake from sleep, reset activity timer, return to idle."""
+        """Wake from sleep, reset activity timer, play wave greeting."""
         if not self._is_sleeping:
             return
         logger.info("Pet is waking up")
         self._is_sleeping = False
         self._last_activity_time = datetime.now()
-        self._behavior_registry.stop_current()
+        self._behavior_registry.trigger("wave")
 
     def paintEvent(self, event):
         """Draw the current sprite centered in the widget."""
