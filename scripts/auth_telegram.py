@@ -15,7 +15,7 @@ async def authenticate():
     api_id = os.getenv("API_ID")
     api_hash = os.getenv("API_HASH")
 
-    client = TelegramClient("haro_session", api_id, api_hash)
+    client = TelegramClient("pet_session", api_id, api_hash)
     await client.start()
     print("Success! Session created.")
     await client.disconnect()

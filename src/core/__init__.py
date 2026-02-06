@@ -1,4 +1,4 @@
-"""Core module for Haro Desktop Pet."""
+"""Core module for desktop pet."""
 
 from src.core.base_integration import BaseIntegration
 from src.core.behavior_registry import Behavior, BehaviorRegistry, BehaviorState

@@ -13,8 +13,8 @@ from src.core.behavior_registry import BehaviorRegistry
 logger = logging.getLogger(__name__)
 
 
-class HaroWidget(QWidget):
-    """Main Haro desktop pet widget."""
+class PetWidget(QWidget):
+    """Main desktop pet widget."""
 
     def __init__(self, behavior_registry: BehaviorRegistry):
         super().__init__()

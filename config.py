@@ -23,11 +23,6 @@ BASE_DIR = Path(__file__).parent
 BEHAVIORS_DIR = BASE_DIR / "behaviors"
 INTEGRATIONS_DIR = BASE_DIR / "integrations"
 
-# Legacy paths (for backwards compatibility during transition)
-ASSETS_DIR = BASE_DIR / "assets"
-SPRITES_DIR = ASSETS_DIR / "sprites"
-SOUNDS_DIR = ASSETS_DIR / "sounds"
-
 # Settings file path
 SETTINGS_FILE = BASE_DIR / "settings.json"
 

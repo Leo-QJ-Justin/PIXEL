@@ -1,6 +1,6 @@
-# Haro Desktop Pet
+# Desktop Pet
 
-A modular desktop companion app featuring Haro from Gundam SEED. Supports pluggable **behaviors** (visual animations) and **integrations** (external service connections like Telegram).
+A modular desktop companion app. Supports pluggable **behaviors** (visual animations) and **integrations** (external service connections like Telegram). Bring your own sprites!
 
 ## Features
 
@@ -10,7 +10,7 @@ A modular desktop companion app featuring Haro from Gundam SEED. Supports plugga
 - Telegram integration to monitor messages from VIP contacts
 - Visual and audio alerts when monitored users send messages
 - Animated sprites with idle, alert, and wander states
-- Wandering behavior - Haro randomly wanders around your screen
+- Wandering behavior - pet randomly wanders around your screen
 - System tray icon with integration controls
 
 ## Requirements
@@ -28,9 +28,11 @@ A modular desktop companion app featuring Haro from Gundam SEED. Supports plugga
    uv sync
    ```
 
-3. Get your Telegram API credentials from [my.telegram.org](https://my.telegram.org)
+3. Add your sprites to the `behaviors/*/sprites/` directories (sprites are gitignored - each developer uses their own)
 
-4. Configure your `.env` file:
+4. Get your Telegram API credentials from [my.telegram.org](https://my.telegram.org)
+
+5. Configure your `.env` file:
    ```bash
    # Telegram API credentials
    API_ID=your_api_id_here
@@ -56,18 +58,18 @@ On first run, Telegram will prompt you in the terminal to:
 2. Enter the verification code sent to your Telegram app
 3. Enter your 2FA password (if enabled)
 
-This only happens once - the session is saved to `haro_session.session` and reused on subsequent runs.
+This only happens once - the session is saved to `pet_session.session` and reused on subsequent runs.
 
 ### Running in Background (Windows)
 
-To run Haro in the background:
+To run the pet in the background:
 ```powershell
 Start-Process '.venv\Scripts\pythonw.exe' -ArgumentList 'main.py' -WindowStyle Hidden
 ```
 
 ### Controls
 
-- **Left-click + drag**: Move Haro around the screen
+- **Left-click + drag**: Move the pet around the screen
 - **Left-click**: Dismiss alert
 - **Right-click**: Open context menu (Reset Position, Quit)
 - **System tray**: Double-click to show/hide, right-click for menu
@@ -75,7 +77,7 @@ Start-Process '.venv\Scripts\pythonw.exe' -ArgumentList 'main.py' -WindowStyle H
 
 ### Behavior
 
-Haro will randomly wander around your screen, moving left or right every few seconds. When a monitored user sends a Telegram message, Haro will bounce and play an alert sound until you click to dismiss.
+The pet will randomly wander around your screen, moving left or right every few seconds. When a monitored user sends a Telegram message, the pet will bounce and play an alert sound until you click to dismiss.
 
 ## Configuration
 
@@ -122,7 +124,7 @@ Haro will randomly wander around your screen, moving left or right every few sec
 ├── behaviors/                        # Visual animation states
 │   ├── idle/
 │   │   ├── config.json
-│   │   └── sprites/
+│   │   └── sprites/                  # Add your own PNGs here (gitignored)
 │   ├── alert/
 │   │   ├── config.json
 │   │   ├── sprites/
@@ -142,7 +144,7 @@ Haro will randomly wander around your screen, moving left or right every few sec
     │   ├── behavior_registry.py      # Behavior discovery & management
     │   └── integration_manager.py    # Integration lifecycle
     └── ui/
-        ├── haro_window.py            # Desktop pet widget
+        ├── pet_window.py             # Desktop pet widget
         └── tray_icon.py              # System tray icon
 ```
 
@@ -160,7 +162,7 @@ Haro will randomly wander around your screen, moving left or right every few sec
    }
    ```
 
-3. Add sprite images in `sprites/` subfolder
+3. Add sprite images in `sprites/` subfolder (e.g., `sleep_1.png`, `sleep_2.png`)
 
 4. Optionally add sounds in `sounds/` subfolder
 

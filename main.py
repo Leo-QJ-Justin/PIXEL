@@ -9,7 +9,7 @@ from qasync import QEventLoop
 from config import BASE_DIR, BEHAVIORS_DIR, INTEGRATIONS_DIR, load_settings
 from src.core.behavior_registry import BehaviorRegistry
 from src.core.integration_manager import IntegrationManager
-from src.ui.haro_window import HaroWidget
+from src.ui.pet_window import PetWidget
 from src.ui.tray_icon import TrayIcon
 
 # Configure logging
@@ -33,7 +33,7 @@ def setup_logging():
 
     # File handler (DEBUG level for detailed logs)
     file_handler = RotatingFileHandler(
-        LOGS_DIR / "haro.log",
+        LOGS_DIR / "pet.log",
         maxBytes=5 * 1024 * 1024,  # 5 MB
         backupCount=3,
         encoding="utf-8",
@@ -76,15 +76,15 @@ def main():
         integration_manager.load(name)
 
     # 6. Create UI components
-    haro = HaroWidget(behavior_registry)
-    tray = TrayIcon(haro, integration_manager, behavior_registry)
+    pet = PetWidget(behavior_registry)
+    tray = TrayIcon(pet, integration_manager, behavior_registry)
 
     # 7. Start all enabled integrations
     loop.create_task(integration_manager.start_all_enabled())
     logger.info("Integration startup tasks created")
 
     # 8. Show window and tray
-    haro.show()
+    pet.show()
     tray.show()
 
     # 9. Run event loop

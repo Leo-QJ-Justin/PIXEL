@@ -59,7 +59,7 @@ class TelegramIntegration(BaseIntegration):
 
         monitored_users = get_monitored_users()
 
-        self._client = TelegramClient("haro_session", api_id, api_hash)
+        self._client = TelegramClient("pet_session", api_id, api_hash)
 
         # Connect first to check authorization status
         await self._client.connect()

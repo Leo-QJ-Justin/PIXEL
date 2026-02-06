@@ -1,6 +1,6 @@
 # Telegram Integration
 
-Monitors Telegram for messages from VIP contacts and triggers Haro alerts.
+Monitors Telegram for messages from VIP contacts and triggers alerts.
 
 ## Setup
 
@@ -12,7 +12,7 @@ Monitors Telegram for messages from VIP contacts and triggers Haro alerts.
    MONITORED_USERS=123456789,987654321
    ```
 3. Run the app and authenticate with your phone number + verification code
-4. Session is cached in `haro_session.session`
+4. Session is cached in `pet_session.session`
 
 ## Finding User IDs
 

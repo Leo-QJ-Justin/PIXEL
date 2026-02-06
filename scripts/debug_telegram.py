@@ -24,7 +24,7 @@ async def main():
         print("WARNING: No monitored users! Add users via tray menu.")
     print("=" * 50)
 
-    client = TelegramClient("haro_session", API_ID, API_HASH)
+    client = TelegramClient("pet_session", API_ID, API_HASH)
 
     @client.on(events.NewMessage(incoming=True))
     async def handle_new_message(event):
@@ -43,7 +43,7 @@ async def main():
 
         if is_monitored:
             print(">>> WOULD TRIGGER ALERT! <<<")
-            print(f">>> Haro should react to: {sender_name}")
+            print(f">>> Pet should react to: {sender_name}")
         else:
             print("NOT in monitored list - no alert")
             print(f"To add this user, copy ID: {sender_id}")
