@@ -1,4 +1,4 @@
-"""Telegram integration for Haro Desktop Pet."""
+"""Telegram integration for desktop pet."""
 
 from integrations.telegram.integration import TelegramIntegration
 

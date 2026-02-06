@@ -1,3 +1,3 @@
 # UI Components Package
-from .haro_window import HaroWidget as HaroWidget
+from .pet_window import PetWidget as PetWidget
 from .tray_icon import TrayIcon as TrayIcon

@@ -1,1 +1,1 @@
-# Haro Desktop Pet - Source Package
+# Desktop Pet - Source Package

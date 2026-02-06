@@ -1,4 +1,4 @@
-"""Shared test fixtures for Haro Desktop Pet tests."""
+"""Shared test fixtures for desktop pet tests."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock, patch

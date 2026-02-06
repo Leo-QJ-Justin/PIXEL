@@ -56,5 +56,9 @@ coverage.xml
 # Logs
 logs/
 
+# Sprites and sounds (each developer uses their own)
+behaviors/*/sprites/
+behaviors/*/sounds/
+
 #Local Development
 plans/
