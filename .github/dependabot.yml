@@ -1,0 +1,9 @@
+# Dependabot: weekly checks for Python dependency updates (targets `pyproject.toml`).
+# Opens pull requests with dependency upgrades so you can review and merge as desired.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
