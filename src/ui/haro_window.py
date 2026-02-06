@@ -20,6 +20,7 @@ class HaroWidget(QWidget):
         super().__init__()
         self._behavior_registry = behavior_registry
         self._drag_position = QPoint()
+        self._system_move_pending = False
         self._is_alerting = False
         self._is_wandering = False
         self._is_sleeping = False
@@ -264,6 +265,7 @@ class HaroWidget(QWidget):
         """Handle mouse press for dragging, alert dismissal, and waking."""
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            self._system_move_pending = True
             self._last_activity_time = datetime.now()
             event.accept()
 
@@ -278,10 +280,22 @@ class HaroWidget(QWidget):
 
     def mouseMoveEvent(self, event):
         """Handle dragging the widget."""
-        if event.buttons() == Qt.MouseButton.LeftButton:
+        if event.buttons() & Qt.MouseButton.LeftButton:
             self._last_activity_time = datetime.now()
+            if self._system_move_pending:
+                self._system_move_pending = False
+                window = self.windowHandle()
+                if window and window.startSystemMove():
+                    event.accept()
+                    return
             self.move(event.globalPosition().toPoint() - self._drag_position)
             event.accept()
+
+    def mouseReleaseEvent(self, event):
+        """Reset drag state on release."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._system_move_pending = False
+        super().mouseReleaseEvent(event)
 
     def contextMenuEvent(self, event):
         """Show context menu on right-click."""
