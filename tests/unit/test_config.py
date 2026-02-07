@@ -201,3 +201,30 @@ class TestGetGeneralSettings:
 
         assert result["always_on_top"] is True
         assert result["start_minimized"] is False
+
+
+@pytest.mark.unit
+class TestDefaultSettings:
+    """Tests for DEFAULT_SETTINGS structure."""
+
+    def test_time_periods_defaults_exist(self):
+        """DEFAULT_SETTINGS should include time_periods in behaviors."""
+        import config
+
+        tp = config.DEFAULT_SETTINGS["behaviors"]["time_periods"]
+        assert tp["enabled"] is True
+        assert tp["check_interval_ms"] == 30000
+        assert "morning" in tp["periods"]
+        assert "afternoon" in tp["periods"]
+        assert "night" in tp["periods"]
+        assert "morning" in tp["greetings"]
+        assert "afternoon" in tp["greetings"]
+        assert "night" in tp["greetings"]
+
+    def test_speech_bubble_defaults_exist(self):
+        """DEFAULT_SETTINGS should include speech_bubble in general."""
+        import config
+
+        sb = config.DEFAULT_SETTINGS["general"]["speech_bubble"]
+        assert sb["enabled"] is True
+        assert sb["duration_ms"] == 3000

@@ -32,6 +32,10 @@ DEFAULT_SETTINGS = {
         "always_on_top": True,
         "start_minimized": False,
         "sprite_default_facing": "right",  # "left" or "right"
+        "speech_bubble": {
+            "enabled": True,
+            "duration_ms": 3000,
+        },
     },
     "behaviors": {
         "fly": {
@@ -44,6 +48,20 @@ DEFAULT_SETTINGS = {
             "schedule_enabled": False,
             "schedule_start": "22:00",
             "schedule_end": "06:00",
+        },
+        "time_periods": {
+            "enabled": True,
+            "check_interval_ms": 30000,
+            "periods": {
+                "morning": "06:00",
+                "afternoon": "12:00",
+                "night": "20:00",
+            },
+            "greetings": {
+                "morning": "Good morning!",
+                "afternoon": "Good afternoon!",
+                "night": "Good night!",
+            },
         },
     },
     "integrations": {

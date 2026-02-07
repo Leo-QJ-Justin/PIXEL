@@ -1,0 +1,165 @@
+"""Speech bubble widget that displays text near the pet."""
+
+import logging
+
+from PyQt6.QtCore import QPoint, QRectF, QSize, Qt, QTimer
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
+from PyQt6.QtWidgets import QApplication, QWidget
+
+logger = logging.getLogger(__name__)
+
+# Bubble appearance constants
+BUBBLE_PADDING = 12
+BUBBLE_RADIUS = 10
+TAIL_WIDTH = 10
+TAIL_HEIGHT = 8
+BUBBLE_MARGIN = 8  # Gap between pet and bubble
+BG_COLOR = QColor(255, 255, 255, 230)
+BORDER_COLOR = QColor(80, 80, 80, 200)
+TEXT_COLOR = QColor(40, 40, 40)
+FONT_SIZE = 11
+
+
+class SpeechBubble(QWidget):
+    """A floating speech bubble that appears next to the pet."""
+
+    def __init__(self):
+        super().__init__()
+        self._text = ""
+        self._tail_on_left = True  # Tail points left (bubble is to the right of pet)
+        self._pet_pos = QPoint()
+        self._pet_size = QSize()
+
+        self._dismiss_timer = QTimer(self)
+        self._dismiss_timer.setSingleShot(True)
+        self._dismiss_timer.timeout.connect(self.hide_bubble)
+
+        self._setup_window()
+
+    def _setup_window(self):
+        """Configure window properties for a floating bubble."""
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Tool
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+    def show_message(self, text: str, duration_ms: int = 3000) -> None:
+        """Show a speech bubble with the given text."""
+        self._text = text
+        self._resize_to_text()
+        self._reposition()
+        self.show()
+        self.raise_()
+
+        self._dismiss_timer.stop()
+        if duration_ms > 0:
+            self._dismiss_timer.start(duration_ms)
+
+        logger.debug(f"Speech bubble shown: {text}")
+
+    def hide_bubble(self) -> None:
+        """Hide the bubble immediately."""
+        self._dismiss_timer.stop()
+        self.hide()
+
+    def update_position(self, pet_pos: QPoint, pet_size: QSize) -> None:
+        """Reposition bubble relative to the pet."""
+        self._pet_pos = pet_pos
+        self._pet_size = pet_size
+        if self.isVisible():
+            self._reposition()
+
+    def _resize_to_text(self):
+        """Resize widget to fit the current text."""
+        font = QFont()
+        font.setPointSize(FONT_SIZE)
+        metrics = QFontMetrics(font)
+        text_rect = metrics.boundingRect(self._text)
+
+        width = text_rect.width() + BUBBLE_PADDING * 2 + TAIL_WIDTH
+        height = text_rect.height() + BUBBLE_PADDING * 2
+        self.setFixedSize(max(width, 60), max(height, 30))
+
+    def _reposition(self):
+        """Position the bubble next to the pet, flipping sides if needed."""
+        if self._pet_size.isEmpty():
+            return
+
+        screen = QApplication.primaryScreen()
+        if not screen:
+            return
+        screen_geo = screen.availableGeometry()
+
+        bubble_w = self.width()
+        bubble_h = self.height()
+
+        # Try right side first
+        right_x = self._pet_pos.x() + self._pet_size.width() + BUBBLE_MARGIN
+        if right_x + bubble_w <= screen_geo.right():
+            x = right_x
+            self._tail_on_left = True
+        else:
+            # Flip to left side
+            x = self._pet_pos.x() - bubble_w - BUBBLE_MARGIN
+            self._tail_on_left = False
+
+        # Vertically center on pet
+        y = self._pet_pos.y() + (self._pet_size.height() - bubble_h) // 2
+        # Clamp to screen
+        y = max(screen_geo.top(), min(y, screen_geo.bottom() - bubble_h))
+
+        self.move(x, y)
+
+    def paintEvent(self, event):
+        """Draw the speech bubble with rounded rect and tail."""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        w = self.width()
+        h = self.height()
+
+        # Determine bubble rect (leave room for tail)
+        if self._tail_on_left:
+            bubble_rect = QRectF(TAIL_WIDTH, 0, w - TAIL_WIDTH, h)
+        else:
+            bubble_rect = QRectF(0, 0, w - TAIL_WIDTH, h)
+
+        # Draw bubble body
+        path = QPainterPath()
+        path.addRoundedRect(bubble_rect, BUBBLE_RADIUS, BUBBLE_RADIUS)
+
+        # Draw tail
+        tail_path = QPainterPath()
+        center_y = h / 2
+        if self._tail_on_left:
+            tail_path.moveTo(TAIL_WIDTH, center_y - TAIL_HEIGHT / 2)
+            tail_path.lineTo(0, center_y)
+            tail_path.lineTo(TAIL_WIDTH, center_y + TAIL_HEIGHT / 2)
+        else:
+            tail_path.moveTo(w - TAIL_WIDTH, center_y - TAIL_HEIGHT / 2)
+            tail_path.lineTo(w, center_y)
+            tail_path.lineTo(w - TAIL_WIDTH, center_y + TAIL_HEIGHT / 2)
+        tail_path.closeSubpath()
+
+        full_path = path.united(tail_path)
+
+        painter.setPen(QPen(BORDER_COLOR, 1.5))
+        painter.setBrush(BG_COLOR)
+        painter.drawPath(full_path)
+
+        # Draw text
+        font = QFont()
+        font.setPointSize(FONT_SIZE)
+        painter.setFont(font)
+        painter.setPen(TEXT_COLOR)
+        painter.drawText(
+            bubble_rect.adjusted(BUBBLE_PADDING, 0, -BUBBLE_PADDING, 0),
+            Qt.AlignmentFlag.AlignCenter,
+            self._text,
+        )
+
+        painter.end()
