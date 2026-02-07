@@ -162,6 +162,40 @@ def mock_behaviors_dir(tmp_path):
         )
     )
 
+    # Create wave behavior
+    wave_dir = behaviors_dir / "wave"
+    wave_sprites = wave_dir / "sprites"
+    wave_sprites.mkdir(parents=True)
+    (wave_sprites / "wave_1.png").write_bytes(MINIMAL_PNG)
+    (wave_sprites / "wave_2.png").write_bytes(MINIMAL_PNG)
+    (wave_dir / "config.json").write_text(
+        json.dumps(
+            {
+                "frame_duration_ms": 400,
+                "loop": False,
+                "priority": 3,
+                "can_be_interrupted": True,
+            }
+        )
+    )
+
+    # Create morning behavior (time-period, non-looping)
+    morning_dir = behaviors_dir / "morning"
+    morning_sprites = morning_dir / "sprites"
+    morning_sprites.mkdir(parents=True)
+    (morning_sprites / "morning_1.png").write_bytes(MINIMAL_PNG)
+    (morning_sprites / "morning_2.png").write_bytes(MINIMAL_PNG)
+    (morning_dir / "config.json").write_text(
+        json.dumps(
+            {
+                "frame_duration_ms": 200,
+                "loop": False,
+                "priority": 3,
+                "can_be_interrupted": True,
+            }
+        )
+    )
+
     return behaviors_dir
 
 

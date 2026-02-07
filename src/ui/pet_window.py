@@ -1,3 +1,4 @@
+import getpass
 import logging
 import random
 from datetime import datetime
@@ -7,8 +8,9 @@ from PyQt6.QtGui import QAction, QPainter, QPixmap
 from PyQt6.QtMultimedia import QSoundEffect
 from PyQt6.QtWidgets import QMenu, QWidget
 
-from config import get_behavior_settings
+from config import get_behavior_settings, get_general_settings
 from src.core.behavior_registry import BehaviorRegistry
+from src.ui.speech_bubble import SpeechBubble
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,7 @@ class PetWidget(QWidget):
         self._is_sleeping = False
         self._facing_left = False
         self._last_activity_time = datetime.now()
+        self._last_time_period: str | None = None
 
         # Current sprite to display
         self._current_sprite = QPixmap()
@@ -62,6 +65,20 @@ class PetWidget(QWidget):
         self._sleep_check_timer = QTimer()
         self._sleep_check_timer.timeout.connect(self._check_sleep_conditions)
         self._sleep_check_timer.start(5000)  # Check every 5 seconds
+
+        # Speech bubble
+        self._speech_bubble = SpeechBubble()
+        self._speech_bubble_settings = get_general_settings().get("speech_bubble", {})
+
+        # Time-period transition timer
+        self._time_period_settings = get_behavior_settings("time_periods")
+        self._time_period_timer = QTimer()
+        self._time_period_timer.timeout.connect(self._check_time_period_transition)
+        if self._time_period_settings.get("enabled", True):
+            interval = self._time_period_settings.get("check_interval_ms", 30000)
+            self._time_period_timer.start(interval)
+            # Set initial period without triggering a transition
+            self._last_time_period = self._get_current_period()
 
         # Connect to behavior registry signals
         self._behavior_registry.frame_changed.connect(self._on_frame_changed)
@@ -143,6 +160,10 @@ class PetWidget(QWidget):
         if sound_path and sound_path.exists():
             self._alert_sound.setSource(QUrl.fromLocalFile(str(sound_path)))
             self._alert_sound.play()
+
+        # Show greeting bubble on wave
+        if behavior_name == "wave":
+            self.show_bubble(f"Hello user:{getpass.getuser()}")
 
         # Start bounce animation for alert behavior
         if behavior_name == "alert":
@@ -250,6 +271,71 @@ class PetWidget(QWidget):
         self._is_sleeping = False
         self._last_activity_time = datetime.now()
         self._behavior_registry.trigger("wave")
+
+    def show_bubble(self, text: str, duration_ms: int | None = None) -> None:
+        """Show a speech bubble with the given text."""
+        if not self._speech_bubble_settings.get("enabled", True):
+            return
+        if duration_ms is None:
+            duration_ms = self._speech_bubble_settings.get("duration_ms", 3000)
+        self._speech_bubble.update_position(self.pos(), self.size())
+        self._speech_bubble.show_message(text, duration_ms)
+
+    def _get_current_period(self) -> str | None:
+        """Determine which time period the current time falls in."""
+        periods = self._time_period_settings.get("periods", {})
+        if not periods:
+            return None
+
+        now = datetime.now().strftime("%H:%M")
+
+        # Sort periods by start time ascending
+        sorted_periods = sorted(periods.items(), key=lambda item: item[1])
+
+        # Find the last period whose start time <= current time
+        current = sorted_periods[-1][0]  # Default to last (handles overnight wrap)
+        for name, start_time in sorted_periods:
+            if start_time <= now:
+                current = name
+
+        return current
+
+    def _check_time_period_transition(self) -> None:
+        """Check if the time period has changed and trigger behavior/greeting."""
+        current_period = self._get_current_period()
+        previous = self._last_time_period
+        self._last_time_period = current_period
+
+        # First check — just record, no trigger
+        if previous is None:
+            return
+
+        # No change
+        if current_period == previous:
+            return
+
+        # Skip trigger if pet is busy
+        if self._is_alerting or self._is_sleeping or self._is_wandering:
+            logger.debug(
+                f"Time period changed to {current_period} but pet is busy, skipping trigger"
+            )
+            return
+
+        logger.info(f"Time period transition: {previous} -> {current_period}")
+
+        # Trigger the period behavior (silently fails if no behavior folder exists)
+        if current_period:
+            self._behavior_registry.trigger(current_period)
+
+        # Show greeting bubble
+        greeting = self._time_period_settings.get("greetings", {}).get(current_period)
+        if greeting:
+            self.show_bubble(greeting)
+
+    def moveEvent(self, event):
+        """Update speech bubble position when pet moves."""
+        super().moveEvent(event)
+        self._speech_bubble.update_position(self.pos(), self.size())
 
     def paintEvent(self, event):
         """Draw the current sprite centered in the widget."""

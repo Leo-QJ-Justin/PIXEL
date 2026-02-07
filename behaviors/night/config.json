@@ -1,5 +1,5 @@
 {
-  "frame_duration_ms": 400,
+  "frame_duration_ms": 200,
   "loop": false,
   "priority": 3,
   "can_be_interrupted": true

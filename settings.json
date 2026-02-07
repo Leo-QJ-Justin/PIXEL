@@ -1,10 +1,11 @@
 {
   "general": {
-    "always_on_top": true
+    "always_on_top": true,
+    "sprite_default_facing": "left"
   },
   "behaviors": {
     "sleep": {
-      "inactivity_timeout_ms": 300000
+      "inactivity_timeout_ms": 30000
     }
   },
   "integrations": {}
