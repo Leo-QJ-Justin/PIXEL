@@ -16,7 +16,7 @@ body:
       description: What happened? Include any relevant context.
       placeholder: A clear and concise description of the bug.
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: steps
@@ -28,7 +28,7 @@ body:
         2. Configure Telegram integration
         3. ...
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: expected
@@ -36,7 +36,7 @@ body:
       label: Expected behavior
       placeholder: What you expected to happen.
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: actual
@@ -44,7 +44,7 @@ body:
       label: Actual behavior
       placeholder: What actually happened (include error messages if any).
     validations:
-      required: true
+      required: false
 
   - type: dropdown
     id: os
@@ -56,7 +56,7 @@ body:
         - macOS
         - Other
     validations:
-      required: true
+      required: false
 
   - type: input
     id: python_version
@@ -65,7 +65,7 @@ body:
       description: Output of `python --version`
       placeholder: "3.10.x"
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: screenshots
