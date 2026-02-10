@@ -4,9 +4,19 @@
     "sprite_default_facing": "left"
   },
   "behaviors": {
+    "wave": {
+      "greeting": "Hello, Jackson!"
+    },
     "sleep": {
       "inactivity_timeout_ms": 30000
     }
   },
-  "integrations": {}
+  "integrations": {
+    "weather": {
+      "enabled": true,
+      "city": "Singapore",
+      "units": "imperial",
+      "check_interval_ms": 1800000
+    }
+  }
 }

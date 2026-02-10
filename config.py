@@ -11,6 +11,9 @@ load_dotenv()
 API_ID = os.getenv("API_ID")
 API_HASH = os.getenv("API_HASH")
 
+# OpenWeatherMap API key
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+
 # Monitored users (comma-separated list in .env)
 # Example: MONITORED_USERS=123456789,987654321
 _monitored_users_str = os.getenv("MONITORED_USERS", "")
@@ -43,6 +46,9 @@ DEFAULT_SETTINGS = {
             "wander_interval_min_ms": 5000,
             "wander_interval_max_ms": 15000,
         },
+        "wave": {
+            "greeting": "Hello!",
+        },
         "sleep": {
             "inactivity_timeout_ms": 60000,
             "schedule_enabled": False,
@@ -68,7 +74,13 @@ DEFAULT_SETTINGS = {
         "telegram": {
             "enabled": True,
             "trigger_behavior": "alert",
-        }
+        },
+        "weather": {
+            "enabled": True,
+            "city": "New York",
+            "units": "imperial",
+            "check_interval_ms": 1800000,
+        },
     },
 }
 
