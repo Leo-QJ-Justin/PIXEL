@@ -1,0 +1,7 @@
+{
+  "frame_duration_ms": 500,
+  "loop": true,
+  "priority": 3,
+  "sound": null,
+  "can_be_interrupted": true
+}

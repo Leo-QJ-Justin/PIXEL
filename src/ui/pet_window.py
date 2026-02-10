@@ -1,4 +1,3 @@
-import getpass
 import logging
 import random
 from datetime import datetime
@@ -163,7 +162,17 @@ class PetWidget(QWidget):
 
         # Show greeting bubble on wave
         if behavior_name == "wave":
-            self.show_bubble(f"Hello user:{getpass.getuser()}")
+            wave_settings = get_behavior_settings("wave")
+            self.show_bubble(wave_settings.get("greeting", "Hello!"))
+
+        # Show weather info bubble on rainy/sunny
+        if behavior_name in ("rainy", "sunny"):
+            description = context.get("description", behavior_name.capitalize())
+            temperature = context.get("temperature", "")
+            if temperature:
+                self.show_bubble(f"{description}! {temperature}")
+            else:
+                self.show_bubble(f"{description}!")
 
         # Start bounce animation for alert behavior
         if behavior_name == "alert":
