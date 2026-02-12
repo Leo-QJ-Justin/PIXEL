@@ -28,6 +28,7 @@ class PetWidget(QWidget):
         self._facing_left = False
         self._last_activity_time = datetime.now()
         self._last_time_period: str | None = None
+        self._active_weather_behavior: str | None = None
 
         # Current sprite to display
         self._current_sprite = QPixmap()
@@ -165,6 +166,13 @@ class PetWidget(QWidget):
             wave_settings = get_behavior_settings("wave")
             self.show_bubble(wave_settings.get("greeting", "Hello!"))
 
+        # Track active weather behavior
+        if behavior_name in ("rainy", "sunny"):
+            self._active_weather_behavior = behavior_name
+        elif behavior_name == "idle" and context.get("condition"):
+            # Weather integration triggered idle (weather cleared)
+            self._active_weather_behavior = None
+
         # Show weather info bubble on rainy/sunny
         if behavior_name in ("rainy", "sunny"):
             description = context.get("description", behavior_name.capitalize())
@@ -234,8 +242,16 @@ class PetWidget(QWidget):
     def _on_wander_finished(self):
         """Handle wander movement completion."""
         self._is_wandering = False
-        # Return to idle, keeping facing direction
-        self._behavior_registry.trigger("idle", facing_left=self._facing_left)
+        self._return_to_base_state()
+
+    def _return_to_base_state(self):
+        """Return to the active weather behavior if one is set, otherwise idle."""
+        if self._active_weather_behavior:
+            self._behavior_registry.trigger(
+                self._active_weather_behavior, facing_left=self._facing_left
+            )
+        else:
+            self._behavior_registry.trigger("idle", facing_left=self._facing_left)
 
     def _check_sleep_conditions(self):
         """Periodically check if the pet should sleep."""
@@ -439,7 +455,8 @@ class PetWidget(QWidget):
         self._behavior_registry.trigger("alert", {"sender": sender_name})
 
     def stop_alert(self):
-        """Stop the alert and return to idle state."""
+        """Stop the alert and return to base state."""
         self._is_alerting = False
         self._bounce_animation.stop()
         self._behavior_registry.stop_current()
+        self._return_to_base_state()

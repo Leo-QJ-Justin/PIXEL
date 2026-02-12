@@ -46,7 +46,7 @@ class TestWeatherIntegrationInit:
         assert defaults["enabled"] is True
         assert defaults["city"] == "New York"
         assert defaults["units"] == "imperial"
-        assert defaults["check_interval_ms"] == 1800000
+        assert defaults["check_interval_ms"] == 600000
 
 
 @pytest.mark.unit

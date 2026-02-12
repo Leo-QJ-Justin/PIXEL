@@ -38,7 +38,7 @@ class WeatherIntegration(BaseIntegration):
             "enabled": True,
             "city": "New York",
             "units": "imperial",
-            "check_interval_ms": 1800000,
+            "check_interval_ms": 600000,
         }
 
     async def start(self) -> None:
