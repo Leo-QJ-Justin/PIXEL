@@ -8,7 +8,7 @@
       "greeting": "Hello, Jackson!"
     },
     "sleep": {
-      "inactivity_timeout_ms": 30000
+      "inactivity_timeout_ms": 3600000
     }
   },
   "integrations": {

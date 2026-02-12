@@ -65,6 +65,16 @@ class TrayIcon(QSystemTrayIcon):
         test_alert_action.triggered.connect(self._test_alert)
         menu.addAction(test_alert_action)
 
+        # Test Rainy action
+        test_rainy_action = QAction("Test Rainy", menu)
+        test_rainy_action.triggered.connect(self._test_rainy)
+        menu.addAction(test_rainy_action)
+
+        # Test Sunny action
+        test_sunny_action = QAction("Test Sunny", menu)
+        test_sunny_action.triggered.connect(self._test_sunny)
+        menu.addAction(test_sunny_action)
+
         menu.addSeparator()
 
         # Quit action
@@ -136,6 +146,26 @@ class TrayIcon(QSystemTrayIcon):
         """Trigger a test alert for debugging."""
         if self._behavior_registry:
             self._behavior_registry.trigger("alert", {"sender": "Test User"})
+
+    def _test_rainy(self):
+        """Trigger a test rainy behavior for debugging."""
+        if self._behavior_registry:
+            self._behavior_registry.trigger("rainy", {
+                "condition": "rainy",
+                "description": "Light rain",
+                "temperature": "65°F",
+                "city": "Test City",
+            })
+
+    def _test_sunny(self):
+        """Trigger a test sunny behavior for debugging."""
+        if self._behavior_registry:
+            self._behavior_registry.trigger("sunny", {
+                "condition": "sunny",
+                "description": "Clear sky",
+                "temperature": "85°F",
+                "city": "Test City",
+            })
 
     def _quit_app(self):
         """Quit the application."""
