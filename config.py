@@ -14,6 +14,10 @@ API_HASH = os.getenv("API_HASH")
 # OpenWeatherMap API key
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
+# Google Calendar OAuth credentials
+GOOGLE_CALENDAR_CLIENT_ID = os.getenv("GOOGLE_CALENDAR_CLIENT_ID")
+GOOGLE_CALENDAR_CLIENT_SECRET = os.getenv("GOOGLE_CALENDAR_CLIENT_SECRET")
+
 # Monitored users (comma-separated list in .env)
 # Example: MONITORED_USERS=123456789,987654321
 _monitored_users_str = os.getenv("MONITORED_USERS", "")
@@ -80,6 +84,13 @@ DEFAULT_SETTINGS = {
             "city": "New York",
             "units": "imperial",
             "check_interval_ms": 1800000,
+        },
+        "google_calendar": {
+            "enabled": False,
+            "check_interval_ms": 300000,
+            "alert_before_minutes": 30,
+            "trigger_behavior": "alert",
+            "calendar_id": "primary",
         },
     },
 }

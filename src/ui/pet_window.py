@@ -182,6 +182,11 @@ class PetWidget(QWidget):
             else:
                 self.show_bubble(f"{description}!")
 
+        # Show speech bubble for Google Calendar alerts
+        if behavior_name == "alert" and context.get("source") == "google_calendar":
+            bubble_text = context.get("bubble_text", "Upcoming event!")
+            self.show_bubble(bubble_text, duration_ms=5000)
+
         # Start bounce animation for alert behavior
         if behavior_name == "alert":
             self._start_bounce()
