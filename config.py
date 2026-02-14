@@ -18,6 +18,13 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 GOOGLE_CALENDAR_CLIENT_ID = os.getenv("GOOGLE_CALENDAR_CLIENT_ID")
 GOOGLE_CALENDAR_CLIENT_SECRET = os.getenv("GOOGLE_CALENDAR_CLIENT_SECRET")
 
+# Google Maps API key (Routes + Geocoding)
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+
+# OneMap Singapore credentials (fallback routing)
+ONEMAP_EMAIL = os.getenv("ONEMAP_EMAIL")
+ONEMAP_PASSWORD = os.getenv("ONEMAP_PASSWORD")
+
 # Monitored users (comma-separated list in .env)
 # Example: MONITORED_USERS=123456789,987654321
 _monitored_users_str = os.getenv("MONITORED_USERS", "")
@@ -91,6 +98,12 @@ DEFAULT_SETTINGS = {
             "alert_before_minutes": 30,
             "trigger_behavior": "alert",
             "calendar_id": "primary",
+            "origin_address": "",
+            "preparation_minutes": 15,
+            "travel_modes": ["DRIVE", "TRANSIT"],
+            "travel_cache_ttl_minutes": 30,
+            "fetch_window_minutes": 120,
+            "api_quota_limit": 9500,
         },
     },
 }

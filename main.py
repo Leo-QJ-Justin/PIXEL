@@ -79,15 +79,26 @@ def main():
     pet = PetWidget(behavior_registry)
     tray = TrayIcon(pet, integration_manager, behavior_registry)
 
-    # 7. Start all enabled integrations
+    # 7. Connect notification signal (bubble-only, bypasses behavior system)
+    integration_manager.notification_requested.connect(pet._on_notification)
+
+    # 8. Wire location flow signals for Google Calendar integration
+    gcal = integration_manager.get_integration("google_calendar")
+    if gcal is not None:
+        pet.location_provided.connect(gcal.receive_location)
+        pet.location_confirmed.connect(gcal.confirm_location)
+        pet.location_rejected.connect(gcal.reject_location)
+        gcal.request_confirmation.connect(pet._on_address_confirmation)
+
+    # 9. Start all enabled integrations
     loop.create_task(integration_manager.start_all_enabled())
     logger.info("Integration startup tasks created")
 
-    # 8. Show window and tray
+    # 10. Show window and tray
     pet.show()
     tray.show()
 
-    # 9. Run event loop
+    # 11. Run event loop
     with loop:
         loop.run_forever()
 

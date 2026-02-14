@@ -9,6 +9,10 @@ CLAUDE.md
 # Google Calendar token
 google_calendar_token.json
 
+# Runtime data files
+api_usage.json
+event_cache.json
+
 # Python
 __pycache__/
 *.py[cod]

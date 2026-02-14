@@ -58,6 +58,11 @@ class TrayIcon(QSystemTrayIcon):
         self._build_integrations_menu(integrations_menu)
         menu.addMenu(integrations_menu)
 
+        # API Usage submenu (lazy-populated on open)
+        self._api_usage_menu = QMenu("API Usage", menu)
+        self._api_usage_menu.aboutToShow.connect(self._refresh_api_usage_menu)
+        menu.addMenu(self._api_usage_menu)
+
         menu.addSeparator()
 
         # Test Alert action
@@ -150,22 +155,73 @@ class TrayIcon(QSystemTrayIcon):
     def _test_rainy(self):
         """Trigger a test rainy behavior for debugging."""
         if self._behavior_registry:
-            self._behavior_registry.trigger("rainy", {
-                "condition": "rainy",
-                "description": "Light rain",
-                "temperature": "65°F",
-                "city": "Test City",
-            })
+            self._behavior_registry.trigger(
+                "rainy",
+                {
+                    "condition": "rainy",
+                    "description": "Light rain",
+                    "temperature": "65°F",
+                    "city": "Test City",
+                },
+            )
 
     def _test_sunny(self):
         """Trigger a test sunny behavior for debugging."""
         if self._behavior_registry:
-            self._behavior_registry.trigger("sunny", {
-                "condition": "sunny",
-                "description": "Clear sky",
-                "temperature": "85°F",
-                "city": "Test City",
-            })
+            self._behavior_registry.trigger(
+                "sunny",
+                {
+                    "condition": "sunny",
+                    "description": "Clear sky",
+                    "temperature": "85°F",
+                    "city": "Test City",
+                },
+            )
+
+    def _refresh_api_usage_menu(self):
+        """Populate API Usage submenu with current counts."""
+        self._api_usage_menu.clear()
+
+        gcal = self._integration_manager.get_integration("google_calendar")
+        if gcal is None or not hasattr(gcal, "usage_tracker"):
+            no_data = QAction("No calendar integration", self._api_usage_menu)
+            no_data.setEnabled(False)
+            self._api_usage_menu.addAction(no_data)
+            return
+
+        usage = gcal.usage_tracker.get_usage()
+        limit = usage.get("limit", 9500)
+        month = usage.get("month", "")
+
+        routes_action = QAction(
+            f"Routes API: {usage.get('routes_api', 0)} / {limit}",
+            self._api_usage_menu,
+        )
+        routes_action.setEnabled(False)
+        self._api_usage_menu.addAction(routes_action)
+
+        geocoding_action = QAction(
+            f"Geocoding API: {usage.get('geocoding_api', 0)} / {limit}",
+            self._api_usage_menu,
+        )
+        geocoding_action.setEnabled(False)
+        self._api_usage_menu.addAction(geocoding_action)
+
+        if month:
+            self._api_usage_menu.addSeparator()
+            # Calculate next reset month
+            try:
+                from datetime import datetime
+
+                dt = datetime.strptime(month, "%Y-%m")
+                next_month = dt.month % 12 + 1
+                next_year = dt.year + (1 if next_month == 1 else 0)
+                reset_str = f"{next_year}-{next_month:02d}"
+            except ValueError:
+                reset_str = "next month"
+            reset_action = QAction(f"Resets: {reset_str}", self._api_usage_menu)
+            reset_action.setEnabled(False)
+            self._api_usage_menu.addAction(reset_action)
 
     def _quit_app(self):
         """Quit the application."""
