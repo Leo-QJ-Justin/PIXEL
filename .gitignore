@@ -6,6 +6,9 @@ CLAUDE.md
 *.session
 *.session-journal
 
+# Google Calendar token
+google_calendar_token.json
+
 # Python
 __pycache__/
 *.py[cod]
