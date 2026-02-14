@@ -2,10 +2,19 @@ import logging
 import random
 from datetime import datetime
 
-from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt, QTimer, QUrl, pyqtSlot
+from PyQt6.QtCore import (
+    QEasingCurve,
+    QPoint,
+    QPropertyAnimation,
+    Qt,
+    QTimer,
+    QUrl,
+    pyqtSignal,
+    pyqtSlot,
+)
 from PyQt6.QtGui import QAction, QPainter, QPixmap
 from PyQt6.QtMultimedia import QSoundEffect
-from PyQt6.QtWidgets import QMenu, QWidget
+from PyQt6.QtWidgets import QInputDialog, QMenu, QMessageBox, QWidget
 
 from config import get_behavior_settings, get_general_settings
 from src.core.behavior_registry import BehaviorRegistry
@@ -16,6 +25,11 @@ logger = logging.getLogger(__name__)
 
 class PetWidget(QWidget):
     """Main desktop pet widget."""
+
+    # Location flow signals (connected to GoogleCalendarIntegration)
+    location_provided = pyqtSignal(str, str)  # (event_id, raw_address)
+    location_confirmed = pyqtSignal(str)  # (event_id)
+    location_rejected = pyqtSignal(str)  # (event_id)
 
     def __init__(self, behavior_registry: BehaviorRegistry):
         super().__init__()
@@ -29,6 +43,9 @@ class PetWidget(QWidget):
         self._last_activity_time = datetime.now()
         self._last_time_period: str | None = None
         self._active_weather_behavior: str | None = None
+
+        # Location prompt state (Google Calendar integration)
+        self._pending_location_request: dict | None = None
 
         # Current sprite to display
         self._current_sprite = QPixmap()
@@ -393,6 +410,11 @@ class PetWidget(QWidget):
             # Dismiss alert on click
             if self._is_alerting:
                 self.stop_alert()
+                return
+
+            # Handle pending location prompt on click
+            if self._pending_location_request is not None:
+                self._show_location_dialog()
 
     def mouseMoveEvent(self, event):
         """Handle dragging the widget."""
@@ -465,3 +487,48 @@ class PetWidget(QWidget):
         self._bounce_animation.stop()
         self._behavior_registry.stop_current()
         self._return_to_base_state()
+
+    # ── Notification & Location Flow ──────────────────────────────────
+
+    @pyqtSlot(dict)
+    def _on_notification(self, context: dict) -> None:
+        """Handle bubble-only notification (no behavior change)."""
+        bubble_text = context.get("bubble_text", "")
+        if bubble_text:
+            self.show_bubble(bubble_text, duration_ms=5000)
+
+        if context.get("action") == "request_location":
+            self._pending_location_request = context
+
+    def _show_location_dialog(self) -> None:
+        """Show dialog for user to input event location."""
+        if self._pending_location_request is None:
+            return
+
+        event_id = self._pending_location_request.get("event_id", "")
+        summary = self._pending_location_request.get("summary", "event")
+        self._pending_location_request = None
+
+        text, ok = QInputDialog.getText(
+            self,
+            "Add Location",
+            f"Where is '{summary}'?",
+        )
+        if ok and text.strip():
+            self.location_provided.emit(event_id, text.strip())
+        else:
+            self.location_rejected.emit(event_id)
+
+    @pyqtSlot(str, str)
+    def _on_address_confirmation(self, event_id: str, formatted_address: str) -> None:
+        """Show confirmation dialog for geocoded address."""
+        reply = QMessageBox.question(
+            self,
+            "Confirm Location",
+            f"Did you mean:\n{formatted_address}",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self.location_confirmed.emit(event_id)
+        else:
+            self.location_rejected.emit(event_id)

@@ -24,6 +24,9 @@ class BaseIntegration(QObject, metaclass=QObjectABCMeta):
     # Signal to request a behavior trigger
     request_behavior = pyqtSignal(str, dict)  # (behavior_name, context)
 
+    # Signal for bubble-only notifications (bypasses behavior system)
+    request_notification = pyqtSignal(dict)  # context dict with bubble_text, etc.
+
     def __init__(self, integration_path: Path, settings: dict[str, Any]):
         super().__init__()
         self._path = integration_path
@@ -78,3 +81,7 @@ class BaseIntegration(QObject, metaclass=QObjectABCMeta):
     def trigger(self, behavior_name: str, context: dict | None = None) -> None:
         """Request a behavior to be triggered."""
         self.request_behavior.emit(behavior_name, context or {})
+
+    def notify(self, context: dict) -> None:
+        """Send a bubble-only notification (no behavior change)."""
+        self.request_notification.emit(context)
