@@ -3,7 +3,7 @@ name = "haro-desktop-pet"
 version = "0.1.0"
 description = "A Haro desktop pet that integrates with Telegram"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 dependencies = [
     "PyQt6>=6.4.0",
     "telethon>=1.28.0",
@@ -25,6 +25,16 @@ dev = [
     "ruff>=0.2.0",
     "pre-commit>=3.6.0",
 ]
+sprites = [
+    "google-genai>=1.0.0",
+    "Pillow>=10.0.0",
+    "backgroundremover>=0.2.0",
+]
+
+[tool.uv]
+# pymatting 1.1.14 pins numba==0.53.1 which only supports Python <3.10.
+# Override to 1.1.15+ which uses numba>=0.63 (supports Python 3.13).
+override-dependencies = ["pymatting>=1.1.15"]
 
 [build-system]
 requires = ["hatchling"]
