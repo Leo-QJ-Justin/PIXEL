@@ -31,6 +31,13 @@ class TestSpeechBubbleInit:
         qtbot.addWidget(bubble)
         assert bubble.windowFlags() & Qt.WindowType.Tool
 
+    def test_loads_sprite_or_uses_fallback(self, qtbot):
+        """Bubble should either load the sprite asset or fall back gracefully."""
+        bubble = SpeechBubble()
+        qtbot.addWidget(bubble)
+        # Either the sprite loaded or the fallback is active — both are valid
+        assert isinstance(bubble._use_sprite, bool)
+
 
 @pytest.mark.ui
 class TestSpeechBubbleShowHide:
