@@ -1,6 +1,7 @@
 """Speech bubble widget that displays text near the pet."""
 
 import logging
+from collections import deque
 from pathlib import Path
 
 from PyQt6.QtCore import QPoint, QRect, QRectF, QSize, Qt, QTimer
@@ -53,6 +54,8 @@ class SpeechBubble(QWidget):
         self._pet_pos = QPoint()
         self._pet_size = QSize()
 
+        self._queue: deque[tuple[str, int]] = deque()
+
         self._dismiss_timer = QTimer(self)
         self._dismiss_timer.setSingleShot(True)
         self._dismiss_timer.timeout.connect(self.hide_bubble)
@@ -93,7 +96,15 @@ class SpeechBubble(QWidget):
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
     def show_message(self, text: str, duration_ms: int = 3000) -> None:
-        """Show a speech bubble with the given text."""
+        """Show a speech bubble, queuing if one is already visible."""
+        if self.isVisible():
+            self._queue.append((text, duration_ms))
+            logger.debug(f"Speech bubble queued: {text}")
+            return
+        self._show_now(text, duration_ms)
+
+    def _show_now(self, text: str, duration_ms: int) -> None:
+        """Display a message immediately (no queue check)."""
         self._text = text
         self._resize_to_text()
         self._reposition()
@@ -107,9 +118,12 @@ class SpeechBubble(QWidget):
         logger.debug(f"Speech bubble shown: {text}")
 
     def hide_bubble(self) -> None:
-        """Hide the bubble immediately."""
+        """Hide the bubble and show next queued message if any."""
         self._dismiss_timer.stop()
         self.hide()
+        if self._queue:
+            text, dur = self._queue.popleft()
+            self._show_now(text, dur)
 
     def update_position(self, pet_pos: QPoint, pet_size: QSize) -> None:
         """Reposition bubble relative to the pet."""
