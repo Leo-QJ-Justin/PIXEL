@@ -1,4 +1,5 @@
 import logging
+import os
 import random
 from datetime import datetime
 
@@ -16,7 +17,7 @@ from PyQt6.QtGui import QAction, QPainter, QPixmap
 from PyQt6.QtMultimedia import QSoundEffect
 from PyQt6.QtWidgets import QInputDialog, QMenu, QMessageBox, QWidget
 
-from config import get_behavior_settings, get_general_settings
+from config import get_behavior_settings, get_general_settings, load_settings
 from src.core.behavior_registry import BehaviorRegistry
 from src.ui.speech_bubble import SpeechBubble
 
@@ -126,6 +127,23 @@ class PetWidget(QWidget):
         """Play wave animation on app startup."""
         QTimer.singleShot(500, lambda: self._behavior_registry.trigger("wave"))
 
+    def _get_display_name(self) -> str:
+        """Return the user's display name from settings, falling back to system username."""
+        name = load_settings().get("user_name", "")
+        if name:
+            return name
+        try:
+            return os.getlogin()
+        except OSError:
+            return ""
+
+    def _personalize_greeting(self, greeting: str) -> str:
+        """Insert the user's name into a greeting (e.g. 'Hello!' -> 'Hello, Leo!')."""
+        name = self._get_display_name()
+        if not name or "!" not in greeting:
+            return greeting
+        return greeting.replace("!", f", {name}!", 1)
+
     def _move_to_default_position(self):
         """Move widget to bottom-right corner of screen."""
         screen = self.screen()
@@ -181,7 +199,8 @@ class PetWidget(QWidget):
         # Show greeting bubble on wave
         if behavior_name == "wave":
             wave_settings = get_behavior_settings("wave")
-            self.show_bubble(wave_settings.get("greeting", "Hello!"))
+            greeting = wave_settings.get("greeting", "Hello!")
+            self.show_bubble(self._personalize_greeting(greeting))
 
         # Track active weather behavior
         if behavior_name in ("rainy", "sunny"):
@@ -377,7 +396,7 @@ class PetWidget(QWidget):
         # Show greeting bubble
         greeting = self._time_period_settings.get("greetings", {}).get(current_period)
         if greeting:
-            self.show_bubble(greeting)
+            self.show_bubble(self._personalize_greeting(greeting))
 
     def moveEvent(self, event):
         """Update speech bubble position when pet moves."""

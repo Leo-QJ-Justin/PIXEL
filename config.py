@@ -42,6 +42,7 @@ SETTINGS_FILE = BASE_DIR / "settings.json"
 
 # Default settings structure
 DEFAULT_SETTINGS = {
+    "user_name": "",
     "general": {
         "always_on_top": True,
         "start_minimized": False,
@@ -93,7 +94,7 @@ DEFAULT_SETTINGS = {
             "check_interval_ms": 1800000,
         },
         "google_calendar": {
-            "enabled": False,
+            "enabled": True,
             "check_interval_ms": 300000,
             "alert_before_minutes": 30,
             "trigger_behavior": "alert",
