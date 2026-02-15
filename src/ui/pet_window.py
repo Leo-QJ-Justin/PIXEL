@@ -529,8 +529,15 @@ class PetWidget(QWidget):
         "BICYCLE": "Cycling",
     }
 
+    def _get_portrait_pixmap(self) -> QPixmap | None:
+        """Get the first idle sprite for use as dialog portrait."""
+        idle = self._behavior_registry.get_behavior("idle")
+        if idle and idle.sprites:
+            return idle.sprites[0]
+        return None
+
     def _show_route_dialog(self) -> None:
-        """Show dialog for user to input origin, destination, and travel mode."""
+        """Show MapleStory-styled dialog for route input."""
         if self._pending_route_request is None:
             return
 
@@ -541,40 +548,32 @@ class PetWidget(QWidget):
         travel_modes = self._pending_route_request.get("travel_modes", ["DRIVE"])
         self._pending_route_request = None
 
-        from PyQt6.QtWidgets import (
-            QComboBox,
-            QDialog,
-            QDialogButtonBox,
-            QFormLayout,
-            QLineEdit,
+        from PyQt6.QtWidgets import QComboBox, QLineEdit
+
+        from src.ui.dialog_box import DialogBox
+
+        dialog = DialogBox(
+            title=f'Route for "{summary}"',
+            body_text="Where are you headed? Enter your route details below.",
+            portrait_pixmap=self._get_portrait_pixmap(),
+            buttons=[("Confirm", "accept"), ("Skip", "reject")],
+            parent=self,
         )
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle(f'Route for "{summary}"')
-        layout = QFormLayout(dialog)
-
-        origin_edit = QLineEdit(origin, dialog)
+        origin_edit = QLineEdit(origin)
         origin_edit.setPlaceholderText("Enter starting location")
-        layout.addRow("From:", origin_edit)
+        dialog.add_form_row("From:", origin_edit)
 
-        dest_edit = QLineEdit(destination, dialog)
+        dest_edit = QLineEdit(destination)
         dest_edit.setPlaceholderText("Enter destination")
-        layout.addRow("To:", dest_edit)
+        dialog.add_form_row("To:", dest_edit)
 
-        mode_combo = QComboBox(dialog)
+        mode_combo = QComboBox()
         for mode in travel_modes:
             mode_combo.addItem(self._MODE_LABELS.get(mode, mode), mode)
-        layout.addRow("Travel by:", mode_combo)
+        dialog.add_form_row("Travel by:", mode_combo)
 
-        buttons = QDialogButtonBox(dialog)
-        confirm_btn = buttons.addButton("Confirm", QDialogButtonBox.ButtonRole.AcceptRole)
-        skip_btn = buttons.addButton("Skip", QDialogButtonBox.ButtonRole.RejectRole)
-        layout.addRow(buttons)
-
-        confirm_btn.clicked.connect(dialog.accept)
-        skip_btn.clicked.connect(dialog.reject)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
+        if dialog.exec() == DialogBox.DialogCode.Accepted:
             from_text = origin_edit.text().strip()
             to_text = dest_edit.text().strip()
             selected_mode = mode_combo.currentData()
@@ -590,28 +589,24 @@ class PetWidget(QWidget):
     def _on_route_verification(
         self, event_id: str, geocoded_origin: str, geocoded_destination: str, mode: str
     ) -> None:
-        """Show verification dialog for geocoded route."""
-        from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout
+        """Show MapleStory-styled verification dialog for geocoded route."""
+        from src.ui.dialog_box import DialogBox
 
         mode_label = self._MODE_LABELS.get(mode, mode)
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Confirm route")
-        layout = QVBoxLayout(dialog)
+        dialog = DialogBox(
+            title="Confirm Route",
+            portrait_pixmap=self._get_portrait_pixmap(),
+            buttons=[("Looks good", "accept"), ("No, edit", "reject")],
+            parent=self,
+        )
+        dialog.set_body_html(
+            f"<b>From:</b> {geocoded_origin}<br>"
+            f"<b>To:</b> {geocoded_destination}<br>"
+            f"<b>Travel by:</b> {mode_label}"
+        )
 
-        layout.addWidget(QLabel(f"From: {geocoded_origin}"))
-        layout.addWidget(QLabel(f"To: {geocoded_destination}"))
-        layout.addWidget(QLabel(f"Travel by: {mode_label}"))
-
-        buttons = QDialogButtonBox(dialog)
-        looks_good = buttons.addButton("Looks good", QDialogButtonBox.ButtonRole.AcceptRole)
-        no_edit = buttons.addButton("No, edit", QDialogButtonBox.ButtonRole.RejectRole)
-        layout.addWidget(buttons)
-
-        looks_good.clicked.connect(dialog.accept)
-        no_edit.clicked.connect(dialog.reject)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
+        if dialog.exec() == DialogBox.DialogCode.Accepted:
             self.route_confirmed.emit(event_id)
         else:
             self.route_rejected.emit(event_id)
