@@ -135,7 +135,8 @@ class TestProcessEvents:
         received = []
         integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
 
-        await integration._process_events([event], now)
+        with patch.object(integration, "_has_routing_provider", return_value=False):
+            await integration._process_events([event], now)
 
         assert len(received) == 1
         assert received[0][0] == "alert"
@@ -198,7 +199,8 @@ class TestProcessEvents:
         received = []
         integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
 
-        await integration._process_events(events, now)
+        with patch.object(integration, "_has_routing_provider", return_value=False):
+            await integration._process_events(events, now)
 
         assert len(received) == 2
         summaries = {r[1]["summary"] for r in received}

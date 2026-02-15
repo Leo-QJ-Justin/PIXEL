@@ -47,6 +47,7 @@ async def _geocode_google(address: str) -> GeocodedAddress | None:
                     logger.error(f"Google Geocoding API error ({resp.status})")
                     return None
                 data = await resp.json()
+                logger.debug(f"Google Geocoding response: {data}")
 
                 results = data.get("results", [])
                 if not results:

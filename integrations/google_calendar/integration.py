@@ -29,8 +29,10 @@ _EVENT_CACHE_FILE = BASE_DIR / "event_cache.json"
 class GoogleCalendarIntegration(BaseIntegration):
     """Polls Google Calendar and triggers two-phase travel-aware alerts."""
 
-    # Signal for address confirmation dialog (edge case #5)
-    request_confirmation = pyqtSignal(str, str)  # (event_id, formatted_address)
+    # Signal for route confirmation dialog (smart origin detection)
+    request_route_confirmation = pyqtSignal(
+        str, str, str, str
+    )  # (event_id, origin, destination, mode)
 
     def __init__(self, integration_path: Path, settings: dict[str, Any]):
         super().__init__(integration_path, settings)
@@ -40,6 +42,9 @@ class GoogleCalendarIntegration(BaseIntegration):
 
         # Single source of truth for all event state
         self._events: dict[str, CalendarEvent] = {}
+
+        # Smart origin: remember last confirmed origin across events
+        self._last_confirmed_origin: str | None = None
 
         # API quota tracker
         quota_limit = self._settings.get("api_quota_limit", 9500)
@@ -131,6 +136,10 @@ class GoogleCalendarIntegration(BaseIntegration):
         except RuntimeError:
             logger.warning("No event loop available for calendar check")
 
+    def _has_routing_provider(self) -> bool:
+        """Check if any routing provider (Google Maps or OneMap) is configured."""
+        return bool(GOOGLE_MAPS_API_KEY) or bool(ONEMAP_EMAIL and ONEMAP_PASSWORD)
+
     # ── Calendar Fetching ──────────────────────────────────────────────
 
     async def _check_upcoming_events(self) -> None:
@@ -168,9 +177,7 @@ class GoogleCalendarIntegration(BaseIntegration):
     # ── Event Processing ───────────────────────────────────────────────
 
     async def _process_events(self, raw_events: list[dict], now: datetime) -> None:
-        """Process events: two-phase alerts, location prompts, flat fallback."""
-        prompted_this_cycle = False
-
+        """Process events: route prompts, two-phase alerts, flat fallback."""
         for raw in raw_events:
             event = self._upsert_event(raw)
             if event is None:
@@ -182,56 +189,52 @@ class GoogleCalendarIntegration(BaseIntegration):
 
             minutes_until = (event.start_time - now).total_seconds() / 60
 
-            origin = self._settings.get("origin_address", "")
+            # Route confirmation path (smart origin detection)
+            # When a routing provider is available, use the route dialog for
+            # both origin and destination — even if the event has no location yet.
+            if not event.is_virtual and not event.is_all_day and self._has_routing_provider():
+                # Route already confirmed → fetch travel and do two-phase alerts
+                if event.route_confirmed:
+                    origin = event.origin_address or ""
+                    if event.needs_travel_fetch and origin:
+                        await self._fetch_travel_info(event, origin)
 
-            # Travel-time path: needs location + origin + not virtual/all-day
-            if (
-                event.effective_location
-                and origin
-                and not event.is_virtual
-                and not event.is_all_day
-            ):
-                # Fetch travel info if needed (adaptive TTL, edge case #9)
-                if event.needs_travel_fetch:
-                    await self._fetch_travel_info(event, origin)
+                    if event.travel_info:
+                        travel = event.travel_info.best_duration_minutes
+                        prep = self._settings.get("preparation_minutes", 15)
 
-                if event.travel_info:
-                    travel = event.travel_info.best_duration_minutes
-                    prep = self._settings.get("preparation_minutes", 15)
+                        # Warn if travel + prep exceeds fetch window (edge case #4)
+                        fetch_window = self._settings.get("fetch_window_minutes", 120)
+                        if travel + prep > fetch_window:
+                            logger.warning(
+                                f"Travel+prep ({travel + prep:.0f} min) exceeds "
+                                f"fetch window ({fetch_window} min) for '{event.summary}'"
+                            )
 
-                    # Warn if travel + prep exceeds fetch window (edge case #4)
-                    fetch_window = self._settings.get("fetch_window_minutes", 120)
-                    if travel + prep > fetch_window:
-                        logger.warning(
-                            f"Travel+prep ({travel + prep:.0f} min) exceeds "
-                            f"fetch window ({fetch_window} min) for '{event.summary}'"
-                        )
+                        # Phase 1: Prepare alert — bubble only (edge case #1)
+                        if minutes_until <= travel + prep and not event.prepare_alerted:
+                            event.prepare_alerted = True
+                            leave_in = round(minutes_until - travel)
+                            self._notify_prepare(event, leave_in)
 
-                    # Phase 1: Prepare alert — bubble only (edge case #1)
-                    if minutes_until <= travel + prep and not event.prepare_alerted:
-                        event.prepare_alerted = True
-                        leave_in = round(minutes_until - travel)
-                        self._notify_prepare(event, leave_in)
+                        # Phase 2: Leave alert — full alert behavior
+                        if minutes_until <= travel and not event.leave_alerted:
+                            event.leave_alerted = True
+                            self._trigger_leave_alert(
+                                event,
+                                round(travel),
+                                event.travel_info.best_mode,
+                            )
 
-                    # Phase 2: Leave alert — full alert behavior
-                    if minutes_until <= travel and not event.leave_alerted:
-                        event.leave_alerted = True
-                        self._trigger_leave_alert(
-                            event,
-                            round(travel),
-                            event.travel_info.best_mode,
-                        )
+                        continue  # skip flat alert
 
-                    continue  # skip flat alert
+                # Not yet confirmed/declined → show route prompt bubble
+                elif event.needs_route_prompt:
+                    event.route_prompted = True
+                    self._notify_route_prompt(event)
+                    continue
 
-            # Location prompt — one per cycle (edge case #7)
-            if event.needs_location_prompt and not prompted_this_cycle:
-                prompted_this_cycle = True
-                event.location_prompted = True
-                self._notify_location_prompt(event)
-                continue
-
-            # Flat fallback (no travel info available)
+            # Flat fallback (no routing provider, declined, or no travel info)
             alert_minutes = self._settings.get("alert_before_minutes", 30)
             if minutes_until <= alert_minutes and not event.flat_alerted:
                 event.flat_alerted = True
@@ -295,7 +298,11 @@ class GoogleCalendarIntegration(BaseIntegration):
         if not destination:
             return
 
-        travel_modes = self._settings.get("travel_modes", ["DRIVE", "TRANSIT"])
+        # Use only the user's preferred mode if set, otherwise all configured
+        if event.preferred_travel_mode:
+            travel_modes = [event.preferred_travel_mode]
+        else:
+            travel_modes = self._settings.get("travel_modes", ["DRIVE", "TRANSIT"])
 
         # 1. Try Google Routes API (if key set + quota available)
         if GOOGLE_MAPS_API_KEY:
@@ -408,68 +415,144 @@ class GoogleCalendarIntegration(BaseIntegration):
         self.trigger(behavior, context)
         logger.info(f"Calendar alert: {bubble_text}")
 
-    def _notify_location_prompt(self, event: CalendarEvent) -> None:
-        """Prompt user to provide location for an event (edge case #7)."""
-        bubble_text = f"Where is '{event.summary}'? Click me to add location"
+    def _notify_route_prompt(self, event: CalendarEvent) -> None:
+        """Prompt user to confirm route for an event (smart origin detection)."""
+        bubble_text = f"{event.summary} coming up — click me to set route"
         self.notify(
             {
                 "source": "google_calendar",
-                "action": "request_location",
+                "action": "request_route",
                 "event_id": event.event_id,
                 "summary": event.summary,
+                "origin": self._last_confirmed_origin or "",
+                "destination": event.effective_location or "",
+                "travel_modes": self._settings.get("travel_modes", ["DRIVE", "TRANSIT"]),
                 "bubble_text": bubble_text,
             }
         )
-        logger.info(f"Location prompt: {event.summary}")
+        logger.info(f"Route prompt: {event.summary}")
 
-    # ── Address Confirmation Flow (edge case #5) ──────────────────────
+    # ── Route Confirmation Flow (smart origin detection) ─────────────
 
-    def receive_location(self, event_id: str, raw_address: str) -> None:
-        """Handle user-provided location — geocode and request confirmation."""
+    def receive_route(self, event_id: str, origin: str, destination: str, mode: str) -> None:
+        """Handle user-confirmed route — geocode both addresses and verify."""
         event = self._events.get(event_id)
         if not event:
-            logger.warning(f"receive_location: unknown event {event_id}")
+            logger.warning(f"receive_route: unknown event {event_id}")
             return
+
+        event.preferred_travel_mode = mode
 
         try:
             loop = asyncio.get_event_loop()
-            loop.create_task(self._geocode_and_confirm(event, raw_address))
+            loop.create_task(self._geocode_route(event, origin, destination))
         except RuntimeError:
-            logger.warning("No event loop for geocoding")
+            logger.warning("No event loop for route geocoding")
 
-    async def _geocode_and_confirm(self, event: CalendarEvent, raw_address: str) -> None:
-        """Geocode address and emit confirmation signal."""
-        result = await geocode_address(raw_address, self._usage_tracker)
-        if result is None:
-            logger.error(f"Could not geocode: {raw_address}")
-            event.location_declined = True
+    async def _geocode_route(self, event: CalendarEvent, origin: str, destination: str) -> None:
+        """Geocode both origin and destination, then emit verification signal."""
+        origin_geo = await geocode_address(origin, self._usage_tracker)
+        if origin_geo is None:
+            logger.warning(f"Could not geocode origin: {origin}")
+            self.notify(
+                {
+                    "source": "google_calendar",
+                    "action": "geocode_error",
+                    "event_id": event.event_id,
+                    "field": "origin",
+                    "bubble_text": "Couldn't find that origin address. Try again?",
+                }
+            )
+            # Reset so user can retry
+            event.route_prompted = False
             return
 
-        event.geocoded_address = result
-        self.request_confirmation.emit(event.event_id, result.formatted_address)
-
-    def confirm_location(self, event_id: str) -> None:
-        """User confirmed the geocoded address."""
-        event = self._events.get(event_id)
-        if not event or not event.geocoded_address:
+        dest_geo = await geocode_address(destination, self._usage_tracker)
+        if dest_geo is None:
+            logger.warning(f"Could not geocode destination: {destination}")
+            self.notify(
+                {
+                    "source": "google_calendar",
+                    "action": "geocode_error",
+                    "event_id": event.event_id,
+                    "field": "destination",
+                    "bubble_text": "Couldn't find that destination address. Try again?",
+                }
+            )
+            event.route_prompted = False
             return
 
-        event.user_location = event.geocoded_address.formatted_address
-        event.geocode_confirmed = True
-        event.location_prompted = False  # allow travel fetch on next cycle
-        self._save_event_cache()
-        logger.info(
-            f"Location confirmed for '{event.summary}': "
-            f"{event.geocoded_address.formatted_address}"
+        # Store geocoded addresses for verification
+        event.confirmed_origin = origin_geo.formatted_address
+        event.confirmed_destination = dest_geo.formatted_address
+        event.origin_address = origin
+
+        # If the event had no calendar location, store the user-provided destination
+        if not event.effective_location:
+            event.user_location = destination
+
+        self.request_route_confirmation.emit(
+            event.event_id,
+            origin_geo.formatted_address,
+            dest_geo.formatted_address,
+            event.preferred_travel_mode or "",
         )
 
-    def reject_location(self, event_id: str) -> None:
-        """User rejected the geocoded address."""
+    def confirm_route(self, event_id: str) -> None:
+        """User confirmed the geocoded route (FROM → TO)."""
         event = self._events.get(event_id)
         if not event:
             return
-        event.location_declined = True
-        logger.info(f"Location rejected for '{event.summary}'")
+
+        event.route_confirmed = True
+        self._last_confirmed_origin = event.origin_address
+        self._save_event_cache()
+        logger.info(
+            f"Route confirmed for '{event.summary}': "
+            f"{event.confirmed_origin} → {event.confirmed_destination}"
+        )
+
+        # Immediately fetch travel time and notify user with the estimate
+        origin = event.origin_address or ""
+        if origin and event.needs_travel_fetch:
+            try:
+                loop = asyncio.get_event_loop()
+                loop.create_task(self._fetch_and_notify_travel(event, origin))
+            except RuntimeError:
+                logger.warning("No event loop for immediate travel fetch")
+
+    async def _fetch_and_notify_travel(self, event: CalendarEvent, origin: str) -> None:
+        """Fetch travel info and show a bubble with the estimated time."""
+        await self._fetch_travel_info(event, origin)
+        if event.travel_info:
+            minutes = round(event.travel_info.best_duration_minutes)
+            mode = event.travel_info.best_mode.lower()
+            bubble_text = f"Route set! {event.summary} — {minutes} min by {mode}"
+            self.notify(
+                {
+                    "source": "google_calendar",
+                    "action": "travel_estimate",
+                    "event_id": event.event_id,
+                    "bubble_text": bubble_text,
+                }
+            )
+            logger.info(f"Travel estimate: {bubble_text}")
+
+    def reject_route(self, event_id: str) -> None:
+        """User clicked 'No, edit' on route verification — allow re-prompt."""
+        event = self._events.get(event_id)
+        if not event:
+            return
+        event.route_prompted = False
+        logger.info(f"Route rejected for '{event.summary}', allowing re-prompt")
+
+    def skip_route(self, event_id: str) -> None:
+        """User skipped routing for this event — use flat alert."""
+        event = self._events.get(event_id)
+        if not event:
+            return
+        event.route_declined = True
+        logger.info(f"Route skipped for '{event.summary}', will use flat alert")
 
     # ── Event Cache Persistence (edge case #6) ────────────────────────
 
@@ -490,7 +573,7 @@ class GoogleCalendarIntegration(BaseIntegration):
         items = [
             event.to_persist_dict()
             for event in self._events.values()
-            if event.user_location or event.location_declined or event.geocoded_address
+            if event.user_location or event.route_confirmed or event.route_declined
         ]
         try:
             with open(_EVENT_CACHE_FILE, "w") as f:

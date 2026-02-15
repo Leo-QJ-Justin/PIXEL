@@ -79,12 +79,18 @@ class CalendarEvent:
 
     # User interaction state
     user_location: str | None = None
-    location_declined: bool = False
-    location_prompted: bool = False
 
     # Geocoding state
     geocoded_address: GeocodedAddress | None = None
-    geocode_confirmed: bool = False
+
+    # Route confirmation state (smart origin detection)
+    origin_address: str | None = None
+    route_confirmed: bool = False
+    route_declined: bool = False
+    route_prompted: bool = False
+    confirmed_origin: str | None = None
+    confirmed_destination: str | None = None
+    preferred_travel_mode: str | None = None
 
     # Travel state
     travel_info: TravelInfo | None = None
@@ -108,19 +114,26 @@ class CalendarEvent:
         return is_virtual_location(self.effective_location or "")
 
     @property
-    def needs_location_prompt(self) -> bool:
-        """Whether this event should prompt the user for a location."""
+    def needs_route_prompt(self) -> bool:
+        """Whether this event should prompt the user to confirm a route.
+
+        Fires even when no destination is set — the route dialog lets the
+        user fill in both origin and destination in a single form.
+        """
         return (
-            not self.effective_location
-            and not self.location_declined
-            and not self.location_prompted
+            not self.is_virtual
             and not self.is_all_day
+            and not self.route_confirmed
+            and not self.route_declined
+            and not self.route_prompted
         )
 
     @property
     def needs_travel_fetch(self) -> bool:
         """Whether travel info needs to be fetched or refreshed."""
         if not self.effective_location or self.is_all_day or self.is_virtual:
+            return False
+        if not self.route_confirmed:
             return False
         if self.travel_info is None:
             return True
@@ -146,10 +159,15 @@ class CalendarEvent:
         return False
 
     def reset_alerts(self) -> None:
-        """Reset alert state when event start_time changes (edge case #11)."""
+        """Reset alert and route state when event start_time changes (edge case #11)."""
         self.prepare_alerted = False
         self.leave_alerted = False
         self.flat_alerted = False
+        self.route_confirmed = False
+        self.route_declined = False
+        self.route_prompted = False
+        self.confirmed_origin = None
+        self.confirmed_destination = None
 
     def to_persist_dict(self) -> dict:
         """Serialize user-interaction state for persistence (edge case #6).
@@ -159,23 +177,31 @@ class CalendarEvent:
         return {
             "event_id": self.event_id,
             "user_location": self.user_location,
-            "location_declined": self.location_declined,
             "geocoded_lat": self.geocoded_address.lat if self.geocoded_address else None,
             "geocoded_lng": self.geocoded_address.lng if self.geocoded_address else None,
             "geocoded_formatted": (
                 self.geocoded_address.formatted_address if self.geocoded_address else None
             ),
-            "geocode_confirmed": self.geocode_confirmed,
+            "origin_address": self.origin_address,
+            "route_confirmed": self.route_confirmed,
+            "route_declined": self.route_declined,
+            "confirmed_origin": self.confirmed_origin,
+            "confirmed_destination": self.confirmed_destination,
+            "preferred_travel_mode": self.preferred_travel_mode,
         }
 
     @staticmethod
     def restore_user_data(event: CalendarEvent, persisted: dict) -> None:
         """Restore user-interaction state from persisted data."""
         event.user_location = persisted.get("user_location")
-        event.location_declined = persisted.get("location_declined", False)
-        event.geocode_confirmed = persisted.get("geocode_confirmed", False)
         lat = persisted.get("geocoded_lat")
         lng = persisted.get("geocoded_lng")
         fmt = persisted.get("geocoded_formatted")
         if lat is not None and lng is not None and fmt:
             event.geocoded_address = GeocodedAddress(fmt, lat, lng)
+        event.origin_address = persisted.get("origin_address")
+        event.route_confirmed = persisted.get("route_confirmed", False)
+        event.route_declined = persisted.get("route_declined", False)
+        event.confirmed_origin = persisted.get("confirmed_origin")
+        event.confirmed_destination = persisted.get("confirmed_destination")
+        event.preferred_travel_mode = persisted.get("preferred_travel_mode")

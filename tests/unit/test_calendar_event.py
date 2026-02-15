@@ -75,63 +75,6 @@ class TestIsVirtual:
 
 
 @pytest.mark.unit
-class TestNeedsLocationPrompt:
-    """Tests for needs_location_prompt property."""
-
-    def test_returns_true_when_no_location_not_declined_not_prompted_not_all_day(self):
-        event = _make_event(
-            calendar_location=None,
-            user_location=None,
-            is_all_day=False,
-        )
-        event.location_declined = False
-        event.location_prompted = False
-        assert event.needs_location_prompt is True
-
-    def test_returns_false_when_location_declined(self):
-        event = _make_event(
-            calendar_location=None,
-            user_location=None,
-            is_all_day=False,
-        )
-        event.location_declined = True
-        assert event.needs_location_prompt is False
-
-    def test_returns_false_when_already_prompted(self):
-        event = _make_event(
-            calendar_location=None,
-            user_location=None,
-            is_all_day=False,
-        )
-        event.location_prompted = True
-        assert event.needs_location_prompt is False
-
-    def test_returns_false_when_all_day(self):
-        event = _make_event(
-            calendar_location=None,
-            user_location=None,
-            is_all_day=True,
-        )
-        assert event.needs_location_prompt is False
-
-    def test_returns_false_when_calendar_location_set(self):
-        event = _make_event(
-            calendar_location="Office",
-            user_location=None,
-            is_all_day=False,
-        )
-        assert event.needs_location_prompt is False
-
-    def test_returns_false_when_user_location_set(self):
-        event = _make_event(
-            calendar_location=None,
-            user_location="Home",
-            is_all_day=False,
-        )
-        assert event.needs_location_prompt is False
-
-
-@pytest.mark.unit
 class TestNeedsTravelFetch:
     """Tests for needs_travel_fetch property."""
 
@@ -147,8 +90,17 @@ class TestNeedsTravelFetch:
             calendar_location="123 Main St, Singapore",
             is_all_day=False,
         )
+        event.route_confirmed = True
         assert event.travel_info is None
         assert event.needs_travel_fetch is True
+
+    def test_returns_false_when_route_not_confirmed(self):
+        event = _make_event(
+            calendar_location="123 Main St, Singapore",
+            is_all_day=False,
+        )
+        assert event.route_confirmed is False
+        assert event.needs_travel_fetch is False
 
     def test_returns_false_for_virtual_event(self):
         event = _make_event(
@@ -205,13 +157,11 @@ class TestPersistAndRestore:
             user_location="My Office",
             calendar_location="Other Place",
         )
-        event.location_declined = False
         event.geocoded_address = GeocodedAddress(
             formatted_address="My Office, Singapore",
             lat=1.35,
             lng=103.82,
         )
-        event.geocode_confirmed = True
 
         persisted = event.to_persist_dict()
 
@@ -223,27 +173,10 @@ class TestPersistAndRestore:
         CalendarEvent.restore_user_data(new_event, persisted)
 
         assert new_event.user_location == "My Office"
-        assert new_event.location_declined is False
-        assert new_event.geocode_confirmed is True
         assert new_event.geocoded_address is not None
         assert new_event.geocoded_address.formatted_address == "My Office, Singapore"
         assert new_event.geocoded_address.lat == 1.35
         assert new_event.geocoded_address.lng == 103.82
-
-    def test_round_trip_with_declined_location(self):
-        from integrations.google_calendar.calendar_event import CalendarEvent
-
-        event = _make_event()
-        event.location_declined = True
-
-        persisted = event.to_persist_dict()
-
-        new_event = _make_event(event_id=event.event_id)
-        CalendarEvent.restore_user_data(new_event, persisted)
-
-        assert new_event.location_declined is True
-        assert new_event.user_location is None
-        assert new_event.geocoded_address is None
 
     def test_round_trip_without_geocoded_address(self):
         from integrations.google_calendar.calendar_event import CalendarEvent
@@ -270,10 +203,14 @@ class TestPersistAndRestore:
         expected_keys = {
             "event_id",
             "user_location",
-            "location_declined",
             "geocoded_lat",
             "geocoded_lng",
             "geocoded_formatted",
-            "geocode_confirmed",
+            "origin_address",
+            "route_confirmed",
+            "route_declined",
+            "confirmed_origin",
+            "confirmed_destination",
+            "preferred_travel_mode",
         }
         assert set(persisted.keys()) == expected_keys

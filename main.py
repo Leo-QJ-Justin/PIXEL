@@ -82,13 +82,14 @@ def main():
     # 7. Connect notification signal (bubble-only, bypasses behavior system)
     integration_manager.notification_requested.connect(pet._on_notification)
 
-    # 8. Wire location flow signals for Google Calendar integration
+    # 8. Wire route confirmation signals for Google Calendar integration
     gcal = integration_manager.get_integration("google_calendar")
     if gcal is not None:
-        pet.location_provided.connect(gcal.receive_location)
-        pet.location_confirmed.connect(gcal.confirm_location)
-        pet.location_rejected.connect(gcal.reject_location)
-        gcal.request_confirmation.connect(pet._on_address_confirmation)
+        pet.route_submitted.connect(gcal.receive_route)
+        pet.route_confirmed.connect(gcal.confirm_route)
+        pet.route_rejected.connect(gcal.reject_route)
+        pet.route_skipped.connect(gcal.skip_route)
+        gcal.request_route_confirmation.connect(pet._on_route_verification)
 
     # 9. Start all enabled integrations
     loop.create_task(integration_manager.start_all_enabled())
