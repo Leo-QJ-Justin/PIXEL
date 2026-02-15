@@ -409,12 +409,14 @@ class TestStartWithoutCredentials:
     """Tests for start method without credentials."""
 
     @pytest.mark.asyncio
-    async def test_start_without_credentials_logs_error(self, tmp_path, caplog, monkeypatch):
-        monkeypatch.delenv("GOOGLE_CALENDAR_CLIENT_ID", raising=False)
-        monkeypatch.delenv("GOOGLE_CALENDAR_CLIENT_SECRET", raising=False)
-
+    async def test_start_without_credentials_logs_error(self, tmp_path, caplog):
         integration = _make_integration(tmp_path)
-        await integration.start()
+
+        with patch(
+            "integrations.google_calendar.integration.load_credentials",
+            return_value=None,
+        ):
+            await integration.start()
 
         assert "credentials not available" in caplog.text
         assert integration._timer is None

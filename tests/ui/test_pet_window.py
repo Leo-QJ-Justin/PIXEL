@@ -164,14 +164,15 @@ class TestWaveGreeting:
         with patch("src.ui.pet_window.get_behavior_settings", return_value={}), patch(
             "src.ui.pet_window.get_general_settings",
             return_value={"speech_bubble": {"enabled": True}},
-        ), patch("src.ui.pet_window.getpass") as mock_getpass:
-            mock_getpass.getuser.return_value = "testuser"
+        ), patch("src.ui.pet_window.load_settings", return_value={"user_name": ""}), patch(
+            "os.getlogin", return_value="testuser"
+        ):
             widget = PetWidget(behavior_registry)
             qtbot.addWidget(widget)
             widget._speech_bubble = MagicMock()
             behavior_registry.trigger("wave")
 
-        widget._speech_bubble.show_message.assert_called_once_with("Hello user:testuser", 3000)
+        widget._speech_bubble.show_message.assert_called_once_with("Hello, testuser!", 3000)
 
 
 @pytest.mark.ui

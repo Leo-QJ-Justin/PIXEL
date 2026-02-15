@@ -5,7 +5,7 @@
   },
   "behaviors": {
     "wave": {
-      "greeting": "Hello, Jackson!"
+      "greeting": "Hello!"
     },
     "sleep": {
       "inactivity_timeout_ms": 3600000
