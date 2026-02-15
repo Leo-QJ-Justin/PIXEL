@@ -15,7 +15,7 @@ from PyQt6.QtCore import (
 )
 from PyQt6.QtGui import QAction, QPainter, QPixmap
 from PyQt6.QtMultimedia import QSoundEffect
-from PyQt6.QtWidgets import QInputDialog, QMenu, QMessageBox, QWidget
+from PyQt6.QtWidgets import QMenu, QWidget
 
 from config import get_behavior_settings, get_general_settings, load_settings
 from src.core.behavior_registry import BehaviorRegistry
@@ -27,10 +27,11 @@ logger = logging.getLogger(__name__)
 class PetWidget(QWidget):
     """Main desktop pet widget."""
 
-    # Location flow signals (connected to GoogleCalendarIntegration)
-    location_provided = pyqtSignal(str, str)  # (event_id, raw_address)
-    location_confirmed = pyqtSignal(str)  # (event_id)
-    location_rejected = pyqtSignal(str)  # (event_id)
+    # Route confirmation signals (smart origin detection)
+    route_submitted = pyqtSignal(str, str, str, str)  # (event_id, origin, destination, mode)
+    route_confirmed = pyqtSignal(str)  # (event_id)
+    route_rejected = pyqtSignal(str)  # (event_id)
+    route_skipped = pyqtSignal(str)  # (event_id)
 
     def __init__(self, behavior_registry: BehaviorRegistry):
         super().__init__()
@@ -45,8 +46,8 @@ class PetWidget(QWidget):
         self._last_time_period: str | None = None
         self._active_weather_behavior: str | None = None
 
-        # Location prompt state (Google Calendar integration)
-        self._pending_location_request: dict | None = None
+        # Route prompt state (smart origin detection)
+        self._pending_route_request: dict | None = None
 
         # Current sprite to display
         self._current_sprite = QPixmap()
@@ -431,9 +432,9 @@ class PetWidget(QWidget):
                 self.stop_alert()
                 return
 
-            # Handle pending location prompt on click
-            if self._pending_location_request is not None:
-                self._show_location_dialog()
+            # Handle pending route prompt on click
+            if self._pending_route_request is not None:
+                self._show_route_dialog()
 
     def mouseMoveEvent(self, event):
         """Handle dragging the widget."""
@@ -507,7 +508,7 @@ class PetWidget(QWidget):
         self._behavior_registry.stop_current()
         self._return_to_base_state()
 
-    # ── Notification & Location Flow ──────────────────────────────────
+    # ── Notification & Route Flow ───────────────────────────────────
 
     @pyqtSlot(dict)
     def _on_notification(self, context: dict) -> None:
@@ -516,38 +517,101 @@ class PetWidget(QWidget):
         if bubble_text:
             self.show_bubble(bubble_text, duration_ms=5000)
 
-        if context.get("action") == "request_location":
-            self._pending_location_request = context
+        if context.get("action") == "request_route":
+            self._pending_route_request = context
 
-    def _show_location_dialog(self) -> None:
-        """Show dialog for user to input event location."""
-        if self._pending_location_request is None:
+    # ── Route Confirmation Flow (smart origin detection) ─────────────
+
+    _MODE_LABELS = {
+        "DRIVE": "Driving",
+        "TRANSIT": "Transit",
+        "WALK": "Walking",
+        "BICYCLE": "Cycling",
+    }
+
+    def _show_route_dialog(self) -> None:
+        """Show dialog for user to input origin, destination, and travel mode."""
+        if self._pending_route_request is None:
             return
 
-        event_id = self._pending_location_request.get("event_id", "")
-        summary = self._pending_location_request.get("summary", "event")
-        self._pending_location_request = None
+        event_id = self._pending_route_request.get("event_id", "")
+        summary = self._pending_route_request.get("summary", "event")
+        origin = self._pending_route_request.get("origin", "")
+        destination = self._pending_route_request.get("destination", "")
+        travel_modes = self._pending_route_request.get("travel_modes", ["DRIVE"])
+        self._pending_route_request = None
 
-        text, ok = QInputDialog.getText(
-            self,
-            "Add Location",
-            f"Where is '{summary}'?",
+        from PyQt6.QtWidgets import (
+            QComboBox,
+            QDialog,
+            QDialogButtonBox,
+            QFormLayout,
+            QLineEdit,
         )
-        if ok and text.strip():
-            self.location_provided.emit(event_id, text.strip())
-        else:
-            self.location_rejected.emit(event_id)
 
-    @pyqtSlot(str, str)
-    def _on_address_confirmation(self, event_id: str, formatted_address: str) -> None:
-        """Show confirmation dialog for geocoded address."""
-        reply = QMessageBox.question(
-            self,
-            "Confirm Location",
-            f"Did you mean:\n{formatted_address}",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        )
-        if reply == QMessageBox.StandardButton.Yes:
-            self.location_confirmed.emit(event_id)
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f'Route for "{summary}"')
+        layout = QFormLayout(dialog)
+
+        origin_edit = QLineEdit(origin, dialog)
+        origin_edit.setPlaceholderText("Enter starting location")
+        layout.addRow("From:", origin_edit)
+
+        dest_edit = QLineEdit(destination, dialog)
+        dest_edit.setPlaceholderText("Enter destination")
+        layout.addRow("To:", dest_edit)
+
+        mode_combo = QComboBox(dialog)
+        for mode in travel_modes:
+            mode_combo.addItem(self._MODE_LABELS.get(mode, mode), mode)
+        layout.addRow("Travel by:", mode_combo)
+
+        buttons = QDialogButtonBox(dialog)
+        confirm_btn = buttons.addButton("Confirm", QDialogButtonBox.ButtonRole.AcceptRole)
+        skip_btn = buttons.addButton("Skip", QDialogButtonBox.ButtonRole.RejectRole)
+        layout.addRow(buttons)
+
+        confirm_btn.clicked.connect(dialog.accept)
+        skip_btn.clicked.connect(dialog.reject)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            from_text = origin_edit.text().strip()
+            to_text = dest_edit.text().strip()
+            selected_mode = mode_combo.currentData()
+            if from_text and to_text:
+                self.route_submitted.emit(event_id, from_text, to_text, selected_mode)
+            else:
+                self.show_bubble("Both From and To are required.")
+                self.route_skipped.emit(event_id)
         else:
-            self.location_rejected.emit(event_id)
+            self.route_skipped.emit(event_id)
+
+    @pyqtSlot(str, str, str, str)
+    def _on_route_verification(
+        self, event_id: str, geocoded_origin: str, geocoded_destination: str, mode: str
+    ) -> None:
+        """Show verification dialog for geocoded route."""
+        from PyQt6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout
+
+        mode_label = self._MODE_LABELS.get(mode, mode)
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Confirm route")
+        layout = QVBoxLayout(dialog)
+
+        layout.addWidget(QLabel(f"From: {geocoded_origin}"))
+        layout.addWidget(QLabel(f"To: {geocoded_destination}"))
+        layout.addWidget(QLabel(f"Travel by: {mode_label}"))
+
+        buttons = QDialogButtonBox(dialog)
+        looks_good = buttons.addButton("Looks good", QDialogButtonBox.ButtonRole.AcceptRole)
+        no_edit = buttons.addButton("No, edit", QDialogButtonBox.ButtonRole.RejectRole)
+        layout.addWidget(buttons)
+
+        looks_good.clicked.connect(dialog.accept)
+        no_edit.clicked.connect(dialog.reject)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.route_confirmed.emit(event_id)
+        else:
+            self.route_rejected.emit(event_id)

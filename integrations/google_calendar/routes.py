@@ -71,6 +71,7 @@ async def _query_route(origin: str, destination: str, travel_mode: str) -> Trave
                     logger.error(f"Routes API error ({resp.status}) for {travel_mode}: {text}")
                     return None
                 data = await resp.json()
+                logger.debug(f"Routes API response for {travel_mode}: {data}")
                 return _parse_route_response(data, travel_mode)
     except Exception:
         logger.exception(f"Routes API request failed for {travel_mode}")
