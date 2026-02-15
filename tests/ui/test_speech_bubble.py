@@ -99,3 +99,54 @@ class TestSpeechBubblePositioning:
         bubble._pet_size = QSize(100, 100)
         bubble.show_message("Test")
         assert bubble._tail_on_left is True
+
+
+@pytest.mark.ui
+class TestSpeechBubbleQueue:
+    """Tests for message queuing behavior."""
+
+    def _make_bubble(self, qtbot):
+        bubble = SpeechBubble()
+        qtbot.addWidget(bubble)
+        bubble._pet_pos = QPoint(100, 100)
+        bubble._pet_size = QSize(100, 100)
+        return bubble
+
+    def test_queues_message_while_showing(self, qtbot):
+        bubble = self._make_bubble(qtbot)
+        bubble.show_message("First")
+        bubble.show_message("Second")
+        assert bubble._text == "First"
+        assert len(bubble._queue) == 1
+
+    def test_shows_queued_message_after_hide(self, qtbot):
+        bubble = self._make_bubble(qtbot)
+        bubble.show_message("First")
+        bubble.show_message("Second")
+        bubble.hide_bubble()
+        assert bubble.isVisible()
+        assert bubble._text == "Second"
+
+    def test_multiple_queued_messages(self, qtbot):
+        bubble = self._make_bubble(qtbot)
+        bubble.show_message("A")
+        bubble.show_message("B")
+        bubble.show_message("C")
+        assert bubble._text == "A"
+        assert len(bubble._queue) == 2
+
+        bubble.hide_bubble()
+        assert bubble._text == "B"
+
+        bubble.hide_bubble()
+        assert bubble._text == "C"
+
+        bubble.hide_bubble()
+        assert not bubble.isVisible()
+
+    def test_direct_show_when_hidden(self, qtbot):
+        bubble = self._make_bubble(qtbot)
+        bubble.show_message("Immediate")
+        assert bubble._text == "Immediate"
+        assert bubble.isVisible()
+        assert len(bubble._queue) == 0
