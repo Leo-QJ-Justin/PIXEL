@@ -1,5 +1,6 @@
 import asyncio
 
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QMenu, QSystemTrayIcon
 
@@ -10,6 +11,8 @@ from src.core.integration_manager import IntegrationManager
 
 class TrayIcon(QSystemTrayIcon):
     """System tray icon for desktop pet."""
+
+    settings_changed = pyqtSignal(dict)
 
     def __init__(
         self,
@@ -50,6 +53,11 @@ class TrayIcon(QSystemTrayIcon):
         reset_action = QAction("Reset Position", menu)
         reset_action.triggered.connect(self._pet_widget._move_to_default_position)
         menu.addAction(reset_action)
+
+        # Settings
+        settings_action = QAction("Settings...", menu)
+        settings_action.triggered.connect(self._open_settings)
+        menu.addAction(settings_action)
 
         menu.addSeparator()
 
@@ -222,6 +230,14 @@ class TrayIcon(QSystemTrayIcon):
             reset_action = QAction(f"Resets: {reset_str}", self._api_usage_menu)
             reset_action.setEnabled(False)
             self._api_usage_menu.addAction(reset_action)
+
+    def _open_settings(self):
+        """Open the settings dialog."""
+        from src.ui.settings_dialog import SettingsDialog
+
+        dialog = SettingsDialog()
+        dialog.settings_changed.connect(self.settings_changed)
+        dialog.exec()
 
     def _quit_app(self):
         """Quit the application."""

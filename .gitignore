@@ -12,6 +12,7 @@ google_calendar_token.json
 # Runtime data files
 api_usage.json
 event_cache.json
+settings.json
 
 # Python
 __pycache__/
