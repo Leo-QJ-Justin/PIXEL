@@ -91,15 +91,30 @@ def main():
         pet.route_skipped.connect(gcal.skip_route)
         gcal.request_route_confirmation.connect(pet._on_route_verification)
 
-    # 9. Start all enabled integrations
+    # 9. Propagate settings changes at runtime
+    def _on_settings_changed(new_settings: dict):
+        logger.info("Settings changed, reloading config")
+        # Re-apply always_on_top flag
+        from PyQt6.QtCore import Qt
+
+        general = new_settings.get("general", {})
+        if general.get("always_on_top", True):
+            pet.setWindowFlags(pet.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        else:
+            pet.setWindowFlags(pet.windowFlags() & ~Qt.WindowType.WindowStaysOnTopHint)
+        pet.show()
+
+    tray.settings_changed.connect(_on_settings_changed)
+
+    # 10. Start all enabled integrations
     loop.create_task(integration_manager.start_all_enabled())
     logger.info("Integration startup tasks created")
 
-    # 10. Show window and tray
+    # 11. Show window and tray
     pet.show()
     tray.show()
 
-    # 11. Run event loop
+    # 12. Run event loop
     with loop:
         loop.run_forever()
 
