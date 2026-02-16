@@ -1,6 +1,7 @@
 import logging
 import os
 import random
+from collections import deque
 from datetime import datetime
 
 from PyQt6.QtCore import (
@@ -33,10 +34,14 @@ class PetWidget(QWidget):
     route_rejected = pyqtSignal(str)  # (event_id)
     route_skipped = pyqtSignal(str)  # (event_id)
 
+    # Tap-to-refresh travel estimate
+    tap_refresh_requested = pyqtSignal()
+
     def __init__(self, behavior_registry: BehaviorRegistry):
         super().__init__()
         self._behavior_registry = behavior_registry
         self._drag_position = QPoint()
+        self._tap_origin = None  # for tap-vs-drag detection
         self._system_move_pending = False
         self._is_alerting = False
         self._is_wandering = False
@@ -46,8 +51,8 @@ class PetWidget(QWidget):
         self._last_time_period: str | None = None
         self._active_weather_behavior: str | None = None
 
-        # Route prompt state (smart origin detection)
-        self._pending_route_request: dict | None = None
+        # Route prompt queue (handles multiple events needing prompts)
+        self._route_prompt_queue: deque[dict] = deque()
 
         # Current sprite to display
         self._current_sprite = QPixmap()
@@ -433,8 +438,12 @@ class PetWidget(QWidget):
                 return
 
             # Handle pending route prompt on click
-            if self._pending_route_request is not None:
+            if self._route_prompt_queue:
                 self._show_route_dialog()
+                return
+
+            # Record press position for tap-vs-drag detection
+            self._tap_origin = event.globalPosition().toPoint()
 
     def mouseMoveEvent(self, event):
         """Handle dragging the widget."""
@@ -450,9 +459,15 @@ class PetWidget(QWidget):
             event.accept()
 
     def mouseReleaseEvent(self, event):
-        """Reset drag state on release."""
+        """Reset drag state on release; emit tap-to-refresh if not dragged."""
         if event.button() == Qt.MouseButton.LeftButton:
             self._system_move_pending = False
+            # Tap-to-refresh: only if the pet wasn't dragged (< 5px movement)
+            if self._tap_origin is not None:
+                delta = event.globalPosition().toPoint() - self._tap_origin
+                if abs(delta.x()) < 5 and abs(delta.y()) < 5:
+                    self.tap_refresh_requested.emit()
+                self._tap_origin = None
         super().mouseReleaseEvent(event)
 
     def contextMenuEvent(self, event):
@@ -513,12 +528,17 @@ class PetWidget(QWidget):
     @pyqtSlot(dict)
     def _on_notification(self, context: dict) -> None:
         """Handle bubble-only notification (no behavior change)."""
+        if context.get("action") == "request_route":
+            self._route_prompt_queue.append(context)
+            # Persistent bubble — stays until user clicks pet
+            bubble_text = context.get("bubble_text", "")
+            if bubble_text:
+                self.show_bubble(bubble_text, duration_ms=0)
+            return
+
         bubble_text = context.get("bubble_text", "")
         if bubble_text:
             self.show_bubble(bubble_text, duration_ms=5000)
-
-        if context.get("action") == "request_route":
-            self._pending_route_request = context
 
     # ── Route Confirmation Flow (smart origin detection) ─────────────
 
@@ -538,15 +558,18 @@ class PetWidget(QWidget):
 
     def _show_route_dialog(self) -> None:
         """Show MapleStory-styled dialog for route input."""
-        if self._pending_route_request is None:
+        if not self._route_prompt_queue:
             return
 
-        event_id = self._pending_route_request.get("event_id", "")
-        summary = self._pending_route_request.get("summary", "event")
-        origin = self._pending_route_request.get("origin", "")
-        destination = self._pending_route_request.get("destination", "")
-        travel_modes = self._pending_route_request.get("travel_modes", ["DRIVE"])
-        self._pending_route_request = None
+        # Dismiss the persistent route prompt bubble
+        self._speech_bubble.hide_bubble()
+
+        request = self._route_prompt_queue.popleft()
+        event_id = request.get("event_id", "")
+        summary = request.get("summary", "event")
+        origin = request.get("origin", "")
+        destination = request.get("destination", "")
+        travel_modes = request.get("travel_modes", ["DRIVE"])
 
         from PyQt6.QtWidgets import QComboBox, QLineEdit
 
@@ -579,6 +602,9 @@ class PetWidget(QWidget):
             selected_mode = mode_combo.currentData()
             if from_text and to_text:
                 self.route_submitted.emit(event_id, from_text, to_text, selected_mode)
+                # Update origin in next queued prompt to this destination
+                if self._route_prompt_queue:
+                    self._route_prompt_queue[0]["origin"] = to_text
             else:
                 self.show_bubble("Both From and To are required.")
                 self.route_skipped.emit(event_id)

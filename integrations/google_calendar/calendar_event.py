@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass
@@ -95,13 +95,14 @@ class CalendarEvent:
     # Travel state
     travel_info: TravelInfo | None = None
 
+    # Two-fetch tracking
+    initial_fetch_done: bool = False
+    recheck_done: bool = False
+
     # Alert state
     prepare_alerted: bool = False
     leave_alerted: bool = False
     flat_alerted: bool = False
-
-    # Config (injected at creation, not persisted)
-    _travel_cache_ttl_minutes: int = field(default=30, repr=False)
 
     @property
     def effective_location(self) -> str | None:
@@ -130,36 +131,18 @@ class CalendarEvent:
 
     @property
     def needs_travel_fetch(self) -> bool:
-        """Whether travel info needs to be fetched or refreshed."""
+        """Whether an automatic travel fetch is needed (initial fetch only).
+
+        Rechecks are scheduled via QTimer, not driven by this property.
+        """
         if not self.effective_location or self.is_all_day or self.is_virtual:
             return False
         if not self.route_confirmed:
             return False
-        if self.travel_info is None:
-            return True
-        return self._is_travel_stale()
-
-    def _is_travel_stale(self) -> bool:
-        """Check if cached travel info is stale (adaptive TTL, edge case #9)."""
-        if self.travel_info is None:
-            return True
-
-        now = datetime.now(timezone.utc)
-        age_minutes = (now - self.travel_info.fetched_at).total_seconds() / 60
-
-        # Standard TTL check
-        if age_minutes >= self._travel_cache_ttl_minutes:
-            return True
-
-        # Adaptive: force re-fetch when event is within 1.5x travel time
-        minutes_until = (self.start_time - now).total_seconds() / 60
-        if minutes_until <= self.travel_info.best_duration_minutes * 1.5:
-            return True
-
-        return False
+        return not self.initial_fetch_done
 
     def reset_alerts(self) -> None:
-        """Reset alert and route state when event start_time changes (edge case #11)."""
+        """Reset alert, route, and fetch state when event start_time changes."""
         self.prepare_alerted = False
         self.leave_alerted = False
         self.flat_alerted = False
@@ -168,6 +151,8 @@ class CalendarEvent:
         self.route_prompted = False
         self.confirmed_origin = None
         self.confirmed_destination = None
+        self.initial_fetch_done = False
+        self.recheck_done = False
 
     def to_persist_dict(self) -> dict:
         """Serialize user-interaction state for persistence (edge case #6).
@@ -188,6 +173,8 @@ class CalendarEvent:
             "confirmed_origin": self.confirmed_origin,
             "confirmed_destination": self.confirmed_destination,
             "preferred_travel_mode": self.preferred_travel_mode,
+            "initial_fetch_done": self.initial_fetch_done,
+            "recheck_done": self.recheck_done,
         }
 
     @staticmethod
@@ -205,3 +192,10 @@ class CalendarEvent:
         event.confirmed_origin = persisted.get("confirmed_origin")
         event.confirmed_destination = persisted.get("confirmed_destination")
         event.preferred_travel_mode = persisted.get("preferred_travel_mode")
+        event.initial_fetch_done = persisted.get("initial_fetch_done", False)
+        event.recheck_done = persisted.get("recheck_done", False)
+
+        # Travel info is transient; if initial fetch was done but travel_info
+        # is None (app restart), re-trigger the initial fetch
+        if event.initial_fetch_done and event.travel_info is None:
+            event.initial_fetch_done = False

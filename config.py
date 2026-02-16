@@ -105,6 +105,9 @@ DEFAULT_SETTINGS = {
             "travel_cache_ttl_minutes": 30,
             "fetch_window_minutes": 120,
             "api_quota_limit": 9500,
+            "recheck_offset_minutes": 20,
+            "leave_buffer_minutes": 5,
+            "tap_refresh_debounce_ms": 5000,
         },
     },
 }

@@ -43,12 +43,21 @@ class GoogleCalendarIntegration(BaseIntegration):
         # Single source of truth for all event state
         self._events: dict[str, CalendarEvent] = {}
 
-        # Smart origin: remember last confirmed origin across events
-        self._last_confirmed_origin: str | None = None
+        # Smart origin: use last destination as next event's suggested origin
+        self._last_confirmed_destination: str | None = None
 
         # API quota tracker
         quota_limit = self._settings.get("api_quota_limit", 9500)
         self._usage_tracker = UsageTracker(quota_limit=quota_limit)
+
+        # Two-fetch: per-event recheck timers
+        self._recheck_timers: dict[str, QTimer] = {}
+
+        # Tap-to-refresh debounce
+        self._last_tap_refresh_time: datetime | None = None
+
+        # Route flow sequencing: only one event prompted at a time
+        self._route_flow_active: bool = False
 
         # Load persisted user-interaction state (edge case #6)
         self._persisted_data: dict[str, dict] = {}
@@ -80,6 +89,9 @@ class GoogleCalendarIntegration(BaseIntegration):
             "travel_cache_ttl_minutes": 30,
             "fetch_window_minutes": 120,
             "api_quota_limit": 9500,
+            "recheck_offset_minutes": 20,
+            "leave_buffer_minutes": 5,
+            "tap_refresh_debounce_ms": 5000,
         }
 
     async def start(self) -> None:
@@ -121,6 +133,10 @@ class GoogleCalendarIntegration(BaseIntegration):
         if self._timer is not None:
             self._timer.stop()
             self._timer = None
+        # Cancel all recheck timers
+        for timer in self._recheck_timers.values():
+            timer.stop()
+        self._recheck_timers.clear()
         self._service = None
         self._save_event_cache()
         self._events.clear()
@@ -196,8 +212,13 @@ class GoogleCalendarIntegration(BaseIntegration):
                 # Route already confirmed → fetch travel and do two-phase alerts
                 if event.route_confirmed:
                     origin = event.origin_address or ""
-                    if event.needs_travel_fetch and origin:
+
+                    # Initial fetch (first of two automatic calls)
+                    if not event.initial_fetch_done and origin:
                         await self._fetch_travel_info(event, origin)
+                        if event.travel_info:
+                            event.initial_fetch_done = True
+                            self._schedule_recheck(event)
 
                     if event.travel_info:
                         travel = event.travel_info.best_duration_minutes
@@ -211,25 +232,12 @@ class GoogleCalendarIntegration(BaseIntegration):
                                 f"fetch window ({fetch_window} min) for '{event.summary}'"
                             )
 
-                        # Phase 1: Prepare alert — bubble only (edge case #1)
-                        if minutes_until <= travel + prep and not event.prepare_alerted:
-                            event.prepare_alerted = True
-                            leave_in = round(minutes_until - travel)
-                            self._notify_prepare(event, leave_in)
-
-                        # Phase 2: Leave alert — full alert behavior
-                        if minutes_until <= travel and not event.leave_alerted:
-                            event.leave_alerted = True
-                            self._trigger_leave_alert(
-                                event,
-                                round(travel),
-                                event.travel_info.best_mode,
-                            )
-
+                        self._check_alerts(event)
                         continue  # skip flat alert
 
-                # Not yet confirmed/declined → show route prompt bubble
-                elif event.needs_route_prompt:
+                # Not yet confirmed/declined → show route prompt bubble (one at a time)
+                elif event.needs_route_prompt and not self._route_flow_active:
+                    self._route_flow_active = True
                     event.route_prompted = True
                     self._notify_route_prompt(event)
                     continue
@@ -259,8 +267,6 @@ class GoogleCalendarIntegration(BaseIntegration):
         summary = raw.get("summary", "Untitled event")
         location = raw.get("location") or None
 
-        cache_ttl = self._settings.get("travel_cache_ttl_minutes", 30)
-
         if event_id in self._events:
             event = self._events[event_id]
             # Check for start_time change (edge case #11)
@@ -268,6 +274,7 @@ class GoogleCalendarIntegration(BaseIntegration):
                 logger.info(f"Event '{summary}' start time changed, resetting alerts")
                 event.reset_alerts()
                 event.start_time = event_time
+                self._cancel_recheck_timer(event_id)
             event.summary = summary
             event.calendar_location = location
             event.is_all_day = is_all_day
@@ -280,7 +287,6 @@ class GoogleCalendarIntegration(BaseIntegration):
             start_time=event_time,
             is_all_day=is_all_day,
             calendar_location=location,
-            _travel_cache_ttl_minutes=cache_ttl,
         )
 
         # Restore persisted user data if available (edge case #6)
@@ -368,6 +374,31 @@ class GoogleCalendarIntegration(BaseIntegration):
 
     # ── Alert Methods ─────────────────────────────────────────────────
 
+    def _check_alerts(self, event: CalendarEvent) -> None:
+        """Check and fire Phase 1/Phase 2 alerts if thresholds are met."""
+        if not event.travel_info:
+            return
+
+        now = datetime.now(timezone.utc)
+        if event.start_time <= now:
+            return
+
+        minutes_until = (event.start_time - now).total_seconds() / 60
+        travel = event.travel_info.best_duration_minutes
+        prep = self._settings.get("preparation_minutes", 15)
+        leave_buffer = self._settings.get("leave_buffer_minutes", 5)
+
+        # Phase 1: Prepare alert — bubble only (skip if already past departure)
+        if minutes_until > travel and minutes_until <= travel + prep and not event.prepare_alerted:
+            event.prepare_alerted = True
+            leave_in = round(minutes_until - travel)
+            self._notify_prepare(event, leave_in)
+
+        # Phase 2: Leave alert — full alert behavior
+        if minutes_until <= travel + leave_buffer and not event.leave_alerted:
+            event.leave_alerted = True
+            self._trigger_leave_alert(event, round(travel), event.travel_info.best_mode)
+
     def _notify_prepare(self, event: CalendarEvent, leave_in: int) -> None:
         """Phase 1: bubble-only notification (no behavior change, edge case #1)."""
         bubble_text = f"Get ready! {event.summary} — leave in {leave_in} min"
@@ -424,13 +455,28 @@ class GoogleCalendarIntegration(BaseIntegration):
                 "action": "request_route",
                 "event_id": event.event_id,
                 "summary": event.summary,
-                "origin": self._last_confirmed_origin or "",
+                "origin": self._last_confirmed_destination or "",
                 "destination": event.effective_location or "",
                 "travel_modes": self._settings.get("travel_modes", ["DRIVE", "TRANSIT"]),
                 "bubble_text": bubble_text,
             }
         )
         logger.info(f"Route prompt: {event.summary}")
+
+    def _prompt_next_event(self) -> None:
+        """Find and prompt the earliest event needing a route, if any."""
+        candidates = [
+            e
+            for e in self._events.values()
+            if e.needs_route_prompt and not e.is_virtual and not e.is_all_day
+        ]
+        if candidates:
+            event = min(candidates, key=lambda e: e.start_time)
+            self._route_flow_active = True
+            event.route_prompted = True
+            self._notify_route_prompt(event)
+        else:
+            self._route_flow_active = False
 
     # ── Route Confirmation Flow (smart origin detection) ─────────────
 
@@ -463,8 +509,8 @@ class GoogleCalendarIntegration(BaseIntegration):
                     "bubble_text": "Couldn't find that origin address. Try again?",
                 }
             )
-            # Reset so user can retry
-            event.route_prompted = False
+            # Re-prompt same event so user can retry immediately
+            self._notify_route_prompt(event)
             return
 
         dest_geo = await geocode_address(destination, self._usage_tracker)
@@ -479,7 +525,8 @@ class GoogleCalendarIntegration(BaseIntegration):
                     "bubble_text": "Couldn't find that destination address. Try again?",
                 }
             )
-            event.route_prompted = False
+            # Re-prompt same event so user can retry immediately
+            self._notify_route_prompt(event)
             return
 
         # Store geocoded addresses for verification
@@ -505,7 +552,7 @@ class GoogleCalendarIntegration(BaseIntegration):
             return
 
         event.route_confirmed = True
-        self._last_confirmed_origin = event.origin_address
+        self._last_confirmed_destination = event.confirmed_destination
         self._save_event_cache()
         logger.info(
             f"Route confirmed for '{event.summary}': "
@@ -522,21 +569,40 @@ class GoogleCalendarIntegration(BaseIntegration):
                 logger.warning("No event loop for immediate travel fetch")
 
     async def _fetch_and_notify_travel(self, event: CalendarEvent, origin: str) -> None:
-        """Fetch travel info and show a bubble with the estimated time."""
+        """Fetch travel info (initial fetch) and show a bubble with the estimated time."""
         await self._fetch_travel_info(event, origin)
         if event.travel_info:
-            minutes = round(event.travel_info.best_duration_minutes)
-            mode = event.travel_info.best_mode.lower()
-            bubble_text = f"Route set! {event.summary} — {minutes} min by {mode}"
-            self.notify(
-                {
-                    "source": "google_calendar",
-                    "action": "travel_estimate",
-                    "event_id": event.event_id,
-                    "bubble_text": bubble_text,
-                }
-            )
-            logger.info(f"Travel estimate: {bubble_text}")
+            event.initial_fetch_done = True
+            self._schedule_recheck(event)
+
+            # Check if leave alert should fire immediately
+            now = datetime.now(timezone.utc)
+            minutes_until = (event.start_time - now).total_seconds() / 60
+            travel = event.travel_info.best_duration_minutes
+            leave_buffer = self._settings.get("leave_buffer_minutes", 5)
+
+            if minutes_until <= travel + leave_buffer:
+                # Already past departure — skip "Route set!" and fire alert directly
+                self._check_alerts(event)
+            else:
+                # Show "Route set!" bubble; leave alert will fire on future poll
+                minutes = round(travel)
+                mode = event.travel_info.best_mode.lower()
+                bubble_text = f"Route set! {event.summary} — {minutes} min by {mode}"
+                self.notify(
+                    {
+                        "source": "google_calendar",
+                        "action": "travel_estimate",
+                        "event_id": event.event_id,
+                        "bubble_text": bubble_text,
+                    }
+                )
+                logger.info(f"Travel estimate: {bubble_text}")
+                # May fire prepare alert (bubble only, no behavior conflict)
+                self._check_alerts(event)
+
+            self._save_event_cache()
+        self._prompt_next_event()
 
     def reject_route(self, event_id: str) -> None:
         """User clicked 'No, edit' on route verification — allow re-prompt."""
@@ -544,6 +610,7 @@ class GoogleCalendarIntegration(BaseIntegration):
         if not event:
             return
         event.route_prompted = False
+        self._route_flow_active = False
         logger.info(f"Route rejected for '{event.summary}', allowing re-prompt")
 
     def skip_route(self, event_id: str) -> None:
@@ -553,6 +620,182 @@ class GoogleCalendarIntegration(BaseIntegration):
             return
         event.route_declined = True
         logger.info(f"Route skipped for '{event.summary}', will use flat alert")
+        self._prompt_next_event()
+
+    # ── Tap-to-Refresh ─────────────────────────────────────────────
+
+    def tap_refresh(self) -> None:
+        """Fetch a fresh travel estimate for the most imminent departing event."""
+        debounce_ms = self._settings.get("tap_refresh_debounce_ms", 5000)
+        now = datetime.now(timezone.utc)
+        if self._last_tap_refresh_time is not None:
+            elapsed_ms = (now - self._last_tap_refresh_time).total_seconds() * 1000
+            if elapsed_ms < debounce_ms:
+                logger.debug("Tap-to-refresh debounced")
+                return
+
+        self._last_tap_refresh_time = now
+
+        target = self._find_most_imminent_event()
+        if target is None:
+            logger.debug("No eligible event for tap-to-refresh")
+            return
+
+        try:
+            loop = asyncio.get_event_loop()
+            loop.create_task(self._execute_tap_refresh(target))
+        except RuntimeError:
+            logger.warning("No event loop for tap-to-refresh")
+
+    def _find_most_imminent_event(self) -> CalendarEvent | None:
+        """Find the event with the nearest departure time that hasn't passed."""
+        now = datetime.now(timezone.utc)
+        candidates: list[tuple[datetime, CalendarEvent]] = []
+
+        for event in self._events.values():
+            if not event.route_confirmed or not event.travel_info:
+                continue
+            if event.is_virtual or event.is_all_day:
+                continue
+
+            # Departure time = event_start - travel_time
+            travel = event.travel_info.best_duration_minutes
+            departure = event.start_time - timedelta(minutes=travel)
+
+            if departure <= now:
+                continue  # Already past departure
+
+            candidates.append((departure, event))
+
+        if not candidates:
+            return None
+
+        candidates.sort(key=lambda x: x[0])
+        return candidates[0][1]
+
+    async def _execute_tap_refresh(self, event: CalendarEvent) -> None:
+        """Execute a tap-initiated travel info refresh."""
+        origin = event.origin_address or ""
+        if not origin:
+            return
+
+        logger.info(f"Tap-to-refresh for '{event.summary}'")
+        await self._fetch_travel_info(event, origin)
+
+        if event.travel_info:
+            minutes = round(event.travel_info.best_duration_minutes)
+            mode = event.travel_info.best_mode.lower()
+            self.notify(
+                {
+                    "source": "google_calendar",
+                    "action": "tap_refresh",
+                    "event_id": event.event_id,
+                    "bubble_text": f"{event.summary} — {minutes} min by {mode}",
+                }
+            )
+
+    # ── Two-Fetch Recheck Scheduling ────────────────────────────────
+
+    def _schedule_recheck(self, event: CalendarEvent) -> None:
+        """Schedule the recheck fetch at a fixed offset before estimated departure."""
+        if event.recheck_done or not event.travel_info:
+            return
+
+        # Cancel any existing timer for this event
+        self._cancel_recheck_timer(event.event_id)
+
+        travel_minutes = event.travel_info.best_duration_minutes
+        recheck_offset = self._settings.get("recheck_offset_minutes", 20)
+        prep = self._settings.get("preparation_minutes", 15)
+
+        if recheck_offset <= prep:
+            logger.warning(
+                f"recheck_offset_minutes ({recheck_offset}) should be > "
+                f"preparation_minutes ({prep}) so recheck fires before Phase 1"
+            )
+
+        # Recheck time = event_start - travel_time - recheck_offset
+        now = datetime.now(timezone.utc)
+        recheck_time = event.start_time - timedelta(minutes=travel_minutes + recheck_offset)
+
+        if recheck_time <= now:
+            # Already past recheck time — skip since initial fetch is already fresh
+            logger.info(
+                f"Recheck time already passed for '{event.summary}', "
+                "skipping (initial fetch is current)"
+            )
+            event.recheck_done = True
+            return
+
+        delay_ms = int((recheck_time - now).total_seconds() * 1000)
+
+        timer = QTimer()
+        timer.setSingleShot(True)
+        timer.timeout.connect(lambda eid=event.event_id: self._on_recheck_timer(eid))
+        timer.start(delay_ms)
+        self._recheck_timers[event.event_id] = timer
+
+        logger.info(
+            f"Recheck scheduled for '{event.summary}' at {recheck_time.isoformat()} "
+            f"({delay_ms // 1000}s from now)"
+        )
+
+    def _on_recheck_timer(self, event_id: str) -> None:
+        """QTimer callback for scheduled recheck."""
+        try:
+            loop = asyncio.get_event_loop()
+            loop.create_task(self._execute_recheck(event_id))
+        except RuntimeError:
+            logger.warning("No event loop for recheck timer")
+
+    async def _execute_recheck(self, event_id: str) -> None:
+        """Execute the second automatic fetch (recheck)."""
+        event = self._events.get(event_id)
+        if not event or event.recheck_done:
+            return
+
+        origin = event.origin_address or ""
+        if not origin:
+            return
+
+        logger.info(f"Executing recheck for '{event.summary}'")
+        old_travel = event.travel_info.best_duration_minutes if event.travel_info else None
+
+        await self._fetch_travel_info(event, origin)
+        event.recheck_done = True
+
+        # Clean up timer reference
+        self._recheck_timers.pop(event_id, None)
+
+        # Notify user with updated estimate
+        if event.travel_info:
+            new_travel = event.travel_info.best_duration_minutes
+            changed = ""
+            if old_travel is not None:
+                diff = new_travel - old_travel
+                if abs(diff) >= 1:
+                    direction = "+" if diff > 0 else ""
+                    changed = f" ({direction}{round(diff)} min)"
+            self.notify(
+                {
+                    "source": "google_calendar",
+                    "action": "travel_update",
+                    "event_id": event.event_id,
+                    "bubble_text": (
+                        f"Recheck: {event.summary} — {round(new_travel)} min "
+                        f"by {event.travel_info.best_mode.lower()}{changed}"
+                    ),
+                }
+            )
+
+        self._save_event_cache()
+
+    def _cancel_recheck_timer(self, event_id: str) -> None:
+        """Cancel a pending recheck timer for an event."""
+        timer = self._recheck_timers.pop(event_id, None)
+        if timer is not None:
+            timer.stop()
+            logger.debug(f"Cancelled recheck timer for event {event_id}")
 
     # ── Event Cache Persistence (edge case #6) ────────────────────────
 
@@ -588,6 +831,7 @@ class GoogleCalendarIntegration(BaseIntegration):
         current_ids = {e.get("id", "") for e in current_raw_events}
         stale = set(self._events.keys()) - current_ids
         for event_id in stale:
+            self._cancel_recheck_timer(event_id)
             del self._events[event_id]
 
     # ── Helpers ───────────────────────────────────────────────────────

@@ -519,3 +519,270 @@ class TestTriggerLeaveAlert:
         assert ctx["travel_minutes"] == 25
         assert ctx["travel_mode"] == "DRIVE"
         assert "Time to go" in ctx["bubble_text"]
+
+
+@pytest.mark.unit
+class TestDefaultSettings:
+    """Tests for new default settings."""
+
+    def test_new_settings_present(self, tmp_path):
+        integration = _make_integration(tmp_path)
+        defaults = integration.get_default_settings()
+        assert defaults["recheck_offset_minutes"] == 20
+        assert defaults["leave_buffer_minutes"] == 5
+        assert defaults["tap_refresh_debounce_ms"] == 5000
+
+
+@pytest.mark.unit
+class TestTwoFetchModel:
+    """Tests for the two-fetch model (initial fetch + scheduled recheck)."""
+
+    @pytest.mark.asyncio
+    async def test_initial_fetch_sets_flag_and_schedules_recheck(self, tmp_path):
+        """Route-confirmed event triggers initial fetch and schedules recheck."""
+        from integrations.google_calendar.calendar_event import TravelEstimate, TravelInfo
+
+        integration = _make_integration(tmp_path, {"preparation_minutes": 15})
+        now = datetime.now(timezone.utc)
+        event_time = now + timedelta(minutes=90)
+        raw = _make_event("evt1", "Meeting", event_time, "Office")
+
+        # Upsert and manually confirm route
+        event = integration._upsert_event(raw)
+        event.route_confirmed = True
+        event.origin_address = "Home"
+
+        # Mock _fetch_travel_info to populate travel_info
+        async def mock_fetch(ev, origin):
+            ev.travel_info = TravelInfo(
+                location="Office",
+                estimates=[TravelEstimate(mode="DRIVE", duration_minutes=25)],
+                fetched_at=now,
+            )
+
+        with patch.object(integration, "_fetch_travel_info", side_effect=mock_fetch):
+            with patch.object(integration, "_has_routing_provider", return_value=True):
+                await integration._process_events([raw], now)
+
+        assert event.initial_fetch_done is True
+        # Recheck timer should be scheduled
+        assert event.event_id in integration._recheck_timers
+
+        # Clean up timer
+        integration._cancel_recheck_timer(event.event_id)
+
+    @pytest.mark.asyncio
+    async def test_no_refetch_after_initial_fetch_done(self, tmp_path):
+        """Once initial_fetch_done is True, no automatic re-fetch via poll."""
+        from integrations.google_calendar.calendar_event import TravelEstimate, TravelInfo
+
+        integration = _make_integration(tmp_path)
+        now = datetime.now(timezone.utc)
+        event_time = now + timedelta(minutes=90)
+        raw = _make_event("evt1", "Meeting", event_time, "Office")
+
+        event = integration._upsert_event(raw)
+        event.route_confirmed = True
+        event.origin_address = "Home"
+        event.initial_fetch_done = True
+        event.travel_info = TravelInfo(
+            location="Office",
+            estimates=[TravelEstimate(mode="DRIVE", duration_minutes=25)],
+            fetched_at=now,
+        )
+
+        fetch_called = False
+
+        async def mock_fetch(ev, origin):
+            nonlocal fetch_called
+            fetch_called = True
+
+        with patch.object(integration, "_fetch_travel_info", side_effect=mock_fetch):
+            with patch.object(integration, "_has_routing_provider", return_value=True):
+                await integration._process_events([raw], now)
+
+        assert fetch_called is False
+
+    @pytest.mark.asyncio
+    async def test_recheck_sets_done_flag(self, tmp_path):
+        """Executing recheck sets recheck_done=True."""
+        from integrations.google_calendar.calendar_event import TravelEstimate, TravelInfo
+
+        integration = _make_integration(tmp_path)
+        now = datetime.now(timezone.utc)
+
+        event = CalendarEvent(
+            event_id="evt1",
+            summary="Meeting",
+            start_time=now + timedelta(minutes=60),
+            is_all_day=False,
+            calendar_location="Office",
+        )
+        event.route_confirmed = True
+        event.origin_address = "Home"
+        event.initial_fetch_done = True
+        event.travel_info = TravelInfo(
+            location="Office",
+            estimates=[TravelEstimate(mode="DRIVE", duration_minutes=25)],
+            fetched_at=now,
+        )
+        integration._events["evt1"] = event
+
+        async def mock_fetch(ev, origin):
+            ev.travel_info = TravelInfo(
+                location="Office",
+                estimates=[TravelEstimate(mode="DRIVE", duration_minutes=28)],
+                fetched_at=now,
+            )
+
+        with patch.object(integration, "_fetch_travel_info", side_effect=mock_fetch):
+            with patch.object(integration, "_save_event_cache"):
+                await integration._execute_recheck("evt1")
+
+        assert event.recheck_done is True
+
+
+@pytest.mark.unit
+class TestTapRefresh:
+    """Tests for tap-to-refresh functionality."""
+
+    def test_finds_most_imminent_event(self, tmp_path):
+        """_find_most_imminent_event returns the event with nearest departure."""
+        from integrations.google_calendar.calendar_event import TravelEstimate, TravelInfo
+
+        integration = _make_integration(tmp_path)
+        now = datetime.now(timezone.utc)
+
+        # Event A: departs in 30 min (start in 60, travel 30)
+        event_a = CalendarEvent(
+            event_id="a",
+            summary="Event A",
+            start_time=now + timedelta(minutes=60),
+            is_all_day=False,
+            calendar_location="Place A",
+        )
+        event_a.route_confirmed = True
+        event_a.travel_info = TravelInfo(
+            location="Place A",
+            estimates=[TravelEstimate(mode="DRIVE", duration_minutes=30)],
+            fetched_at=now,
+        )
+
+        # Event B: departs in 50 min (start in 90, travel 40)
+        event_b = CalendarEvent(
+            event_id="b",
+            summary="Event B",
+            start_time=now + timedelta(minutes=90),
+            is_all_day=False,
+            calendar_location="Place B",
+        )
+        event_b.route_confirmed = True
+        event_b.travel_info = TravelInfo(
+            location="Place B",
+            estimates=[TravelEstimate(mode="DRIVE", duration_minutes=40)],
+            fetched_at=now,
+        )
+
+        integration._events = {"a": event_a, "b": event_b}
+
+        result = integration._find_most_imminent_event()
+        assert result is not None
+        assert result.event_id == "a"
+
+    def test_returns_none_when_no_eligible_events(self, tmp_path):
+        """Returns None when no events have confirmed routes."""
+        integration = _make_integration(tmp_path)
+        now = datetime.now(timezone.utc)
+
+        event = CalendarEvent(
+            event_id="evt1",
+            summary="Meeting",
+            start_time=now + timedelta(minutes=60),
+            is_all_day=False,
+        )
+        integration._events = {"evt1": event}
+
+        assert integration._find_most_imminent_event() is None
+
+    def test_debounce_prevents_rapid_calls(self, tmp_path):
+        """Tap-to-refresh is debounced."""
+        from integrations.google_calendar.calendar_event import TravelEstimate, TravelInfo
+
+        integration = _make_integration(tmp_path, {"tap_refresh_debounce_ms": 5000})
+        now = datetime.now(timezone.utc)
+
+        event = CalendarEvent(
+            event_id="evt1",
+            summary="Meeting",
+            start_time=now + timedelta(minutes=60),
+            is_all_day=False,
+            calendar_location="Office",
+        )
+        event.route_confirmed = True
+        event.origin_address = "Home"
+        event.travel_info = TravelInfo(
+            location="Office",
+            estimates=[TravelEstimate(mode="DRIVE", duration_minutes=25)],
+            fetched_at=now,
+        )
+        integration._events = {"evt1": event}
+
+        # First call sets debounce timestamp
+        integration._last_tap_refresh_time = now
+
+        # Immediate second call should be debounced
+        with patch.object(integration, "_find_most_imminent_event") as mock_find:
+            integration.tap_refresh()
+            mock_find.assert_not_called()
+
+
+@pytest.mark.unit
+class TestCleanupEventsTimers:
+    """Tests for timer cleanup during event removal."""
+
+    def test_cancels_recheck_timer_on_cleanup(self, tmp_path):
+        """Recheck timer is cancelled when event is removed."""
+        from PyQt6.QtCore import QTimer
+
+        integration = _make_integration(tmp_path)
+        now = datetime.now(timezone.utc)
+
+        integration._events["evt1"] = CalendarEvent(
+            event_id="evt1",
+            summary="Event",
+            start_time=now + timedelta(minutes=30),
+            is_all_day=False,
+        )
+        timer = QTimer()
+        integration._recheck_timers["evt1"] = timer
+
+        integration._cleanup_events([])
+
+        assert "evt1" not in integration._events
+        assert "evt1" not in integration._recheck_timers
+
+
+@pytest.mark.unit
+class TestSmarterOrigin:
+    """Tests for smarter origin suggestion (last destination as next origin)."""
+
+    def test_confirm_route_stores_destination(self, tmp_path):
+        """confirm_route stores the confirmed destination for next event."""
+        integration = _make_integration(tmp_path)
+        now = datetime.now(timezone.utc)
+
+        event = CalendarEvent(
+            event_id="evt1",
+            summary="Meeting",
+            start_time=now + timedelta(minutes=60),
+            is_all_day=False,
+            calendar_location="Office",
+        )
+        event.confirmed_destination = "123 Main St, Singapore"
+        event.origin_address = "Home"
+        integration._events["evt1"] = event
+
+        with patch.object(integration, "_save_event_cache"):
+            integration.confirm_route("evt1")
+
+        assert integration._last_confirmed_destination == "123 Main St, Singapore"
