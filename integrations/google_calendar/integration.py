@@ -465,10 +465,11 @@ class GoogleCalendarIntegration(BaseIntegration):
 
     def _prompt_next_event(self) -> None:
         """Find and prompt the earliest event needing a route, if any."""
+        now = datetime.now(timezone.utc)
         candidates = [
             e
             for e in self._events.values()
-            if e.needs_route_prompt and not e.is_virtual and not e.is_all_day
+            if e.needs_route_prompt and not e.is_virtual and not e.is_all_day and e.start_time > now
         ]
         if candidates:
             event = min(candidates, key=lambda e: e.start_time)
