@@ -107,7 +107,7 @@ Start-Process '.venv\Scripts\pythonw.exe' -ArgumentList 'main.py' -WindowStyle H
 ### Controls
 
 - **Left-click + drag**: Move the pet around the screen
-- **Left-click**: Dismiss alert / provide event location
+- **Left-click**: Dismiss alert / provide event route / tap-to-refresh travel estimate
 - **Right-click**: Open context menu (Reset Position, Quit)
 - **System tray**: Double-click to show/hide, right-click for menu
 - **Tray > Integrations**: Enable/disable integrations
@@ -118,9 +118,13 @@ Start-Process '.venv\Scripts\pythonw.exe' -ArgumentList 'main.py' -WindowStyle H
 The pet will randomly wander around your screen. It reacts to:
 - **Telegram messages** from monitored users (bounce + alert sound)
 - **Weather conditions** (umbrella sprite in rain, sunglasses in sun)
-- **Calendar events** with two-phase travel alerts:
+- **Calendar events** with smart travel alerts:
+  - *Route prompt* — click pet to set origin/destination for upcoming events (one at a time, in chronological order)
+  - *Two-fetch model* — initial fetch on route confirmation + scheduled recheck before departure
   - *Prepare alert* (speech bubble) when it's time to get ready
   - *Leave alert* (bounce + sound) when it's time to depart
+  - *Tap-to-refresh* — click pet anytime for a fresh travel estimate
+  - *Smart origin* — suggests previous event's destination as the next event's origin
   - Falls back to a flat 30-minute alert if no routing API is configured
 - **Time of day** (morning, afternoon, night greetings)
 
@@ -163,8 +167,10 @@ The pet will randomly wander around your screen. It reacts to:
       "alert_before_minutes": 30,
       "trigger_behavior": "alert",
       "calendar_id": "primary",
-      "origin_address": "",
       "preparation_minutes": 15,
+      "leave_buffer_minutes": 5,
+      "recheck_offset_minutes": 20,
+      "tap_refresh_debounce_ms": 5000,
       "travel_modes": ["DRIVE", "TRANSIT"],
       "fetch_window_minutes": 120,
       "api_quota_limit": 9500
@@ -194,8 +200,6 @@ The calendar integration uses a cascading provider system for travel-time calcul
 1. **Google Routes API** - used if `GOOGLE_MAPS_API_KEY` is set and quota available
 2. **OneMap Singapore** - used if `ONEMAP_EMAIL`/`ONEMAP_PASSWORD` are set (with Nominatim geocoding)
 3. **Flat alert** - 30-minute fixed alert if no routing credentials are configured
-
-Set `origin_address` in `settings.json` under `google_calendar` to enable travel-time alerts.
 
 The app's internal tracker (configurable via `api_quota_limit`, default 9,500) provides an additional safety net per API.
 
@@ -236,7 +240,9 @@ The app's internal tracker (configurable via `api_quota_limit`, default 9,500) p
     │   └── integration_manager.py    # Integration lifecycle
     └── ui/
         ├── pet_window.py             # Desktop pet widget
+        ├── dialog_box.py             # MapleStory-styled dialog boxes
         ├── speech_bubble.py          # Speech bubble overlay
+        ├── settings_dialog.py        # Settings GUI
         └── tray_icon.py              # System tray icon
 ```
 
