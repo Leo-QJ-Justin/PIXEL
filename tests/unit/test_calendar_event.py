@@ -117,6 +117,15 @@ class TestNeedsTravelFetch:
         )
         assert event.needs_travel_fetch is False
 
+    def test_returns_false_when_initial_fetch_done(self):
+        event = _make_event(
+            calendar_location="123 Main St, Singapore",
+            is_all_day=False,
+        )
+        event.route_confirmed = True
+        event.initial_fetch_done = True
+        assert event.needs_travel_fetch is False
+
 
 @pytest.mark.unit
 class TestResetAlerts:
@@ -127,12 +136,16 @@ class TestResetAlerts:
         event.prepare_alerted = True
         event.leave_alerted = True
         event.flat_alerted = True
+        event.initial_fetch_done = True
+        event.recheck_done = True
 
         event.reset_alerts()
 
         assert event.prepare_alerted is False
         assert event.leave_alerted is False
         assert event.flat_alerted is False
+        assert event.initial_fetch_done is False
+        assert event.recheck_done is False
 
     def test_reset_on_already_clear_flags(self):
         event = _make_event()
@@ -197,6 +210,23 @@ class TestPersistAndRestore:
         persisted = event.to_persist_dict()
         assert persisted["event_id"] == "my-event-123"
 
+    def test_round_trip_two_fetch_fields(self):
+        from integrations.google_calendar.calendar_event import CalendarEvent
+
+        event = _make_event()
+        event.initial_fetch_done = True
+        event.recheck_done = True
+        event.route_confirmed = True
+
+        persisted = event.to_persist_dict()
+
+        new_event = _make_event(event_id=event.event_id)
+        CalendarEvent.restore_user_data(new_event, persisted)
+
+        # travel_info is None on restore, so initial_fetch_done resets
+        assert new_event.initial_fetch_done is False
+        assert new_event.recheck_done is True
+
     def test_persist_dict_contains_all_expected_keys(self):
         event = _make_event()
         persisted = event.to_persist_dict()
@@ -212,5 +242,7 @@ class TestPersistAndRestore:
             "confirmed_origin",
             "confirmed_destination",
             "preferred_travel_mode",
+            "initial_fetch_done",
+            "recheck_done",
         }
         assert set(persisted.keys()) == expected_keys

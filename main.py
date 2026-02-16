@@ -90,6 +90,7 @@ def main():
         pet.route_rejected.connect(gcal.reject_route)
         pet.route_skipped.connect(gcal.skip_route)
         gcal.request_route_confirmation.connect(pet._on_route_verification)
+        pet.tap_refresh_requested.connect(gcal.tap_refresh)
 
     # 9. Propagate settings changes at runtime
     def _on_settings_changed(new_settings: dict):
