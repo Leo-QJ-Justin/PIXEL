@@ -90,7 +90,17 @@ DEFAULT_SETTINGS = {
             },
         },
     },
-    "integrations": {},
+    "integrations": {
+        "pomodoro": {
+            "enabled": True,
+            "work_duration_minutes": 25,
+            "short_break_minutes": 5,
+            "long_break_minutes": 15,
+            "auto_start": False,
+            "sound_enabled": True,
+            "sessions_per_cycle": 4,
+        },
+    },
 }
 
 

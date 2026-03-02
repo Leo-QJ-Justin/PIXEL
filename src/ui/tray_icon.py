@@ -19,11 +19,13 @@ class TrayIcon(QSystemTrayIcon):
         pet_widget,
         integration_manager: IntegrationManager,
         behavior_registry: BehaviorRegistry | None = None,
+        pomodoro_widget=None,
     ):
         super().__init__()
         self._pet_widget = pet_widget
         self._integration_manager = integration_manager
         self._behavior_registry = behavior_registry
+        self._pomodoro_widget = pomodoro_widget
         self._integration_actions: dict[str, QAction] = {}
 
         self._setup_icon()
@@ -59,6 +61,11 @@ class TrayIcon(QSystemTrayIcon):
 
         menu.addSeparator()
 
+        if self._pomodoro_widget:
+            pomodoro_menu = QMenu("Pomodoro", menu)
+            self._build_pomodoro_menu(pomodoro_menu)
+            menu.addMenu(pomodoro_menu)
+
         integrations_menu = QMenu("Integrations", menu)
         self._build_integrations_menu(integrations_menu)
         menu.addMenu(integrations_menu)
@@ -78,6 +85,32 @@ class TrayIcon(QSystemTrayIcon):
         self.setContextMenu(menu)
         self.activated.connect(self._on_activated)
 
+    def _build_pomodoro_menu(self, menu: QMenu):
+        show_action = QAction("Show Timer", menu)
+        show_action.triggered.connect(self._show_pomodoro)
+        menu.addAction(show_action)
+
+        start_action = QAction("Start Session", menu)
+        start_action.triggered.connect(self._pomodoro_start)
+        menu.addAction(start_action)
+
+        skip_action = QAction("Skip", menu)
+        skip_action.triggered.connect(self._pomodoro_skip)
+        menu.addAction(skip_action)
+
+    def _show_pomodoro(self):
+        if self._pomodoro_widget:
+            self._pomodoro_widget.show()
+            self._pomodoro_widget.raise_()
+
+    def _pomodoro_start(self):
+        if self._pomodoro_widget:
+            self._pomodoro_widget._integration.start_session()
+
+    def _pomodoro_skip(self):
+        if self._pomodoro_widget:
+            self._pomodoro_widget._integration.skip()
+
     def _build_integrations_menu(self, menu: QMenu):
         integrations = self._integration_manager.list_integrations()
 
@@ -88,6 +121,9 @@ class TrayIcon(QSystemTrayIcon):
             return
 
         for name in integrations:
+            # Skip pomodoro — it has its own dedicated submenu
+            if name == "pomodoro":
+                continue
             integration = self._integration_manager.get_integration(name)
             if integration:
                 action = QAction(integration.display_name, menu)

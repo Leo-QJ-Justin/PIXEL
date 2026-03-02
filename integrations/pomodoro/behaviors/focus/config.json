@@ -1,0 +1,6 @@
+{
+  "priority": 6,
+  "loop": true,
+  "interruptible": false,
+  "description": "Mofu holds up a clock during focus sessions"
+}
