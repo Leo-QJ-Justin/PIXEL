@@ -68,7 +68,17 @@ def main():
         integration_manager.load(name)
 
     pet = PetWidget(behavior_registry)
-    tray = TrayIcon(pet, integration_manager, behavior_registry)
+
+    # Create Pomodoro widget if integration is loaded
+    pomodoro_widget = None
+    pomodoro = integration_manager.get_integration("pomodoro")
+    if pomodoro:
+        from src.ui.pomodoro_widget import PomodoroWidget
+
+        pomodoro_widget = PomodoroWidget(pomodoro)
+        logger.info("Pomodoro widget created")
+
+    tray = TrayIcon(pet, integration_manager, behavior_registry, pomodoro_widget=pomodoro_widget)
 
     # Let integrations wire their own UI via setup_ui hook
     integration_manager.setup_all_ui(pet)

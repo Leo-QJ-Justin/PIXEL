@@ -363,7 +363,7 @@ class SettingsDialog(QDialog):
         sidebar.setFixedWidth(150)
         sidebar.setStyleSheet(_SIDEBAR_STYLE.format(font=self._font_family))
 
-        for tab_name in ["General", "Behaviors", "Time / Schedule"]:
+        for tab_name in ["General", "Behaviors", "Time / Schedule", "Pomodoro"]:
             item = QListWidgetItem(tab_name)
             item.setSizeHint(item.sizeHint())
             sidebar.addItem(item)
@@ -378,6 +378,7 @@ class SettingsDialog(QDialog):
             self._build_general_tab,
             self._build_behaviors_tab,
             self._build_time_schedule_tab,
+            self._build_pomodoro_tab,
         ]
         for builder in tabs:
             page = builder()
@@ -815,6 +816,90 @@ class SettingsDialog(QDialog):
                 )
             )
             self._make_form_row(period.capitalize(), edit, sec_layout)
+
+        layout.addWidget(section)
+
+        layout.addStretch()
+        return page
+
+    # ------------------------------------------------------------------
+    # Tab: Pomodoro
+    # ------------------------------------------------------------------
+
+    def _build_pomodoro_tab(self) -> QWidget:
+        page, layout = self._make_tab_page()
+
+        # --- Durations section ---
+        section, sec_layout = self._make_section("Durations")
+
+        for key, label, default, lo, hi in [
+            ("work_duration_minutes", "Focus (min)", 25, 1, 120),
+            ("short_break_minutes", "Short Break (min)", 5, 1, 30),
+            ("long_break_minutes", "Long Break (min)", 15, 1, 60),
+        ]:
+            val = self._get_nested(["integrations", "pomodoro", key], default)
+            slider_row = QHBoxLayout()
+            slider_row.setSpacing(8)
+
+            lbl = QLabel(label)
+            lbl.setFixedWidth(120)
+            lbl.setStyleSheet(
+                f"color: #555555; font-size: 10pt;"
+                f"font-family: '{self._font_family}'; background: transparent;"
+                f"border: none;"
+            )
+            slider_row.addWidget(lbl)
+
+            slider = QSlider(Qt.Orientation.Horizontal)
+            slider.setRange(lo, hi)
+            slider.setValue(val)
+            slider_row.addWidget(slider, 1)
+
+            value_label = QLabel(f"{val}")
+            value_label.setFixedWidth(30)
+            value_label.setStyleSheet(
+                "color: #333333; font-size: 10pt; background: transparent;" "border: none;"
+            )
+            slider_row.addWidget(value_label)
+
+            def _on_slider(v, vl=value_label, k=key):
+                vl.setText(f"{v}")
+                self._set_nested(["integrations", "pomodoro", k], v)
+
+            slider.valueChanged.connect(_on_slider)
+            sec_layout.addLayout(slider_row)
+
+        layout.addWidget(section)
+
+        # --- Cycle section ---
+        section, sec_layout = self._make_section("Cycle")
+
+        cycle_spin = QSpinBox()
+        cycle_spin.setRange(1, 12)
+        cycle_spin.setValue(self._get_nested(["integrations", "pomodoro", "sessions_per_cycle"], 4))
+        cycle_spin.valueChanged.connect(
+            lambda v: self._set_nested(["integrations", "pomodoro", "sessions_per_cycle"], v)
+        )
+        self._make_form_row("Sessions / Cycle", cycle_spin, sec_layout)
+
+        layout.addWidget(section)
+
+        # --- Options section ---
+        section, sec_layout = self._make_section("Options")
+
+        auto_cb = QCheckBox("Auto-start next session after break")
+        auto_cb.setChecked(self._get_nested(["integrations", "pomodoro", "auto_start"], False))
+        auto_cb.toggled.connect(
+            lambda v: self._set_nested(["integrations", "pomodoro", "auto_start"], v)
+        )
+        sec_layout.addWidget(auto_cb)
+
+        sound_cb = QCheckBox("Sound notifications")
+        sound_cb.setChecked(self._get_nested(["integrations", "pomodoro", "sound_enabled"], True))
+        sound_cb.toggled.connect(
+            lambda v: self._set_nested(["integrations", "pomodoro", "sound_enabled"], v)
+        )
+        sec_layout.addWidget(sound_cb)
 
         layout.addWidget(section)
 
