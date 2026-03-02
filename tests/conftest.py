@@ -113,10 +113,10 @@ def mock_behaviors_dir(tmp_path):
 
     # Create idle behavior
     idle_dir = behaviors_dir / "idle"
-    idle_sprites = idle_dir / "sprites"
-    idle_sprites.mkdir(parents=True)
-    (idle_sprites / "idle_1.png").write_bytes(MINIMAL_PNG)
-    (idle_sprites / "idle_2.png").write_bytes(MINIMAL_PNG)
+    idle_media = idle_dir / "media"
+    idle_media.mkdir(parents=True)
+    (idle_media / "idle_1.png").write_bytes(MINIMAL_PNG)
+    (idle_media / "idle_2.png").write_bytes(MINIMAL_PNG)
     (idle_dir / "config.json").write_text(
         json.dumps(
             {
@@ -130,10 +130,10 @@ def mock_behaviors_dir(tmp_path):
 
     # Create alert behavior
     alert_dir = behaviors_dir / "alert"
-    alert_sprites = alert_dir / "sprites"
-    alert_sprites.mkdir(parents=True)
-    (alert_sprites / "alert_1.png").write_bytes(MINIMAL_PNG)
-    (alert_sprites / "alert_2.png").write_bytes(MINIMAL_PNG)
+    alert_media = alert_dir / "media"
+    alert_media.mkdir(parents=True)
+    (alert_media / "alert_1.png").write_bytes(MINIMAL_PNG)
+    (alert_media / "alert_2.png").write_bytes(MINIMAL_PNG)
     (alert_dir / "config.json").write_text(
         json.dumps(
             {
@@ -147,10 +147,10 @@ def mock_behaviors_dir(tmp_path):
 
     # Create wander behavior
     wander_dir = behaviors_dir / "wander"
-    wander_sprites = wander_dir / "sprites"
-    wander_sprites.mkdir(parents=True)
+    wander_media = wander_dir / "media"
+    wander_media.mkdir(parents=True)
     for i in range(1, 5):
-        (wander_sprites / f"wander_{i}.png").write_bytes(MINIMAL_PNG)
+        (wander_media / f"wander_{i}.png").write_bytes(MINIMAL_PNG)
     (wander_dir / "config.json").write_text(
         json.dumps(
             {
@@ -164,10 +164,10 @@ def mock_behaviors_dir(tmp_path):
 
     # Create wave behavior
     wave_dir = behaviors_dir / "wave"
-    wave_sprites = wave_dir / "sprites"
-    wave_sprites.mkdir(parents=True)
-    (wave_sprites / "wave_1.png").write_bytes(MINIMAL_PNG)
-    (wave_sprites / "wave_2.png").write_bytes(MINIMAL_PNG)
+    wave_media = wave_dir / "media"
+    wave_media.mkdir(parents=True)
+    (wave_media / "wave_1.png").write_bytes(MINIMAL_PNG)
+    (wave_media / "wave_2.png").write_bytes(MINIMAL_PNG)
     (wave_dir / "config.json").write_text(
         json.dumps(
             {
@@ -179,18 +179,52 @@ def mock_behaviors_dir(tmp_path):
         )
     )
 
-    # Create morning behavior (time-period, non-looping)
-    morning_dir = behaviors_dir / "morning"
-    morning_sprites = morning_dir / "sprites"
-    morning_sprites.mkdir(parents=True)
-    (morning_sprites / "morning_1.png").write_bytes(MINIMAL_PNG)
-    (morning_sprites / "morning_2.png").write_bytes(MINIMAL_PNG)
-    (morning_dir / "config.json").write_text(
+    # Create flinch behavior (click reaction)
+    flinch_dir = behaviors_dir / "flinch"
+    flinch_media = flinch_dir / "media"
+    flinch_media.mkdir(parents=True)
+    (flinch_media / "flinch_1.png").write_bytes(MINIMAL_PNG)
+    (flinch_media / "flinch_2.png").write_bytes(MINIMAL_PNG)
+    (flinch_dir / "config.json").write_text(
         json.dumps(
             {
-                "frame_duration_ms": 200,
+                "frame_duration_ms": 150,
                 "loop": False,
-                "priority": 3,
+                "priority": 4,
+                "can_be_interrupted": True,
+            }
+        )
+    )
+
+    # Create look_around behavior (idle variety)
+    look_dir = behaviors_dir / "look_around"
+    look_media = look_dir / "media"
+    look_media.mkdir(parents=True)
+    (look_media / "look_around_1.png").write_bytes(MINIMAL_PNG)
+    (look_media / "look_around_2.png").write_bytes(MINIMAL_PNG)
+    (look_dir / "config.json").write_text(
+        json.dumps(
+            {
+                "frame_duration_ms": 300,
+                "loop": False,
+                "priority": 1,
+                "can_be_interrupted": True,
+            }
+        )
+    )
+
+    # Create yawn behavior (idle variety)
+    yawn_dir = behaviors_dir / "yawn"
+    yawn_media = yawn_dir / "media"
+    yawn_media.mkdir(parents=True)
+    (yawn_media / "yawn_1.png").write_bytes(MINIMAL_PNG)
+    (yawn_media / "yawn_2.png").write_bytes(MINIMAL_PNG)
+    (yawn_dir / "config.json").write_text(
+        json.dumps(
+            {
+                "frame_duration_ms": 400,
+                "loop": False,
+                "priority": 1,
                 "can_be_interrupted": True,
             }
         )
@@ -264,15 +298,15 @@ def mock_env_empty_users(monkeypatch):
 
 # Legacy fixtures for backwards compatibility
 @pytest.fixture
-def mock_sprites_dir(tmp_path):
+def mock_media_dir(tmp_path):
     """Create a temporary directory with minimal PNG files for testing."""
-    sprites_dir = tmp_path / "sprites"
-    sprites_dir.mkdir()
+    media_dir = tmp_path / "media"
+    media_dir.mkdir()
 
     for name in ["idle_1.png", "idle_2.png", "alert_1.png", "alert_2.png"]:
-        (sprites_dir / name).write_bytes(MINIMAL_PNG)
+        (media_dir / name).write_bytes(MINIMAL_PNG)
 
-    return sprites_dir
+    return media_dir
 
 
 @pytest.fixture

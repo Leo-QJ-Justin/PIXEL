@@ -139,10 +139,10 @@ class TestGetIntegrationSettings:
 
     def test_get_integration_settings_existing(self, temp_settings_file):
         """Returns settings for an existing integration."""
-        with patch("config.SETTINGS_FILE", temp_settings_file):
-            import config
+        import config
 
-            importlib.reload(config)
+        importlib.reload(config)
+        with patch.object(config, "SETTINGS_FILE", temp_settings_file):
             result = config.get_integration_settings("telegram")
 
         assert result["enabled"] is True
@@ -150,10 +150,10 @@ class TestGetIntegrationSettings:
 
     def test_get_integration_settings_nonexistent(self, temp_settings_file):
         """Returns empty dict for nonexistent integration."""
-        with patch("config.SETTINGS_FILE", temp_settings_file):
-            import config
+        import config
 
-            importlib.reload(config)
+        importlib.reload(config)
+        with patch.object(config, "SETTINGS_FILE", temp_settings_file):
             result = config.get_integration_settings("nonexistent")
 
         assert result == {}

@@ -363,7 +363,7 @@ class SettingsDialog(QDialog):
         sidebar.setFixedWidth(150)
         sidebar.setStyleSheet(_SIDEBAR_STYLE.format(font=self._font_family))
 
-        for tab_name in ["General", "Behaviors", "Time / Schedule", "Integrations"]:
+        for tab_name in ["General", "Behaviors", "Time / Schedule"]:
             item = QListWidgetItem(tab_name)
             item.setSizeHint(item.sizeHint())
             sidebar.addItem(item)
@@ -378,7 +378,6 @@ class SettingsDialog(QDialog):
             self._build_general_tab,
             self._build_behaviors_tab,
             self._build_time_schedule_tab,
-            self._build_integrations_tab,
         ]
         for builder in tabs:
             page = builder()
@@ -544,6 +543,11 @@ class SettingsDialog(QDialog):
         min_cb.toggled.connect(lambda v: self._set_nested(["general", "start_minimized"], v))
         sec_layout.addWidget(min_cb)
 
+        boot_cb = QCheckBox("Start on boot")
+        boot_cb.setChecked(self._get_nested(["general", "start_on_boot"], False))
+        boot_cb.toggled.connect(lambda v: self._set_nested(["general", "start_on_boot"], v))
+        sec_layout.addWidget(boot_cb)
+
         facing_combo = QComboBox()
         facing_combo.addItem("Right", "right")
         facing_combo.addItem("Left", "left")
@@ -619,7 +623,7 @@ class SettingsDialog(QDialog):
         section, sec_layout = self._make_section("Fly / Wander")
 
         # Wander chance slider (0-100 %, stored as 0.0-1.0)
-        chance_val = self._get_nested(["behaviors", "fly", "wander_chance"], 0.3)
+        chance_val = self._get_nested(["behaviors", "wander", "wander_chance"], 0.3)
         chance_pct = int(chance_val * 100)
 
         slider_row = QHBoxLayout()
@@ -647,7 +651,7 @@ class SettingsDialog(QDialog):
 
         def on_chance_changed(v):
             chance_value_label.setText(f"{v}%")
-            self._set_nested(["behaviors", "fly", "wander_chance"], v / 100.0)
+            self._set_nested(["behaviors", "wander", "wander_chance"], v / 100.0)
 
         chance_slider.valueChanged.connect(on_chance_changed)
         sec_layout.addLayout(slider_row)
@@ -667,9 +671,9 @@ class SettingsDialog(QDialog):
         min_spin = QSpinBox()
         min_spin.setRange(1000, 60000)
         min_spin.setSingleStep(1000)
-        min_spin.setValue(self._get_nested(["behaviors", "fly", "wander_interval_min_ms"], 5000))
+        min_spin.setValue(self._get_nested(["behaviors", "wander", "wander_interval_min_ms"], 5000))
         min_spin.valueChanged.connect(
-            lambda v: self._set_nested(["behaviors", "fly", "wander_interval_min_ms"], v)
+            lambda v: self._set_nested(["behaviors", "wander", "wander_interval_min_ms"], v)
         )
         interval_row.addWidget(min_spin, 1)
 
@@ -683,9 +687,11 @@ class SettingsDialog(QDialog):
         max_spin = QSpinBox()
         max_spin.setRange(1000, 60000)
         max_spin.setSingleStep(1000)
-        max_spin.setValue(self._get_nested(["behaviors", "fly", "wander_interval_max_ms"], 15000))
+        max_spin.setValue(
+            self._get_nested(["behaviors", "wander", "wander_interval_max_ms"], 15000)
+        )
         max_spin.valueChanged.connect(
-            lambda v: self._set_nested(["behaviors", "fly", "wander_interval_max_ms"], v)
+            lambda v: self._set_nested(["behaviors", "wander", "wander_interval_max_ms"], v)
         )
         interval_row.addWidget(max_spin, 1)
 
@@ -809,93 +815,6 @@ class SettingsDialog(QDialog):
                 )
             )
             self._make_form_row(period.capitalize(), edit, sec_layout)
-
-        layout.addWidget(section)
-
-        layout.addStretch()
-        return page
-
-    # ------------------------------------------------------------------
-    # Tab: Integrations
-    # ------------------------------------------------------------------
-
-    def _build_integrations_tab(self) -> QWidget:
-        page, layout = self._make_tab_page()
-
-        # --- Weather section ---
-        section, sec_layout = self._make_section("Weather")
-
-        weather_cb = QCheckBox("Enabled")
-        weather_cb.setChecked(self._get_nested(["integrations", "weather", "enabled"], True))
-        weather_cb.toggled.connect(
-            lambda v: self._set_nested(["integrations", "weather", "enabled"], v)
-        )
-        sec_layout.addWidget(weather_cb)
-
-        city_edit = QLineEdit(self._get_nested(["integrations", "weather", "city"], "New York"))
-        city_edit.textChanged.connect(
-            lambda text: self._set_nested(["integrations", "weather", "city"], text)
-        )
-        self._make_form_row("City", city_edit, sec_layout)
-
-        units_combo = QComboBox()
-        units_combo.addItem("Imperial (\u00b0F)", "imperial")
-        units_combo.addItem("Metric (\u00b0C)", "metric")
-        current_units = self._get_nested(["integrations", "weather", "units"], "imperial")
-        idx = units_combo.findData(current_units)
-        if idx >= 0:
-            units_combo.setCurrentIndex(idx)
-        units_combo.currentIndexChanged.connect(
-            lambda: self._set_nested(
-                ["integrations", "weather", "units"],
-                units_combo.currentData(),
-            )
-        )
-        self._make_form_row("Units", units_combo, sec_layout)
-
-        layout.addWidget(section)
-
-        # --- Google Calendar section ---
-        section, sec_layout = self._make_section("Google Calendar")
-
-        gcal_cb = QCheckBox("Enabled")
-        gcal_cb.setChecked(self._get_nested(["integrations", "google_calendar", "enabled"], True))
-        gcal_cb.toggled.connect(
-            lambda v: self._set_nested(["integrations", "google_calendar", "enabled"], v)
-        )
-        sec_layout.addWidget(gcal_cb)
-
-        alert_spin = QSpinBox()
-        alert_spin.setRange(5, 120)
-        alert_spin.setSuffix(" min")
-        alert_spin.setValue(
-            self._get_nested(["integrations", "google_calendar", "alert_before_minutes"], 30)
-        )
-        alert_spin.valueChanged.connect(
-            lambda v: self._set_nested(
-                ["integrations", "google_calendar", "alert_before_minutes"], v
-            )
-        )
-        self._make_form_row("Alert Before", alert_spin, sec_layout)
-
-        interval_combo = QComboBox()
-        interval_combo.addItem("5 Minutes", 300000)
-        interval_combo.addItem("10 Minutes", 600000)
-        interval_combo.addItem("15 Minutes", 900000)
-        interval_combo.addItem("30 Minutes", 1800000)
-        current_interval = self._get_nested(
-            ["integrations", "google_calendar", "check_interval_ms"], 300000
-        )
-        idx = interval_combo.findData(current_interval)
-        if idx >= 0:
-            interval_combo.setCurrentIndex(idx)
-        interval_combo.currentIndexChanged.connect(
-            lambda: self._set_nested(
-                ["integrations", "google_calendar", "check_interval_ms"],
-                interval_combo.currentData(),
-            )
-        )
-        self._make_form_row("Check Interval", interval_combo, sec_layout)
 
         layout.addWidget(section)
 

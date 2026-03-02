@@ -64,9 +64,12 @@ coverage.xml
 # Logs
 logs/
 
-# Sprites and sounds (each developer uses their own)
-behaviors/*/sprites/
+# Media and sounds (each developer uses their own)
+behaviors/*/media/
 behaviors/*/sounds/
 
 #Local Development
 plans/
+_bmad/
+_bmad-output/
+.claude/
