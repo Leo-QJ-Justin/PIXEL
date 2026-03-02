@@ -279,15 +279,64 @@ class SpritePipeline:
 
     # ── Output ───────────────────────────────────────────────────
 
-    def save(self, behavior: str, *, output_dir: str | None = None) -> SpritePipeline:
-        """Save frames as {behavior}_1.png, {behavior}_2.png, ...
+    def to_gif(
+        self, behavior: str, *, fps: int = 8, loop: bool = True, output_dir: str | None = None
+    ) -> SpritePipeline:
+        """Save frames as a single animated GIF.
 
-        Default output_dir: behaviors/{behavior}/sprites/
+        Default output_dir: behaviors/{behavior}/media/
+        """
+        if not self.images:
+            raise ValueError("No images to save")
+
+        out = Path(output_dir) if output_dir else BEHAVIORS_DIR / behavior / "media"
+        out.mkdir(parents=True, exist_ok=True)
+
+        filepath = out / f"{behavior}.gif"
+        duration_ms = 1000 // fps
+
+        # Convert RGBA to palette with transparency
+        gif_frames = []
+        for frame in self.images:
+            frame = frame.convert("RGBA")
+            alpha = frame.split()[3]
+            p_frame = frame.convert("RGB").convert("P", palette=Image.Palette.ADAPTIVE, colors=255)
+            mask = Image.eval(alpha, lambda a: 255 if a <= 128 else 0)
+            p_frame.paste(255, mask)
+            gif_frames.append(p_frame)
+
+        save_kwargs = {
+            "save_all": True,
+            "append_images": gif_frames[1:],
+            "duration": duration_ms,
+            "transparency": 255,
+            "disposal": 2,
+        }
+        if loop:
+            save_kwargs["loop"] = 0
+
+        gif_frames[0].save(filepath, **save_kwargs)
+        logger.info("Saved GIF: %s (%d frames, %d fps)", filepath, len(self.images), fps)
+        return self
+
+    def save(self, behavior: str, *, output_dir: str | None = None) -> SpritePipeline:
+        """Save as animated GIF (default) and individual PNGs.
+
+        Default output_dir: behaviors/{behavior}/media/
+        """
+        self.to_gif(behavior, output_dir=output_dir)
+        self.save_frames(behavior, output_dir=output_dir)
+        return self
+
+    def save_frames(self, behavior: str, *, output_dir: str | None = None) -> SpritePipeline:
+        """Save frames as individual PNGs: {behavior}_1.png, {behavior}_2.png, ...
+
+        Useful for editing in Aseprite.
         """
         if output_dir:
             out = Path(output_dir)
         else:
-            out = BEHAVIORS_DIR / behavior / "sprites"
+            out = BEHAVIORS_DIR / behavior / "media"
 
         out.mkdir(parents=True, exist_ok=True)
 

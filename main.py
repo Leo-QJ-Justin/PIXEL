@@ -12,7 +12,6 @@ from src.core.integration_manager import IntegrationManager
 from src.ui.pet_window import PetWidget
 from src.ui.tray_icon import TrayIcon
 
-# Configure logging
 LOGS_DIR = BASE_DIR / "logs"
 LOGS_DIR.mkdir(exist_ok=True)
 
@@ -21,20 +20,17 @@ LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 def setup_logging():
-    """Configure logging to both console and rotating file."""
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
 
-    # Console handler (INFO level to reduce noise)
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(logging.Formatter(LOG_FORMAT, LOG_DATE_FORMAT))
     root_logger.addHandler(console_handler)
 
-    # File handler (DEBUG level for detailed logs)
     file_handler = RotatingFileHandler(
         LOGS_DIR / "pet.log",
-        maxBytes=5 * 1024 * 1024,  # 5 MB
+        maxBytes=5 * 1024 * 1024,
         backupCount=3,
         encoding="utf-8",
     )
@@ -48,57 +44,48 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    # 1. Setup App & Loop
     app = QApplication(sys.argv)
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
-    # 2. Load settings
     settings = load_settings()
 
-    # 3. Initialize behavior registry and discover core behaviors
-    behavior_registry = BehaviorRegistry()
+    sprites_face_left = settings.get("general", {}).get("sprite_default_facing", "right") == "left"
+    behavior_registry = BehaviorRegistry(sprites_face_left=sprites_face_left)
     core_behaviors = behavior_registry.discover_behaviors([BEHAVIORS_DIR])
     logger.info(f"Loaded core behaviors: {core_behaviors}")
 
-    # 4. Initialize integration manager
     integration_manager = IntegrationManager(
         integrations_path=INTEGRATIONS_DIR,
         behavior_registry=behavior_registry,
         settings=settings,
     )
 
-    # 5. Discover and load integrations (also loads their behaviors)
     discovered = integration_manager.discover()
     logger.info(f"Discovered integrations: {discovered}")
 
     for name in discovered:
         integration_manager.load(name)
 
-    # 6. Create UI components
     pet = PetWidget(behavior_registry)
     tray = TrayIcon(pet, integration_manager, behavior_registry)
 
-    # 7. Connect notification signal (bubble-only, bypasses behavior system)
-    integration_manager.notification_requested.connect(pet._on_notification)
+    # Let integrations wire their own UI via setup_ui hook
+    integration_manager.setup_all_ui(pet)
 
-    # 8. Wire route confirmation signals for Google Calendar integration
-    gcal = integration_manager.get_integration("google_calendar")
-    if gcal is not None:
-        pet.route_submitted.connect(gcal.receive_route)
-        pet.route_confirmed.connect(gcal.confirm_route)
-        pet.route_rejected.connect(gcal.reject_route)
-        pet.route_skipped.connect(gcal.skip_route)
-        gcal.request_route_confirmation.connect(pet._on_route_verification)
-        pet.tap_refresh_requested.connect(gcal.tap_refresh)
+    # Wire integration notifications to speech bubble
+    integration_manager.notification_requested.connect(
+        lambda ctx: pet.show_bubble(ctx.get("bubble_text", ""), ctx.get("bubble_duration_ms", 5000))
+    )
 
-    # 9. Propagate settings changes at runtime
+    # Propagate settings changes at runtime
     def _on_settings_changed(new_settings: dict):
-        logger.info("Settings changed, reloading config")
-        # Re-apply always_on_top flag
         from PyQt6.QtCore import Qt
 
+        from src.utils.startup import set_startup_enabled
+
         general = new_settings.get("general", {})
+        set_startup_enabled(general.get("start_on_boot", False))
         if general.get("always_on_top", True):
             pet.setWindowFlags(pet.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         else:
@@ -107,15 +94,12 @@ def main():
 
     tray.settings_changed.connect(_on_settings_changed)
 
-    # 10. Start all enabled integrations
     loop.create_task(integration_manager.start_all_enabled())
     logger.info("Integration startup tasks created")
 
-    # 11. Show window and tray
     pet.show()
     tray.show()
 
-    # 12. Run event loop
     with loop:
         loop.run_forever()
 

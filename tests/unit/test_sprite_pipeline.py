@@ -316,7 +316,7 @@ class TestSave:
         assert (tmp_path / "idle_2.png").exists()
 
     def test_save_creates_directory(self, tmp_path):
-        out = tmp_path / "new_dir" / "sprites"
+        out = tmp_path / "new_dir" / "media"
         pipe = SpritePipeline()
         pipe.images = [_make_image(50, 50)]
 
@@ -330,7 +330,7 @@ class TestSave:
         with patch("scripts.sprite_pipeline.BEHAVIORS_DIR", tmp_path):
             pipe.save("idle")
 
-        assert (tmp_path / "idle" / "sprites" / "idle_1.png").exists()
+        assert (tmp_path / "idle" / "media" / "idle_1.png").exists()
 
     def test_save_returns_self(self, tmp_path):
         pipe = SpritePipeline()

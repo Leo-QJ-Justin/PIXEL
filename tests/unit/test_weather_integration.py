@@ -28,7 +28,6 @@ class TestWeatherIntegrationInit:
     def test_initialization(self, tmp_path):
         integration = _make_integration(tmp_path, {"enabled": True})
         assert integration._timer is None
-        assert integration._last_weather_behavior is None
         assert integration._running is False
         assert integration.enabled is True
 
@@ -45,7 +44,7 @@ class TestWeatherIntegrationInit:
         defaults = integration.get_default_settings()
         assert defaults["enabled"] is True
         assert defaults["city"] == "New York"
-        assert defaults["units"] == "imperial"
+        assert defaults["units"] == "metric"
         assert defaults["check_interval_ms"] == 600000
 
 
@@ -63,10 +62,10 @@ class TestConditionMapping:
             (502, "rainy"),  # Heavy rain
             (600, "rainy"),  # Snow
             (601, "rainy"),  # Heavy snow
-            (800, "sunny"),  # Clear sky
-            (801, None),  # Few clouds
-            (802, None),  # Scattered clouds
-            (741, None),  # Fog
+            (800, None),  # Clear sky — bubble only
+            (801, None),  # Few clouds — bubble only
+            (802, None),  # Scattered clouds — bubble only
+            (741, None),  # Fog — bubble only
         ],
     )
     def test_condition_mapping(self, condition_id, expected):
@@ -79,132 +78,163 @@ class TestConditionMapping:
 class TestProcessWeatherData:
     """Tests for _process_weather_data."""
 
-    def test_rain_triggers_rainy(self, tmp_path):
+    def test_rain_triggers_rainy_behavior(self, tmp_path):
         integration = _make_integration(tmp_path, {"units": "imperial"})
 
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
+        behaviors = []
+        integration.request_behavior.connect(lambda name, ctx: behaviors.append((name, ctx)))
 
         data = _weather_response(500, "light rain", 65, "Seattle")
         integration._process_weather_data(data)
 
-        assert len(received) == 1
-        assert received[0][0] == "rainy"
-        assert received[0][1]["description"] == "Light rain"
-        assert received[0][1]["temperature"] == "65\u00b0F"
-        assert received[0][1]["city"] == "Seattle"
+        assert len(behaviors) == 1
+        assert behaviors[0][0] == "rainy"
+        assert behaviors[0][1]["description"] == "Light rain"
+        assert behaviors[0][1]["temperature"] == "65\u00b0F"
+        assert behaviors[0][1]["city"] == "Seattle"
+        assert "bubble_text" in behaviors[0][1]
 
-    def test_clear_triggers_sunny(self, tmp_path):
+    def test_clear_sends_notification(self, tmp_path):
+        """Clear sky sends a bubble notification, not a behavior trigger."""
         integration = _make_integration(tmp_path, {"units": "imperial"})
 
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
+        behaviors = []
+        notifications = []
+        integration.request_behavior.connect(lambda name, ctx: behaviors.append((name, ctx)))
+        integration.request_notification.connect(lambda ctx: notifications.append(ctx))
 
         data = _weather_response(800, "clear sky", 85, "Miami")
         integration._process_weather_data(data)
 
-        assert len(received) == 1
-        assert received[0][0] == "sunny"
-        assert received[0][1]["description"] == "Clear sky"
+        assert len(behaviors) == 0
+        assert len(notifications) == 1
+        assert notifications[0]["description"] == "Clear sky"
+        assert "bubble_text" in notifications[0]
 
-    def test_clouds_trigger_nothing(self, tmp_path):
+    def test_clouds_send_notification_on_first_check(self, tmp_path):
+        """Clouds on first check send a bubble notification."""
         integration = _make_integration(tmp_path)
 
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
+        notifications = []
+        integration.request_notification.connect(lambda ctx: notifications.append(ctx))
 
         data = _weather_response(802, "scattered clouds", 70)
         integration._process_weather_data(data)
 
-        assert len(received) == 0
+        assert len(notifications) == 1
 
     def test_same_condition_does_not_retrigger(self, tmp_path):
         integration = _make_integration(tmp_path, {"units": "imperial"})
 
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
+        behaviors = []
+        integration.request_behavior.connect(lambda name, ctx: behaviors.append((name, ctx)))
 
         data = _weather_response(500, "light rain", 65)
         integration._process_weather_data(data)
         integration._process_weather_data(data)
 
-        assert len(received) == 1
+        assert len(behaviors) == 1
 
-    def test_different_condition_triggers_again(self, tmp_path):
-        integration = _make_integration(tmp_path, {"units": "imperial"})
+    def test_same_non_precipitation_does_not_retrigger(self, tmp_path):
+        """Same non-precipitation condition repeated doesn't send another notification."""
+        integration = _make_integration(tmp_path)
 
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
+        notifications = []
+        integration.request_notification.connect(lambda ctx: notifications.append(ctx))
 
-        integration._process_weather_data(_weather_response(500, "rain", 65))
-        integration._process_weather_data(_weather_response(800, "clear sky", 80))
-
-        assert len(received) == 2
-        assert received[0][0] == "rainy"
-        assert received[1][0] == "sunny"
-
-    def test_metric_units_format(self, tmp_path):
-        integration = _make_integration(tmp_path, {"units": "metric"})
-
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
-
-        data = _weather_response(800, "clear sky", 30, "Tokyo")
+        data = _weather_response(800, "clear sky", 85)
+        integration._process_weather_data(data)
         integration._process_weather_data(data)
 
-        assert received[0][1]["temperature"] == "30\u00b0C"
+        assert len(notifications) == 1
 
-    def test_cleared_weather_resets_to_idle(self, tmp_path):
-        """When weather goes from rain->clouds, pet returns to idle."""
+    def test_rain_to_clear_triggers_notification(self, tmp_path):
+        """When weather clears from rain, a notification is sent (not a behavior)."""
         integration = _make_integration(tmp_path, {"units": "imperial"})
 
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
+        behaviors = []
+        notifications = []
+        integration.request_behavior.connect(lambda name, ctx: behaviors.append((name, ctx)))
+        integration.request_notification.connect(lambda ctx: notifications.append(ctx))
 
         integration._process_weather_data(_weather_response(500, "rain", 65))
         integration._process_weather_data(_weather_response(802, "clouds", 68))
 
-        assert len(received) == 2
-        assert received[0][0] == "rainy"
-        assert received[1][0] == "idle"
+        assert len(behaviors) == 1
+        assert behaviors[0][0] == "rainy"
+        assert len(notifications) == 1
+        assert notifications[0]["description"] == "Clouds"
 
-    def test_cleared_weather_allows_retrigger(self, tmp_path):
-        """When weather goes from rain->clouds->rain, the second rain should trigger."""
+    def test_rain_clear_rain_retriggers(self, tmp_path):
+        """rain -> clear -> rain should trigger rainy twice."""
         integration = _make_integration(tmp_path, {"units": "imperial"})
 
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
+        behaviors = []
+        notifications = []
+        integration.request_behavior.connect(lambda name, ctx: behaviors.append((name, ctx)))
+        integration.request_notification.connect(lambda ctx: notifications.append(ctx))
 
         integration._process_weather_data(_weather_response(500, "rain", 65))
         integration._process_weather_data(_weather_response(802, "clouds", 68))
         integration._process_weather_data(_weather_response(501, "rain", 64))
 
-        assert len(received) == 3
-        assert received[0][0] == "rainy"
-        assert received[1][0] == "idle"
-        assert received[2][0] == "rainy"
+        assert len(behaviors) == 2
+        assert behaviors[0][0] == "rainy"
+        assert behaviors[1][0] == "rainy"
+        assert len(notifications) == 1  # clouds notification
+
+    def test_metric_units_format(self, tmp_path):
+        integration = _make_integration(tmp_path, {"units": "metric"})
+
+        notifications = []
+        integration.request_notification.connect(lambda ctx: notifications.append(ctx))
+
+        data = _weather_response(800, "clear sky", 30, "Tokyo")
+        integration._process_weather_data(data)
+
+        assert len(notifications) == 1
+        assert notifications[0]["temperature"] == "30\u00b0C"
+
+    def test_bubble_text_format(self, tmp_path):
+        """Bubble text should include description, temperature, and city."""
+        integration = _make_integration(tmp_path, {"units": "metric"})
+
+        behaviors = []
+        integration.request_behavior.connect(lambda name, ctx: behaviors.append((name, ctx)))
+
+        data = _weather_response(500, "light rain", 25, "Singapore")
+        integration._process_weather_data(data)
+
+        assert len(behaviors) == 1
+        bubble = behaviors[0][1]["bubble_text"]
+        assert "Light rain" in bubble
+        assert "25\u00b0C" in bubble
+        assert "Singapore" in bubble
 
     def test_empty_weather_list(self, tmp_path):
         integration = _make_integration(tmp_path)
 
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
+        behaviors = []
+        notifications = []
+        integration.request_behavior.connect(lambda name, ctx: behaviors.append((name, ctx)))
+        integration.request_notification.connect(lambda ctx: notifications.append(ctx))
 
         integration._process_weather_data({"weather": [], "main": {}, "name": ""})
 
-        assert len(received) == 0
+        assert len(behaviors) == 0
+        assert len(notifications) == 0
 
     def test_missing_temperature(self, tmp_path):
         integration = _make_integration(tmp_path, {"units": "imperial"})
 
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
+        notifications = []
+        integration.request_notification.connect(lambda ctx: notifications.append(ctx))
 
         data = {"weather": [{"id": 800, "description": "clear sky"}], "main": {}, "name": "Test"}
         integration._process_weather_data(data)
 
-        assert len(received) == 1
-        assert received[0][1]["temperature"] == ""
+        assert len(notifications) == 1
+        assert notifications[0]["temperature"] == ""
 
 
 @pytest.mark.unit

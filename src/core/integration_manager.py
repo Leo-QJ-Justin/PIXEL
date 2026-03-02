@@ -205,6 +205,14 @@ class IntegrationManager(QObject):
             logger.exception(f"Failed to stop integration {name}: {e}")
             return False
 
+    def setup_all_ui(self, pet_widget) -> None:
+        """Call setup_ui on all loaded integrations."""
+        for name, integration in self._integrations.items():
+            try:
+                integration.setup_ui(pet_widget)
+            except Exception:
+                logger.exception(f"Failed to setup UI for integration {name}")
+
     async def start_all_enabled(self) -> None:
         """Start all enabled integrations."""
         for name, integration in self._integrations.items():

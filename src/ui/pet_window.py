@@ -1,7 +1,6 @@
 import logging
 import os
 import random
-from collections import deque
 from datetime import datetime
 
 from PyQt6.QtCore import (
@@ -15,126 +14,151 @@ from PyQt6.QtCore import (
     pyqtSlot,
 )
 from PyQt6.QtGui import QAction, QPainter, QPixmap
-from PyQt6.QtMultimedia import QSoundEffect
 from PyQt6.QtWidgets import QMenu, QWidget
 
-from config import get_behavior_settings, get_general_settings, load_settings
+from config import load_settings
 from src.core.behavior_registry import BehaviorRegistry
+from src.core.pet_state import PetState, PetStateMachine
 from src.ui.speech_bubble import SpeechBubble
 
 logger = logging.getLogger(__name__)
 
 
+class RandomIntervalTimer(QTimer):
+    """QTimer that re-randomizes its interval on each tick."""
+
+    def __init__(self, min_ms: int, max_ms: int, parent=None):
+        super().__init__(parent)
+        self._min_ms = min_ms
+        self._max_ms = max_ms
+        self.timeout.connect(self._rerandomize)
+
+    def _rerandomize(self):
+        self.setInterval(random.randint(self._min_ms, self._max_ms))
+
+    def start_random(self):
+        self.start(random.randint(self._min_ms, self._max_ms))
+
+
 class PetWidget(QWidget):
     """Main desktop pet widget."""
 
-    # Route confirmation signals (smart origin detection)
-    route_submitted = pyqtSignal(str, str, str, str)  # (event_id, origin, destination, mode)
-    route_confirmed = pyqtSignal(str)  # (event_id)
-    route_rejected = pyqtSignal(str)  # (event_id)
-    route_skipped = pyqtSignal(str)  # (event_id)
-
-    # Tap-to-refresh travel estimate
-    tap_refresh_requested = pyqtSignal()
+    clicked = pyqtSignal()
 
     def __init__(self, behavior_registry: BehaviorRegistry):
         super().__init__()
         self._behavior_registry = behavior_registry
-        self._drag_position = QPoint()
-        self._tap_origin = None  # for tap-vs-drag detection
-        self._system_move_pending = False
-        self._is_alerting = False
-        self._is_wandering = False
-        self._is_sleeping = False
-        self._facing_left = False
-        self._last_activity_time = datetime.now()
-        self._last_time_period: str | None = None
-        self._active_weather_behavior: str | None = None
-
-        # Route prompt queue (handles multiple events needing prompts)
-        self._route_prompt_queue: deque[dict] = deque()
-
-        # Current sprite to display
+        self._state_machine = PetStateMachine()
         self._current_sprite = QPixmap()
 
-        # Sound effect for alerts
-        self._alert_sound = QSoundEffect()
+        # Load all settings once
+        settings = load_settings()
+        self._behavior_settings = settings.get("behaviors", {})
+        self._general_settings = settings.get("general", {})
 
-        # Bounce animation for alerts
+        self._init_interaction_state()
+        self._init_animations()
+        self._init_timers()
+        self._init_speech_bubble()
+        self._connect_signals()
+        self._setup_window()
+
+        self._behavior_registry.trigger("idle")
+        self._play_startup_greeting()
+
+    # ------------------------------------------------------------------
+    # Initialization helpers
+    # ------------------------------------------------------------------
+
+    def _init_interaction_state(self):
+        """Set up drag, tap, facing, and activity tracking state."""
+        self._drag_position = QPoint()
+        self._tap_origin = None
+        self._system_move_pending = False
+        self._facing_left = False
+        self._initial_position_set = False
+        self._last_activity_time = datetime.now()
+        self._last_time_period: str | None = None
+        self._notification_callback = None
+
+    def _init_animations(self):
+        """Set up move and bounce animations. Sound is lazy-created."""
+        self._alert_sound = None  # lazy-created on first use
+
         self._bounce_animation = QPropertyAnimation(self, b"pos")
         self._bounce_animation.setDuration(200)
         self._bounce_animation.setEasingCurve(QEasingCurve.Type.OutBounce)
         self._bounce_animation.setLoopCount(10)
 
-        # Movement animation for wandering
         self._move_animation = QPropertyAnimation(self, b"pos")
-        self._move_animation.setDuration(1500)
-        self._move_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self._move_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
         self._move_animation.finished.connect(self._on_wander_finished)
 
-        # Wander decision timer
-        wander_settings = get_behavior_settings("wander")
-        wander_min = wander_settings.get("wander_interval_min_ms", 5000)
-        wander_max = wander_settings.get("wander_interval_max_ms", 15000)
-        self._wander_chance = wander_settings.get("wander_chance", 0.3)
-        self._wander_min_ms = wander_min
-        self._wander_max_ms = wander_max
-
-        self._wander_timer = QTimer()
+    def _init_timers(self):
+        """Set up wander, idle variety, sleep, and time-period timers."""
+        wander = self._behavior_settings.get("wander", {})
+        self._wander_chance = wander.get("wander_chance", 0.3)
+        self._wander_timer = RandomIntervalTimer(
+            wander.get("wander_interval_min_ms", 5000),
+            wander.get("wander_interval_max_ms", 15000),
+        )
         self._wander_timer.timeout.connect(self._maybe_wander)
-        self._wander_timer.start(random.randint(wander_min, wander_max))
+        self._wander_timer.start_random()
 
-        # Sleep check timer
-        self._sleep_settings = get_behavior_settings("sleep")
+        idle_variety = self._behavior_settings.get("idle_variety", {})
+        self._idle_variety_enabled = idle_variety.get("enabled", True)
+        self._idle_variety_behaviors = idle_variety.get("behaviors", ["look_around", "yawn"])
+        self._idle_variety_chance = idle_variety.get("chance", 0.4)
+        self._idle_variety_timer = RandomIntervalTimer(
+            idle_variety.get("interval_min_ms", 20000),
+            idle_variety.get("interval_max_ms", 60000),
+        )
+        self._idle_variety_timer.timeout.connect(self._maybe_idle_variety)
+        if self._idle_variety_enabled:
+            self._idle_variety_timer.start_random()
+
+        self._sleep_settings = self._behavior_settings.get("sleep", {})
         self._sleep_check_timer = QTimer()
         self._sleep_check_timer.timeout.connect(self._check_sleep_conditions)
-        self._sleep_check_timer.start(5000)  # Check every 5 seconds
+        self._sleep_check_timer.start(5000)
 
-        # Speech bubble
-        self._speech_bubble = SpeechBubble()
-        self._speech_bubble_settings = get_general_settings().get("speech_bubble", {})
-
-        # Time-period transition timer
-        self._time_period_settings = get_behavior_settings("time_periods")
+        self._time_period_settings = self._behavior_settings.get("time_periods", {})
         self._time_period_timer = QTimer()
         self._time_period_timer.timeout.connect(self._check_time_period_transition)
         if self._time_period_settings.get("enabled", True):
             interval = self._time_period_settings.get("check_interval_ms", 30000)
             self._time_period_timer.start(interval)
-            # Set initial period without triggering a transition
             self._last_time_period = self._get_current_period()
 
-        # Connect to behavior registry signals
+    def _init_speech_bubble(self):
+        """Set up speech bubble widget and its settings."""
+        self._speech_bubble = SpeechBubble()
+        self._speech_bubble_settings = self._general_settings.get("speech_bubble", {})
+
+    def _connect_signals(self):
+        """Wire up all signal connections."""
         self._behavior_registry.frame_changed.connect(self._on_frame_changed)
         self._behavior_registry.behavior_changed.connect(self._on_behavior_changed)
-
-        self._setup_window()
-
-        # Start with idle behavior, then play startup greeting
-        self._behavior_registry.trigger("idle")
-        self._play_startup_greeting()
+        self.clicked.connect(self._on_clicked)
 
     def _setup_window(self):
-        """Configure window properties for a desktop pet."""
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-
-        # Set initial size (will be updated when first sprite loads)
         self.setFixedSize(100, 100)
-
-        # Position at bottom-right of screen
         self._move_to_default_position()
 
     def _play_startup_greeting(self):
-        """Play wave animation on app startup."""
         QTimer.singleShot(500, lambda: self._behavior_registry.trigger("wave"))
 
+    # ------------------------------------------------------------------
+    # Settings helpers
+    # ------------------------------------------------------------------
+
     def _get_display_name(self) -> str:
-        """Return the user's display name from settings, falling back to system username."""
         name = load_settings().get("user_name", "")
         if name:
             return name
@@ -144,14 +168,16 @@ class PetWidget(QWidget):
             return ""
 
     def _personalize_greeting(self, greeting: str) -> str:
-        """Insert the user's name into a greeting (e.g. 'Hello!' -> 'Hello, Leo!')."""
         name = self._get_display_name()
         if not name or "!" not in greeting:
             return greeting
         return greeting.replace("!", f", {name}!", 1)
 
+    # ------------------------------------------------------------------
+    # Positioning
+    # ------------------------------------------------------------------
+
     def _move_to_default_position(self):
-        """Move widget to bottom-right corner of screen."""
         screen = self.screen()
         if screen:
             geometry = screen.availableGeometry()
@@ -159,193 +185,204 @@ class PetWidget(QWidget):
             y = geometry.bottom() - self.height()
             self.move(x, y)
 
+    # ------------------------------------------------------------------
+    # Frame & behavior callbacks
+    # ------------------------------------------------------------------
+
     @pyqtSlot(QPixmap, bool)
     def _on_frame_changed(self, pixmap: QPixmap, facing_left: bool):
-        """Handle frame change from behavior registry."""
         self._current_sprite = pixmap
         self._facing_left = facing_left
 
-        # Update window size if needed
         if not pixmap.isNull():
             if pixmap.width() != self.width() or pixmap.height() != self.height():
                 self.setFixedSize(pixmap.width(), pixmap.height())
+                if not self._initial_position_set:
+                    self._initial_position_set = True
+                    self._move_to_default_position()
 
         self.update()
 
     @pyqtSlot(str, dict)
     def _on_behavior_changed(self, behavior_name: str, context: dict):
-        """Handle behavior change from registry."""
         logger.debug(f"Behavior changed to: {behavior_name}")
 
-        # Track alerting state
-        self._is_alerting = behavior_name == "alert"
-
-        # Track wandering state
-        if behavior_name == "wander":
-            self._is_wandering = True
-        elif behavior_name != "wander" and self._is_wandering:
-            self._is_wandering = False
-
-        # Track sleeping state
-        if behavior_name == "sleep":
-            self._is_sleeping = True
-        elif behavior_name != "sleep" and self._is_sleeping:
-            self._is_sleeping = False
-
-        # Reset activity timer on alerts (user interactions reset it separately)
         if behavior_name == "alert":
             self._last_activity_time = datetime.now()
 
-        # Play sound if behavior has one
-        sound_path = self._behavior_registry.current_sound_path
-        if sound_path and sound_path.exists():
-            self._alert_sound.setSource(QUrl.fromLocalFile(str(sound_path)))
-            self._alert_sound.play()
+        self._handle_behavior_sound()
+        self._handle_behavior_greeting(behavior_name, context)
 
-        # Show greeting bubble on wave
-        if behavior_name == "wave":
-            wave_settings = get_behavior_settings("wave")
-            greeting = wave_settings.get("greeting", "Hello!")
-            self.show_bubble(self._personalize_greeting(greeting))
-
-        # Track active weather behavior
-        if behavior_name in ("rainy", "sunny"):
-            self._active_weather_behavior = behavior_name
-        elif behavior_name == "idle" and context.get("condition"):
-            # Weather integration triggered idle (weather cleared)
-            self._active_weather_behavior = None
-
-        # Show weather info bubble on rainy/sunny
-        if behavior_name in ("rainy", "sunny"):
-            description = context.get("description", behavior_name.capitalize())
-            temperature = context.get("temperature", "")
-            if temperature:
-                self.show_bubble(f"{description}! {temperature}")
-            else:
-                self.show_bubble(f"{description}!")
-
-        # Show speech bubble for Google Calendar alerts
-        if behavior_name == "alert" and context.get("source") == "google_calendar":
-            bubble_text = context.get("bubble_text", "Upcoming event!")
-            self.show_bubble(bubble_text, duration_ms=5000)
-
-        # Start bounce animation for alert behavior
         if behavior_name == "alert":
             self._start_bounce()
 
+        # Return to IDLE when a REACTING behavior finishes (flinch, idle variety, etc.)
+        if behavior_name == "idle" and self._state_machine.state == PetState.REACTING:
+            self._state_machine.force(PetState.IDLE)
+
+    def _handle_behavior_sound(self):
+        """Play sound if the current behavior has one."""
+        sound_path = self._behavior_registry.current_sound_path
+        if not sound_path or not sound_path.exists():
+            return
+
+        if self._alert_sound is None:
+            from PyQt6.QtMultimedia import QSoundEffect
+
+            self._alert_sound = QSoundEffect()
+
+        self._alert_sound.setSource(QUrl.fromLocalFile(str(sound_path)))
+        self._alert_sound.play()
+
+    def _handle_behavior_greeting(self, behavior_name: str, context: dict):
+        """Show speech bubble for wave greetings or integration context text."""
+        if behavior_name == "wave":
+            wave_settings = self._behavior_settings.get("wave", {})
+            greeting = wave_settings.get("greeting", "Hello!")
+            self.show_bubble(self._personalize_greeting(greeting))
+
+        bubble_text = context.get("bubble_text")
+        if bubble_text:
+            self.show_bubble(bubble_text, duration_ms=context.get("bubble_duration_ms", 5000))
+
+    # ------------------------------------------------------------------
+    # Click reaction
+    # ------------------------------------------------------------------
+
+    def _on_clicked(self):
+        """Handle click/tap — trigger a flinch reaction if idle."""
+        if not self._state_machine.is_idle:
+            return
+        if not self._state_machine.transition(PetState.REACTING):
+            return
+        self._last_activity_time = datetime.now()
+        self._behavior_registry.trigger("flinch")
+
+    # ------------------------------------------------------------------
+    # Idle variety
+    # ------------------------------------------------------------------
+
+    def _maybe_idle_variety(self):
+        """Occasionally trigger a random idle-like behavior for variety."""
+        if not self._state_machine.is_idle:
+            return
+
+        if random.random() >= self._idle_variety_chance:
+            return
+
+        # Pick a random idle variety behavior that is actually loaded
+        available = [
+            b
+            for b in self._idle_variety_behaviors
+            if self._behavior_registry.get_behavior(b) is not None
+        ]
+        if not available:
+            return
+
+        if not self._state_machine.transition(PetState.REACTING):
+            return
+
+        self._behavior_registry.trigger(random.choice(available))
+
+    # ------------------------------------------------------------------
+    # Alert bounce
+    # ------------------------------------------------------------------
+
     def _start_bounce(self):
-        """Start the bounce animation for alerts."""
         start_pos = self.pos()
         bounce_pos = QPoint(start_pos.x(), start_pos.y() - 20)
         self._bounce_animation.setStartValue(bounce_pos)
         self._bounce_animation.setEndValue(start_pos)
         self._bounce_animation.start()
 
-    def _maybe_wander(self):
-        """Randomly decide to wander."""
-        # Reset timer with random interval
-        self._wander_timer.setInterval(random.randint(self._wander_min_ms, self._wander_max_ms))
+    # ------------------------------------------------------------------
+    # Wander
+    # ------------------------------------------------------------------
 
-        # Don't wander if alerting, already wandering, or sleeping
-        if self._is_alerting or self._is_wandering or self._is_sleeping:
+    def _maybe_wander(self):
+        if self._state_machine.is_busy:
             return
 
-        # Random chance to wander
         if random.random() < self._wander_chance:
             self._start_wander()
 
     def _start_wander(self):
-        """Start wandering to a random position."""
-        # Get screen bounds
         screen = self.screen()
         if not screen:
             return
 
+        if not self._state_machine.transition(PetState.WANDERING):
+            return
+
         geo = screen.availableGeometry()
 
-        # Pick random destination nearby (x-axis only)
         current_x = self.pos().x()
         move_distance = random.randint(50, 150) * random.choice([-1, 1])
-        dest_x = current_x + move_distance
-
-        # Clamp to screen bounds
-        min_x = geo.left()
-        max_x = geo.right() - self.width()
-        dest_x = max(min_x, min(dest_x, max_x))
-
+        dest_x = max(geo.left(), min(current_x + move_distance, geo.right() - self.width()))
         dest_y = self.pos().y()
 
-        # Set facing direction based on movement
+        distance = abs(dest_x - current_x)
         facing_left = dest_x < current_x
 
-        # Trigger wander behavior
         self._behavior_registry.trigger("wander", facing_left=facing_left)
 
-        # Start movement animation
+        # Scale duration to distance: ~15ms per pixel, clamped to 750-2500ms
+        duration = max(750, min(int(distance * 15), 2500))
+        self._move_animation.setDuration(duration)
         self._move_animation.setStartValue(self.pos())
         self._move_animation.setEndValue(QPoint(dest_x, dest_y))
         self._move_animation.start()
 
     def _on_wander_finished(self):
-        """Handle wander movement completion."""
-        self._is_wandering = False
-        self._return_to_base_state()
+        self._state_machine.force(PetState.IDLE)
+        self._behavior_registry.trigger("idle", facing_left=self._facing_left)
 
-    def _return_to_base_state(self):
-        """Return to the active weather behavior if one is set, otherwise idle."""
-        if self._active_weather_behavior:
-            self._behavior_registry.trigger(
-                self._active_weather_behavior, facing_left=self._facing_left
-            )
-        else:
-            self._behavior_registry.trigger("idle", facing_left=self._facing_left)
+    # ------------------------------------------------------------------
+    # Sleep
+    # ------------------------------------------------------------------
 
     def _check_sleep_conditions(self):
-        """Periodically check if the pet should sleep."""
-        if self._is_sleeping or self._is_alerting or self._is_wandering:
+        if self._state_machine.is_busy:
             return
 
-        # Check schedule first (if enabled)
         if self._sleep_settings.get("schedule_enabled", False):
             if self._is_scheduled_sleep_time():
                 self._enter_sleep()
                 return
 
-        # Check inactivity timeout
         timeout_ms = self._sleep_settings.get("inactivity_timeout_ms", 60000)
         elapsed_ms = (datetime.now() - self._last_activity_time).total_seconds() * 1000
         if elapsed_ms >= timeout_ms:
             self._enter_sleep()
 
     def _is_scheduled_sleep_time(self) -> bool:
-        """Check if current time falls within the sleep schedule."""
         start_str = self._sleep_settings.get("schedule_start", "22:00")
         end_str = self._sleep_settings.get("schedule_end", "06:00")
-
         now = datetime.now().strftime("%H:%M")
 
-        # Handle overnight wrap (e.g., 22:00 -> 06:00)
         if start_str <= end_str:
             return start_str <= now < end_str
         else:
             return now >= start_str or now < end_str
 
     def _enter_sleep(self):
-        """Trigger the sleep behavior."""
-        logger.info("Pet is going to sleep")
-        self._behavior_registry.trigger("sleep")
+        if self._state_machine.transition(PetState.SLEEPING):
+            logger.info("Pet is going to sleep")
+            self._behavior_registry.trigger("sleep")
 
     def _wake_up(self):
-        """Wake from sleep, reset activity timer, play wave greeting."""
-        if not self._is_sleeping:
+        if self._state_machine.state != PetState.SLEEPING:
             return
         logger.info("Pet is waking up")
-        self._is_sleeping = False
+        self._state_machine.force(PetState.IDLE)
         self._last_activity_time = datetime.now()
         self._behavior_registry.trigger("wave")
 
+    # ------------------------------------------------------------------
+    # Speech bubble
+    # ------------------------------------------------------------------
+
     def show_bubble(self, text: str, duration_ms: int | None = None) -> None:
-        """Show a speech bubble with the given text."""
         if not self._speech_bubble_settings.get("enabled", True):
             return
         if duration_ms is None:
@@ -353,19 +390,24 @@ class PetWidget(QWidget):
         self._speech_bubble.update_position(self.pos(), self.size())
         self._speech_bubble.show_message(text, duration_ms)
 
+    def show_notification(self, text: str, duration_ms: int = 5000, on_click=None) -> None:
+        """Show a notification bubble. Optionally call on_click when pet is clicked."""
+        self.show_bubble(text, duration_ms)
+        self._notification_callback = on_click
+
+    # ------------------------------------------------------------------
+    # Time period transitions
+    # ------------------------------------------------------------------
+
     def _get_current_period(self) -> str | None:
-        """Determine which time period the current time falls in."""
         periods = self._time_period_settings.get("periods", {})
         if not periods:
             return None
 
         now = datetime.now().strftime("%H:%M")
-
-        # Sort periods by start time ascending
         sorted_periods = sorted(periods.items(), key=lambda item: item[1])
 
-        # Find the last period whose start time <= current time
-        current = sorted_periods[-1][0]  # Default to last (handles overnight wrap)
+        current = sorted_periods[-1][0]
         for name, start_time in sorted_periods:
             if start_time <= now:
                 current = name
@@ -373,21 +415,17 @@ class PetWidget(QWidget):
         return current
 
     def _check_time_period_transition(self) -> None:
-        """Check if the time period has changed and trigger behavior/greeting."""
         current_period = self._get_current_period()
         previous = self._last_time_period
         self._last_time_period = current_period
 
-        # First check — just record, no trigger
         if previous is None:
             return
 
-        # No change
         if current_period == previous:
             return
 
-        # Skip trigger if pet is busy
-        if self._is_alerting or self._is_sleeping or self._is_wandering:
+        if self._state_machine.is_busy:
             logger.debug(
                 f"Time period changed to {current_period} but pet is busy, skipping trigger"
             )
@@ -395,22 +433,19 @@ class PetWidget(QWidget):
 
         logger.info(f"Time period transition: {previous} -> {current_period}")
 
-        # Trigger the period behavior (silently fails if no behavior folder exists)
-        if current_period:
-            self._behavior_registry.trigger(current_period)
-
-        # Show greeting bubble
         greeting = self._time_period_settings.get("greetings", {}).get(current_period)
         if greeting:
             self.show_bubble(self._personalize_greeting(greeting))
 
+    # ------------------------------------------------------------------
+    # Qt event overrides
+    # ------------------------------------------------------------------
+
     def moveEvent(self, event):
-        """Update speech bubble position when pet moves."""
         super().moveEvent(event)
         self._speech_bubble.update_position(self.pos(), self.size())
 
     def paintEvent(self, event):
-        """Draw the current sprite centered in the widget."""
         if self._current_sprite.isNull():
             return
 
@@ -420,33 +455,30 @@ class PetWidget(QWidget):
         painter.drawPixmap(x, y, self._current_sprite)
 
     def mousePressEvent(self, event):
-        """Handle mouse press for dragging, alert dismissal, and waking."""
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
             self._system_move_pending = True
             self._last_activity_time = datetime.now()
             event.accept()
 
-            # Wake up if sleeping
-            if self._is_sleeping:
+            if self._state_machine.state == PetState.SLEEPING:
                 self._wake_up()
                 return
 
-            # Dismiss alert on click
-            if self._is_alerting:
+            if self._state_machine.state == PetState.ALERTING:
                 self.stop_alert()
                 return
 
-            # Handle pending route prompt on click
-            if self._route_prompt_queue:
-                self._show_route_dialog()
+            # Handle notification callback
+            if self._notification_callback:
+                cb = self._notification_callback
+                self._notification_callback = None
+                cb()
                 return
 
-            # Record press position for tap-vs-drag detection
             self._tap_origin = event.globalPosition().toPoint()
 
     def mouseMoveEvent(self, event):
-        """Handle dragging the widget."""
         if event.buttons() & Qt.MouseButton.LeftButton:
             self._last_activity_time = datetime.now()
             if self._system_move_pending:
@@ -459,180 +491,56 @@ class PetWidget(QWidget):
             event.accept()
 
     def mouseReleaseEvent(self, event):
-        """Reset drag state on release; emit tap-to-refresh if not dragged."""
         if event.button() == Qt.MouseButton.LeftButton:
             self._system_move_pending = False
-            # Tap-to-refresh: only if the pet wasn't dragged (< 5px movement)
             if self._tap_origin is not None:
                 delta = event.globalPosition().toPoint() - self._tap_origin
                 if abs(delta.x()) < 5 and abs(delta.y()) < 5:
-                    self.tap_refresh_requested.emit()
+                    self.clicked.emit()
                 self._tap_origin = None
         super().mouseReleaseEvent(event)
 
     def contextMenuEvent(self, event):
-        """Show context menu on right-click."""
         self._last_activity_time = datetime.now()
-        if self._is_sleeping:
+        if self._state_machine.state == PetState.SLEEPING:
             self._wake_up()
 
         menu = QMenu(self)
 
-        # Reset position action
         reset_action = QAction("Reset Position", self)
         reset_action.triggered.connect(self._move_to_default_position)
         menu.addAction(reset_action)
 
         menu.addSeparator()
 
-        # Quit action
         quit_action = QAction("Quit", self)
         quit_action.triggered.connect(self._quit_app)
         menu.addAction(quit_action)
 
         menu.exec(event.globalPos())
 
+    # ------------------------------------------------------------------
+    # Alert
+    # ------------------------------------------------------------------
+
     def _quit_app(self):
-        """Quit the application."""
         from PyQt6.QtWidgets import QApplication
 
         QApplication.quit()
 
     @pyqtSlot(str)
     def trigger_alert(self, sender_name: str):
-        """Trigger alert animation and sound (legacy interface for integrations)."""
-        logger.debug(f"trigger_alert called for: {sender_name}")
-        if self._is_alerting:
-            logger.debug("Already alerting, skipping")
+        """Trigger alert animation and sound."""
+        if self._state_machine.state == PetState.ALERTING:
             return
 
-        logger.info(f"Starting alert for: {sender_name}")
-
-        # Stop any ongoing wander
-        if self._is_wandering:
+        if self._state_machine.state == PetState.WANDERING:
             self._move_animation.stop()
-            self._is_wandering = False
 
-        # Trigger alert through behavior registry
+        self._state_machine.force(PetState.ALERTING)
         self._behavior_registry.trigger("alert", {"sender": sender_name})
 
     def stop_alert(self):
-        """Stop the alert and return to base state."""
-        self._is_alerting = False
         self._bounce_animation.stop()
+        self._state_machine.force(PetState.IDLE)
         self._behavior_registry.stop_current()
-        self._return_to_base_state()
-
-    # ── Notification & Route Flow ───────────────────────────────────
-
-    @pyqtSlot(dict)
-    def _on_notification(self, context: dict) -> None:
-        """Handle bubble-only notification (no behavior change)."""
-        if context.get("action") == "request_route":
-            self._route_prompt_queue.append(context)
-            # Persistent bubble — stays until user clicks pet
-            bubble_text = context.get("bubble_text", "")
-            if bubble_text:
-                self.show_bubble(bubble_text, duration_ms=0)
-            return
-
-        bubble_text = context.get("bubble_text", "")
-        if bubble_text:
-            self.show_bubble(bubble_text, duration_ms=5000)
-
-    # ── Route Confirmation Flow (smart origin detection) ─────────────
-
-    _MODE_LABELS = {
-        "DRIVE": "Driving",
-        "TRANSIT": "Transit",
-        "WALK": "Walking",
-        "BICYCLE": "Cycling",
-    }
-
-    def _get_portrait_pixmap(self) -> QPixmap | None:
-        """Get the first idle sprite for use as dialog portrait."""
-        idle = self._behavior_registry.get_behavior("idle")
-        if idle and idle.sprites:
-            return idle.sprites[0]
-        return None
-
-    def _show_route_dialog(self) -> None:
-        """Show MapleStory-styled dialog for route input."""
-        if not self._route_prompt_queue:
-            return
-
-        # Dismiss the persistent route prompt bubble
-        self._speech_bubble.hide_bubble()
-
-        request = self._route_prompt_queue.popleft()
-        event_id = request.get("event_id", "")
-        summary = request.get("summary", "event")
-        origin = request.get("origin", "")
-        destination = request.get("destination", "")
-        travel_modes = request.get("travel_modes", ["DRIVE"])
-
-        from PyQt6.QtWidgets import QComboBox, QLineEdit
-
-        from src.ui.dialog_box import DialogBox
-
-        dialog = DialogBox(
-            title=f'Route for "{summary}"',
-            body_text="Where are you headed? Enter your route details below.",
-            portrait_pixmap=self._get_portrait_pixmap(),
-            buttons=[("Confirm", "accept"), ("Skip", "reject")],
-            parent=self,
-        )
-
-        origin_edit = QLineEdit(origin)
-        origin_edit.setPlaceholderText("Enter starting location")
-        dialog.add_form_row("From:", origin_edit)
-
-        dest_edit = QLineEdit(destination)
-        dest_edit.setPlaceholderText("Enter destination")
-        dialog.add_form_row("To:", dest_edit)
-
-        mode_combo = QComboBox()
-        for mode in travel_modes:
-            mode_combo.addItem(self._MODE_LABELS.get(mode, mode), mode)
-        dialog.add_form_row("Travel by:", mode_combo)
-
-        if dialog.exec() == DialogBox.DialogCode.Accepted:
-            from_text = origin_edit.text().strip()
-            to_text = dest_edit.text().strip()
-            selected_mode = mode_combo.currentData()
-            if from_text and to_text:
-                self.route_submitted.emit(event_id, from_text, to_text, selected_mode)
-                # Update origin in next queued prompt to this destination
-                if self._route_prompt_queue:
-                    self._route_prompt_queue[0]["origin"] = to_text
-            else:
-                self.show_bubble("Both From and To are required.")
-                self.route_skipped.emit(event_id)
-        else:
-            self.route_skipped.emit(event_id)
-
-    @pyqtSlot(str, str, str, str)
-    def _on_route_verification(
-        self, event_id: str, geocoded_origin: str, geocoded_destination: str, mode: str
-    ) -> None:
-        """Show MapleStory-styled verification dialog for geocoded route."""
-        from src.ui.dialog_box import DialogBox
-
-        mode_label = self._MODE_LABELS.get(mode, mode)
-
-        dialog = DialogBox(
-            title="Confirm Route",
-            portrait_pixmap=self._get_portrait_pixmap(),
-            buttons=[("Looks good", "accept"), ("No, edit", "reject")],
-            parent=self,
-        )
-        dialog.set_body_html(
-            f"<b>From:</b> {geocoded_origin}<br>"
-            f"<b>To:</b> {geocoded_destination}<br>"
-            f"<b>Travel by:</b> {mode_label}"
-        )
-
-        if dialog.exec() == DialogBox.DialogCode.Accepted:
-            self.route_confirmed.emit(event_id)
-        else:
-            self.route_rejected.emit(event_id)

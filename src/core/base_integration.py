@@ -30,8 +30,9 @@ class BaseIntegration(QObject, metaclass=QObjectABCMeta):
     def __init__(self, integration_path: Path, settings: dict[str, Any]):
         super().__init__()
         self._path = integration_path
-        self._settings = settings
-        self._enabled = settings.get("enabled", True)
+        # Merge: integration defaults first, then saved settings override
+        self._settings = {**self.get_default_settings(), **settings}
+        self._enabled = self._settings.get("enabled", True)
 
     @property
     @abstractmethod
@@ -85,3 +86,11 @@ class BaseIntegration(QObject, metaclass=QObjectABCMeta):
     def notify(self, context: dict) -> None:
         """Send a bubble-only notification (no behavior change)."""
         self.request_notification.emit(context)
+
+    def setup_ui(self, pet_widget) -> None:
+        """Optional hook for integrations to wire their own UI signals.
+
+        Called once after the integration is loaded and the pet widget exists.
+        Override this to connect integration-specific signals to the pet widget.
+        """
+        pass

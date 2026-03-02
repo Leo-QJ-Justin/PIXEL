@@ -46,6 +46,7 @@ DEFAULT_SETTINGS = {
     "general": {
         "always_on_top": True,
         "start_minimized": False,
+        "start_on_boot": False,
         "sprite_default_facing": "right",  # "left" or "right"
         "speech_bubble": {
             "enabled": True,
@@ -53,13 +54,20 @@ DEFAULT_SETTINGS = {
         },
     },
     "behaviors": {
-        "fly": {
+        "wander": {
             "wander_chance": 0.3,
             "wander_interval_min_ms": 5000,
             "wander_interval_max_ms": 15000,
         },
         "wave": {
             "greeting": "Hello!",
+        },
+        "idle_variety": {
+            "enabled": True,
+            "interval_min_ms": 20000,
+            "interval_max_ms": 60000,
+            "chance": 0.4,
+            "behaviors": ["look_around", "yawn", "chill", "play_ball"],
         },
         "sleep": {
             "inactivity_timeout_ms": 60000,
@@ -76,40 +84,13 @@ DEFAULT_SETTINGS = {
                 "night": "20:00",
             },
             "greetings": {
-                "morning": "Good morning!",
-                "afternoon": "Good afternoon!",
-                "night": "Good night!",
+                "morning": "Rise and shine!",
+                "afternoon": "Lunch time~",
+                "night": "Sleepy time~",
             },
         },
     },
-    "integrations": {
-        "telegram": {
-            "enabled": True,
-            "trigger_behavior": "alert",
-        },
-        "weather": {
-            "enabled": True,
-            "city": "New York",
-            "units": "imperial",
-            "check_interval_ms": 1800000,
-        },
-        "google_calendar": {
-            "enabled": True,
-            "check_interval_ms": 300000,
-            "alert_before_minutes": 30,
-            "trigger_behavior": "alert",
-            "calendar_id": "primary",
-            "origin_address": "",
-            "preparation_minutes": 15,
-            "travel_modes": ["DRIVE", "TRANSIT"],
-            "travel_cache_ttl_minutes": 30,
-            "fetch_window_minutes": 120,
-            "api_quota_limit": 9500,
-            "recheck_offset_minutes": 20,
-            "leave_buffer_minutes": 5,
-            "tap_refresh_debounce_ms": 5000,
-        },
-    },
+    "integrations": {},
 }
 
 
