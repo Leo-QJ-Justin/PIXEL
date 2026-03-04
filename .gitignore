@@ -61,9 +61,6 @@ coverage.xml
 # Logs
 logs/
 
-# Media and sounds (each developer uses their own)
-behaviors/*/media/
-behaviors/*/sounds/
 
 #Local Development
 plans/
