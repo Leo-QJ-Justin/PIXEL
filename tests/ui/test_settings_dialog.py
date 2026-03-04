@@ -58,10 +58,10 @@ class TestSettingsDialogInit:
         dialog, _ = _make_dialog(qtbot, tmp_path)
         assert dialog is not None
 
-    def test_has_four_sidebar_tabs(self, qtbot, tmp_path):
+    def test_has_five_sidebar_tabs(self, qtbot, tmp_path):
         dialog, _ = _make_dialog(qtbot, tmp_path)
         sidebar = dialog.findChild(QListWidget)
-        assert sidebar.count() == 4
+        assert sidebar.count() == 5
 
     def test_is_frameless(self, qtbot, tmp_path):
         dialog, _ = _make_dialog(qtbot, tmp_path)

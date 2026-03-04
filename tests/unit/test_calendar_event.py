@@ -1,4 +1,4 @@
-"""Tests for CalendarEvent model."""
+"""Tests for CalendarEvent model (simplified — no travel/routing)."""
 
 from datetime import datetime, timedelta, timezone
 
@@ -20,229 +20,91 @@ def _make_event(**kwargs):
 
 
 @pytest.mark.unit
-class TestEffectiveLocation:
-    """Tests for effective_location property."""
-
-    def test_returns_user_location_over_calendar_location(self):
-        event = _make_event(
-            calendar_location="Calendar Room A",
-            user_location="User Room B",
-        )
-        assert event.effective_location == "User Room B"
-
-    def test_returns_calendar_location_when_no_user_location(self):
-        event = _make_event(
-            calendar_location="Calendar Room A",
-            user_location=None,
-        )
-        assert event.effective_location == "Calendar Room A"
-
-    def test_returns_none_when_no_location(self):
-        event = _make_event(
-            calendar_location=None,
-            user_location=None,
-        )
-        assert event.effective_location is None
-
-    def test_user_location_empty_string_falls_through(self):
-        event = _make_event(
-            calendar_location="Office",
-            user_location="",
-        )
-        # Empty string is falsy, so calendar_location should be returned
-        assert event.effective_location == "Office"
-
-
-@pytest.mark.unit
 class TestIsVirtual:
     """Tests for is_virtual property."""
 
     def test_virtual_zoom_link(self):
-        event = _make_event(calendar_location="https://zoom.us/j/123456")
+        event = _make_event(location="https://zoom.us/j/123456")
         assert event.is_virtual is True
 
     def test_virtual_google_meet(self):
-        event = _make_event(calendar_location="https://meet.google.com/abc-defg-hij")
+        event = _make_event(location="https://meet.google.com/abc-defg-hij")
+        assert event.is_virtual is True
+
+    def test_virtual_teams(self):
+        event = _make_event(location="https://teams.microsoft.com/l/meetup-join/abc")
         assert event.is_virtual is True
 
     def test_physical_location(self):
-        event = _make_event(calendar_location="123 Main St, Singapore")
+        event = _make_event(location="123 Main St, Singapore")
         assert event.is_virtual is False
 
     def test_no_location_is_not_virtual(self):
-        event = _make_event(calendar_location=None)
+        event = _make_event(location=None)
         assert event.is_virtual is False
 
 
 @pytest.mark.unit
-class TestNeedsTravelFetch:
-    """Tests for needs_travel_fetch property."""
+class TestAlertedIntervals:
+    """Tests for alerted_intervals tracking."""
 
-    def test_returns_false_for_all_day_events(self):
-        event = _make_event(
-            calendar_location="Office",
-            is_all_day=True,
-        )
-        assert event.needs_travel_fetch is False
+    def test_starts_empty(self):
+        event = _make_event()
+        assert event.alerted_intervals == set()
 
-    def test_returns_true_when_no_travel_info(self):
-        event = _make_event(
-            calendar_location="123 Main St, Singapore",
-            is_all_day=False,
-        )
-        event.route_confirmed = True
-        assert event.travel_info is None
-        assert event.needs_travel_fetch is True
+    def test_can_add_intervals(self):
+        event = _make_event()
+        event.alerted_intervals.add(30)
+        event.alerted_intervals.add(5)
+        assert event.alerted_intervals == {30, 5}
 
-    def test_returns_false_when_route_not_confirmed(self):
-        event = _make_event(
-            calendar_location="123 Main St, Singapore",
-            is_all_day=False,
-        )
-        assert event.route_confirmed is False
-        assert event.needs_travel_fetch is False
-
-    def test_returns_false_for_virtual_event(self):
-        event = _make_event(
-            calendar_location="https://zoom.us/j/123",
-            is_all_day=False,
-        )
-        assert event.needs_travel_fetch is False
-
-    def test_returns_false_when_no_location(self):
-        event = _make_event(
-            calendar_location=None,
-            user_location=None,
-            is_all_day=False,
-        )
-        assert event.needs_travel_fetch is False
-
-    def test_returns_false_when_initial_fetch_done(self):
-        event = _make_event(
-            calendar_location="123 Main St, Singapore",
-            is_all_day=False,
-        )
-        event.route_confirmed = True
-        event.initial_fetch_done = True
-        assert event.needs_travel_fetch is False
+    def test_separate_instances_have_independent_sets(self):
+        event1 = _make_event(event_id="a")
+        event2 = _make_event(event_id="b")
+        event1.alerted_intervals.add(30)
+        assert event2.alerted_intervals == set()
 
 
 @pytest.mark.unit
 class TestResetAlerts:
     """Tests for reset_alerts method."""
 
-    def test_clears_all_alert_flags(self):
+    def test_clears_alerted_intervals(self):
         event = _make_event()
-        event.prepare_alerted = True
-        event.leave_alerted = True
-        event.flat_alerted = True
-        event.initial_fetch_done = True
-        event.recheck_done = True
+        event.alerted_intervals.add(30)
+        event.alerted_intervals.add(5)
+        event.alerted_intervals.add(0)
 
         event.reset_alerts()
 
-        assert event.prepare_alerted is False
-        assert event.leave_alerted is False
-        assert event.flat_alerted is False
-        assert event.initial_fetch_done is False
-        assert event.recheck_done is False
+        assert event.alerted_intervals == set()
 
-    def test_reset_on_already_clear_flags(self):
+    def test_reset_on_already_clear(self):
         event = _make_event()
         event.reset_alerts()
-
-        assert event.prepare_alerted is False
-        assert event.leave_alerted is False
-        assert event.flat_alerted is False
+        assert event.alerted_intervals == set()
 
 
 @pytest.mark.unit
-class TestPersistAndRestore:
-    """Tests for to_persist_dict and restore_user_data round-trip."""
+class TestIsVirtualLocation:
+    """Tests for the standalone is_virtual_location function."""
 
-    def test_round_trip_with_user_location(self):
-        from integrations.google_calendar.calendar_event import (
-            CalendarEvent,
-            GeocodedAddress,
-        )
+    def test_empty_string_is_not_virtual(self):
+        from integrations.google_calendar.calendar_event import is_virtual_location
 
-        event = _make_event(
-            user_location="My Office",
-            calendar_location="Other Place",
-        )
-        event.geocoded_address = GeocodedAddress(
-            formatted_address="My Office, Singapore",
-            lat=1.35,
-            lng=103.82,
-        )
+        assert is_virtual_location("") is False
 
-        persisted = event.to_persist_dict()
+    def test_http_url_is_virtual(self):
+        from integrations.google_calendar.calendar_event import is_virtual_location
 
-        # Create a fresh event and restore
-        new_event = _make_event(
-            event_id=event.event_id,
-            calendar_location="Other Place",
-        )
-        CalendarEvent.restore_user_data(new_event, persisted)
+        assert is_virtual_location("http://example.com/meeting") is True
 
-        assert new_event.user_location == "My Office"
-        assert new_event.geocoded_address is not None
-        assert new_event.geocoded_address.formatted_address == "My Office, Singapore"
-        assert new_event.geocoded_address.lat == 1.35
-        assert new_event.geocoded_address.lng == 103.82
+    def test_webex_is_virtual(self):
+        from integrations.google_calendar.calendar_event import is_virtual_location
 
-    def test_round_trip_without_geocoded_address(self):
-        from integrations.google_calendar.calendar_event import CalendarEvent
+        assert is_virtual_location("https://webex.com/meet/abc") is True
 
-        event = _make_event(user_location="Some Place")
-        event.geocoded_address = None
+    def test_plain_text_is_not_virtual(self):
+        from integrations.google_calendar.calendar_event import is_virtual_location
 
-        persisted = event.to_persist_dict()
-
-        new_event = _make_event(event_id=event.event_id)
-        CalendarEvent.restore_user_data(new_event, persisted)
-
-        assert new_event.user_location == "Some Place"
-        assert new_event.geocoded_address is None
-
-    def test_persist_dict_contains_event_id(self):
-        event = _make_event(event_id="my-event-123")
-        persisted = event.to_persist_dict()
-        assert persisted["event_id"] == "my-event-123"
-
-    def test_round_trip_two_fetch_fields(self):
-        from integrations.google_calendar.calendar_event import CalendarEvent
-
-        event = _make_event()
-        event.initial_fetch_done = True
-        event.recheck_done = True
-        event.route_confirmed = True
-
-        persisted = event.to_persist_dict()
-
-        new_event = _make_event(event_id=event.event_id)
-        CalendarEvent.restore_user_data(new_event, persisted)
-
-        # travel_info is None on restore, so initial_fetch_done resets
-        assert new_event.initial_fetch_done is False
-        assert new_event.recheck_done is True
-
-    def test_persist_dict_contains_all_expected_keys(self):
-        event = _make_event()
-        persisted = event.to_persist_dict()
-        expected_keys = {
-            "event_id",
-            "user_location",
-            "geocoded_lat",
-            "geocoded_lng",
-            "geocoded_formatted",
-            "origin_address",
-            "route_confirmed",
-            "route_declined",
-            "confirmed_origin",
-            "confirmed_destination",
-            "preferred_travel_mode",
-            "initial_fetch_done",
-            "recheck_done",
-        }
-        assert set(persisted.keys()) == expected_keys
+        assert is_virtual_location("Conference Room B") is False

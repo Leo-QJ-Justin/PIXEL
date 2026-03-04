@@ -81,59 +81,6 @@ class TestSaveSettings:
 
 
 @pytest.mark.unit
-class TestGetMonitoredUsers:
-    """Tests for get_monitored_users function."""
-
-    def test_get_monitored_users_from_env(self, monkeypatch):
-        """Returns list of user IDs from MONITORED_USERS env var."""
-        monkeypatch.setenv("MONITORED_USERS", "123456789,987654321")
-
-        import config
-
-        importlib.reload(config)
-        result = config.get_monitored_users()
-
-        assert result == [123456789, 987654321]
-
-    def test_get_monitored_users_empty_env(self, monkeypatch):
-        """Returns empty list when MONITORED_USERS is empty."""
-        monkeypatch.setenv("MONITORED_USERS", "")
-
-        import config
-
-        importlib.reload(config)
-        result = config.get_monitored_users()
-
-        assert result == []
-
-    def test_get_monitored_users_not_set(self, monkeypatch):
-        """Returns empty list when MONITORED_USERS is not set."""
-        # Must set env before reload since config reads at import time
-        monkeypatch.delenv("MONITORED_USERS", raising=False)
-        # Also ensure dotenv doesn't load it from .env
-        monkeypatch.setattr("dotenv.load_dotenv", lambda: None)
-
-        import config
-
-        # Directly set the module-level variable
-        config.MONITORED_USERS = []
-        result = config.get_monitored_users()
-
-        assert result == []
-
-    def test_get_monitored_users_ignores_invalid(self, monkeypatch):
-        """Ignores non-numeric values in MONITORED_USERS."""
-        monkeypatch.setenv("MONITORED_USERS", "123,invalid,456,")
-
-        import config
-
-        importlib.reload(config)
-        result = config.get_monitored_users()
-
-        assert result == [123, 456]
-
-
-@pytest.mark.unit
 class TestGetIntegrationSettings:
     """Tests for get_integration_settings function."""
 
@@ -143,7 +90,7 @@ class TestGetIntegrationSettings:
 
         importlib.reload(config)
         with patch.object(config, "SETTINGS_FILE", temp_settings_file):
-            result = config.get_integration_settings("telegram")
+            result = config.get_integration_settings("weather")
 
         assert result["enabled"] is True
         assert result["trigger_behavior"] == "alert"

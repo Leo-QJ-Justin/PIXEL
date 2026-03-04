@@ -66,6 +66,10 @@ class TrayIcon(QSystemTrayIcon):
             self._build_pomodoro_menu(pomodoro_menu)
             menu.addMenu(pomodoro_menu)
 
+        calendar_menu = QMenu("Calendar", menu)
+        self._build_calendar_menu(calendar_menu)
+        menu.addMenu(calendar_menu)
+
         integrations_menu = QMenu("Integrations", menu)
         self._build_integrations_menu(integrations_menu)
         menu.addMenu(integrations_menu)
@@ -111,6 +115,34 @@ class TrayIcon(QSystemTrayIcon):
         if self._pomodoro_widget:
             self._pomodoro_widget._integration.skip()
 
+    def _build_calendar_menu(self, menu: QMenu):
+        calendar = self._integration_manager.get_integration("google_calendar")
+
+        if calendar:
+            next_event = calendar.get_next_event()
+            if next_event:
+                time_str = next_event.start_time.strftime("%I:%M %p").lstrip("0")
+                info = QAction(f"Next: {next_event.summary} @ {time_str}", menu)
+            else:
+                info = QAction("No upcoming events", menu)
+            info.setEnabled(False)
+            menu.addAction(info)
+        else:
+            info = QAction("Not connected", menu)
+            info.setEnabled(False)
+            menu.addAction(info)
+
+        menu.addSeparator()
+
+        refresh_action = QAction("Refresh Now", menu)
+        refresh_action.triggered.connect(self._calendar_refresh)
+        menu.addAction(refresh_action)
+
+    def _calendar_refresh(self):
+        calendar = self._integration_manager.get_integration("google_calendar")
+        if calendar:
+            calendar._on_timer_tick()
+
     def _build_integrations_menu(self, menu: QMenu):
         integrations = self._integration_manager.list_integrations()
 
@@ -121,8 +153,8 @@ class TrayIcon(QSystemTrayIcon):
             return
 
         for name in integrations:
-            # Skip pomodoro — it has its own dedicated submenu
-            if name == "pomodoro":
+            # Skip pomodoro and calendar — they have their own dedicated submenus
+            if name in ("pomodoro", "google_calendar"):
                 continue
             integration = self._integration_manager.get_integration(name)
             if integration:
@@ -169,7 +201,7 @@ class TrayIcon(QSystemTrayIcon):
     def _open_settings(self):
         from src.ui.settings_dialog import SettingsDialog
 
-        dialog = SettingsDialog()
+        dialog = SettingsDialog(integration_manager=self._integration_manager)
         dialog.settings_changed.connect(self.settings_changed)
         dialog.exec()
 

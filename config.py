@@ -7,30 +7,12 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Telegram API credentials
-API_ID = os.getenv("API_ID")
-API_HASH = os.getenv("API_HASH")
-
 # OpenWeatherMap API key
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
-# Google Calendar OAuth credentials
+# Google Calendar OAuth credentials (optional override — bundled defaults in auth.py)
 GOOGLE_CALENDAR_CLIENT_ID = os.getenv("GOOGLE_CALENDAR_CLIENT_ID")
 GOOGLE_CALENDAR_CLIENT_SECRET = os.getenv("GOOGLE_CALENDAR_CLIENT_SECRET")
-
-# Google Maps API key (Routes + Geocoding)
-GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
-
-# OneMap Singapore credentials (fallback routing)
-ONEMAP_EMAIL = os.getenv("ONEMAP_EMAIL")
-ONEMAP_PASSWORD = os.getenv("ONEMAP_PASSWORD")
-
-# Monitored users (comma-separated list in .env)
-# Example: MONITORED_USERS=123456789,987654321
-_monitored_users_str = os.getenv("MONITORED_USERS", "")
-MONITORED_USERS = [
-    int(uid.strip()) for uid in _monitored_users_str.split(",") if uid.strip().isdigit()
-]
 
 # Project paths
 BASE_DIR = Path(__file__).parent
@@ -100,6 +82,15 @@ DEFAULT_SETTINGS = {
             "sound_enabled": True,
             "sessions_per_cycle": 4,
         },
+        "google_calendar": {
+            "enabled": False,
+            "check_interval_ms": 300000,
+            "calendar_id": "primary",
+            "fetch_window_minutes": 120,
+            "trigger_behavior": "alert",
+            "reminder_minutes": [30, 5, 0],
+            "day_preview_enabled": True,
+        },
     },
 }
 
@@ -132,11 +123,6 @@ def _deep_merge(base: dict, override: dict) -> None:
             _deep_merge(base[key], value)
         else:
             base[key] = value
-
-
-def get_monitored_users() -> list[int]:
-    """Get list of monitored Telegram user IDs from environment."""
-    return MONITORED_USERS.copy()
 
 
 def get_integration_settings(name: str) -> dict:

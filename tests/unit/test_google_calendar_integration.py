@@ -1,4 +1,4 @@
-"""Tests for GoogleCalendarIntegration (refactored with two-phase alerts)."""
+"""Tests for GoogleCalendarIntegration (simplified — reminders + day preview)."""
 
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
@@ -15,9 +15,7 @@ def _make_integration(tmp_path, settings=None):
     integration_path = tmp_path / "google_calendar"
     integration_path.mkdir(exist_ok=True)
 
-    # Patch event cache loading so it doesn't look for real files
-    with patch.object(GoogleCalendarIntegration, "_load_event_cache"):
-        return GoogleCalendarIntegration(integration_path, settings or {})
+    return GoogleCalendarIntegration(integration_path, settings or {})
 
 
 def _make_event(event_id, summary, start_dt, location=""):
@@ -48,21 +46,18 @@ class TestGoogleCalendarInit:
 
     def test_display_name(self, tmp_path):
         integration = _make_integration(tmp_path)
-        assert integration.display_name == "Google Calendar Alerts"
+        assert integration.display_name == "Google Calendar"
 
     def test_default_settings(self, tmp_path):
         integration = _make_integration(tmp_path)
         defaults = integration.get_default_settings()
         assert defaults["enabled"] is False
-        assert defaults["check_interval_ms"] == 300000
-        assert defaults["alert_before_minutes"] == 30
+        assert defaults["check_interval_ms"] == 300_000
         assert defaults["trigger_behavior"] == "alert"
         assert defaults["calendar_id"] == "primary"
-        assert defaults["origin_address"] == ""
-        assert defaults["preparation_minutes"] == 15
-        assert defaults["travel_modes"] == ["DRIVE", "TRANSIT"]
         assert defaults["fetch_window_minutes"] == 120
-        assert defaults["api_quota_limit"] == 9500
+        assert defaults["reminder_minutes"] == [30, 5, 0]
+        assert defaults["day_preview_enabled"] is True
 
 
 @pytest.mark.unit
@@ -122,181 +117,6 @@ class TestParseEventTime:
 
 
 @pytest.mark.unit
-class TestProcessEvents:
-    """Tests for _process_events (async, two-phase alerts)."""
-
-    @pytest.mark.asyncio
-    async def test_flat_alert_within_threshold(self, tmp_path):
-        """Event within alert_before_minutes triggers flat alert."""
-        integration = _make_integration(tmp_path, {"alert_before_minutes": 30})
-        now = datetime.now(timezone.utc)
-        event = _make_event("evt1", "Team Meeting", now + timedelta(minutes=15), "Office")
-
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
-
-        with patch.object(integration, "_has_routing_provider", return_value=False):
-            await integration._process_events([event], now)
-
-        assert len(received) == 1
-        assert received[0][0] == "alert"
-        assert received[0][1]["source"] == "google_calendar"
-        assert received[0][1]["summary"] == "Team Meeting"
-
-    @pytest.mark.asyncio
-    async def test_event_outside_threshold_no_alert(self, tmp_path):
-        """Event outside alert_before_minutes does not trigger alert."""
-        integration = _make_integration(tmp_path, {"alert_before_minutes": 30})
-        now = datetime.now(timezone.utc)
-        event = _make_event("evt1", "Future Meeting", now + timedelta(minutes=45))
-
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
-
-        await integration._process_events([event], now)
-
-        assert len(received) == 0
-
-    @pytest.mark.asyncio
-    async def test_already_alerted_event_not_retriggered(self, tmp_path):
-        """Flat alert should not re-trigger for the same event."""
-        integration = _make_integration(tmp_path, {"alert_before_minutes": 30})
-        now = datetime.now(timezone.utc)
-        event = _make_event("evt1", "Team Meeting", now + timedelta(minutes=15))
-
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
-
-        await integration._process_events([event], now)
-        await integration._process_events([event], now)
-
-        assert len(received) == 1
-
-    @pytest.mark.asyncio
-    async def test_past_event_not_alerted(self, tmp_path):
-        """Events that have already started should not trigger alerts."""
-        integration = _make_integration(tmp_path, {"alert_before_minutes": 30})
-        now = datetime.now(timezone.utc)
-        event = _make_event("evt1", "Past Meeting", now - timedelta(minutes=5))
-
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
-
-        await integration._process_events([event], now)
-
-        assert len(received) == 0
-
-    @pytest.mark.asyncio
-    async def test_multiple_events_trigger_separately(self, tmp_path):
-        """Multiple events within threshold each trigger their own alert."""
-        integration = _make_integration(tmp_path, {"alert_before_minutes": 30})
-        now = datetime.now(timezone.utc)
-        events = [
-            _make_event("evt1", "Meeting 1", now + timedelta(minutes=10), "Room A"),
-            _make_event("evt2", "Meeting 2", now + timedelta(minutes=20), "Room B"),
-        ]
-
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
-
-        with patch.object(integration, "_has_routing_provider", return_value=False):
-            await integration._process_events(events, now)
-
-        assert len(received) == 2
-        summaries = {r[1]["summary"] for r in received}
-        assert summaries == {"Meeting 1", "Meeting 2"}
-
-    @pytest.mark.asyncio
-    async def test_all_day_event_uses_flat_alert(self, tmp_path):
-        """All-day events skip travel time and use flat alert."""
-        integration = _make_integration(
-            tmp_path,
-            {"alert_before_minutes": 30, "origin_address": "Home"},
-        )
-        now = datetime.now(timezone.utc)
-        # All-day event uses 'date' instead of 'dateTime'
-        event = {
-            "id": "allday1",
-            "summary": "Company Holiday",
-            "location": "Office",
-            "start": {"date": (now + timedelta(minutes=15)).strftime("%Y-%m-%d")},
-        }
-
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
-
-        # All-day events have time set to midnight UTC, so this only fires
-        # if the event start is within alert_before_minutes
-        await integration._process_events([event], now)
-
-        # The event should be tracked as all-day
-        cal_event = integration._events.get("allday1")
-        assert cal_event is not None
-        assert cal_event.is_all_day is True
-
-
-@pytest.mark.unit
-class TestTriggerFlatAlert:
-    """Tests for _trigger_flat_alert."""
-
-    def test_context_keys(self, tmp_path):
-        integration = _make_integration(tmp_path, {"trigger_behavior": "alert"})
-
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
-
-        event = CalendarEvent(
-            event_id="evt123",
-            summary="Standup",
-            start_time=datetime(2025, 1, 15, 10, 0, tzinfo=timezone.utc),
-            is_all_day=False,
-            calendar_location="Room 42",
-        )
-        integration._trigger_flat_alert(event, 15.3)
-
-        assert len(received) == 1
-        name, ctx = received[0]
-        assert name == "alert"
-        assert ctx["source"] == "google_calendar"
-        assert ctx["event_id"] == "evt123"
-        assert ctx["summary"] == "Standup"
-        assert ctx["location"] == "Room 42"
-        assert ctx["minutes_until"] == 15.3
-
-    def test_bubble_text_format(self, tmp_path):
-        integration = _make_integration(tmp_path, {"trigger_behavior": "alert"})
-
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
-
-        event = CalendarEvent(
-            event_id="evt1",
-            summary="Lunch",
-            start_time=datetime(2025, 1, 15, 12, 0, tzinfo=timezone.utc),
-            is_all_day=False,
-        )
-        integration._trigger_flat_alert(event, 10.4)
-
-        assert received[0][1]["bubble_text"] == "Lunch in 10 min"
-
-    def test_custom_trigger_behavior(self, tmp_path):
-        integration = _make_integration(tmp_path, {"trigger_behavior": "wave"})
-
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
-
-        event = CalendarEvent(
-            event_id="evt1",
-            summary="Test",
-            start_time=datetime(2025, 1, 15, 10, 0, tzinfo=timezone.utc),
-            is_all_day=False,
-        )
-        integration._trigger_flat_alert(event, 5.0)
-
-        assert received[0][0] == "wave"
-
-
-@pytest.mark.unit
 class TestUpsertEvent:
     """Tests for _upsert_event."""
 
@@ -310,7 +130,7 @@ class TestUpsertEvent:
         assert event is not None
         assert event.event_id == "evt1"
         assert event.summary == "New Meeting"
-        assert event.calendar_location == "Office"
+        assert event.location == "Office"
         assert "evt1" in integration._events
 
     def test_updates_existing_event(self, tmp_path):
@@ -327,27 +147,302 @@ class TestUpsertEvent:
         assert len(integration._events) == 1
 
     def test_resets_alerts_on_time_change(self, tmp_path):
-        """Edge case #11: changing start_time resets alert state."""
         integration = _make_integration(tmp_path)
         now = datetime.now(timezone.utc)
         raw = _make_event("evt1", "Meeting", now + timedelta(minutes=30))
 
         event = integration._upsert_event(raw)
-        event.flat_alerted = True
-        event.prepare_alerted = True
+        event.alerted_intervals.add(30)
+        event.alerted_intervals.add(5)
 
         # Update with different time
         raw_updated = _make_event("evt1", "Meeting", now + timedelta(minutes=60))
         event = integration._upsert_event(raw_updated)
 
-        assert event.flat_alerted is False
-        assert event.prepare_alerted is False
+        assert event.alerted_intervals == set()
 
     def test_returns_none_for_invalid_event(self, tmp_path):
         integration = _make_integration(tmp_path)
         assert integration._upsert_event({}) is None
         assert integration._upsert_event({"id": ""}) is None
         assert integration._upsert_event({"id": "x", "start": {}}) is None
+
+    def test_all_day_event_detection(self, tmp_path):
+        integration = _make_integration(tmp_path)
+        raw = {
+            "id": "allday1",
+            "summary": "Holiday",
+            "start": {"date": "2025-06-15"},
+        }
+        event = integration._upsert_event(raw)
+        assert event is not None
+        assert event.is_all_day is True
+
+
+@pytest.mark.unit
+class TestProcessReminders:
+    """Tests for _process_reminders."""
+
+    def test_fires_30_min_reminder(self, tmp_path):
+        integration = _make_integration(tmp_path, {"reminder_minutes": [30, 5, 0]})
+        now = datetime.now(timezone.utc)
+
+        event = CalendarEvent(
+            event_id="evt1",
+            summary="Team Meeting",
+            start_time=now + timedelta(minutes=25),
+            is_all_day=False,
+        )
+
+        received = []
+        integration.request_notification.connect(lambda ctx: received.append(ctx))
+
+        integration._process_reminders(event, now)
+
+        assert len(received) == 1
+        assert "Team Meeting in 30 min" in received[0]["bubble_text"]
+        assert 30 in event.alerted_intervals
+
+    def test_fires_5_min_reminder_with_exclamation(self, tmp_path):
+        integration = _make_integration(tmp_path, {"reminder_minutes": [30, 5, 0]})
+        now = datetime.now(timezone.utc)
+
+        event = CalendarEvent(
+            event_id="evt1",
+            summary="Standup",
+            start_time=now + timedelta(minutes=3),
+            is_all_day=False,
+        )
+        event.alerted_intervals.add(30)  # Already fired 30-min
+
+        received = []
+        integration.request_notification.connect(lambda ctx: received.append(ctx))
+
+        integration._process_reminders(event, now)
+
+        assert len(received) == 1
+        assert "Standup in 5 min!" in received[0]["bubble_text"]
+        assert 5 in event.alerted_intervals
+
+    def test_fires_starting_now_with_behavior(self, tmp_path):
+        integration = _make_integration(
+            tmp_path, {"reminder_minutes": [30, 5, 0], "trigger_behavior": "alert"}
+        )
+        now = datetime.now(timezone.utc)
+
+        event = CalendarEvent(
+            event_id="evt1",
+            summary="Design Review",
+            start_time=now,  # exactly now
+            is_all_day=False,
+        )
+        # Can't use start_time == now because that's <= check; use a tiny future offset
+        event.start_time = now + timedelta(seconds=1)
+        event.alerted_intervals = {30, 5}
+
+        behavior_received = []
+        integration.request_behavior.connect(
+            lambda name, ctx: behavior_received.append((name, ctx))
+        )
+
+        integration._process_reminders(event, now)
+
+        assert len(behavior_received) == 1
+        assert behavior_received[0][0] == "alert"
+        assert "starting now!" in behavior_received[0][1]["bubble_text"]
+        assert 0 in event.alerted_intervals
+
+    def test_skips_all_day_events(self, tmp_path):
+        integration = _make_integration(tmp_path, {"reminder_minutes": [30, 5, 0]})
+        now = datetime.now(timezone.utc)
+
+        event = CalendarEvent(
+            event_id="allday1",
+            summary="Holiday",
+            start_time=now + timedelta(minutes=10),
+            is_all_day=True,
+        )
+
+        received = []
+        integration.request_notification.connect(lambda ctx: received.append(ctx))
+        behavior_received = []
+        integration.request_behavior.connect(
+            lambda name, ctx: behavior_received.append((name, ctx))
+        )
+
+        integration._process_reminders(event, now)
+
+        assert len(received) == 0
+        assert len(behavior_received) == 0
+
+    def test_skips_past_events(self, tmp_path):
+        integration = _make_integration(tmp_path, {"reminder_minutes": [30, 5, 0]})
+        now = datetime.now(timezone.utc)
+
+        event = CalendarEvent(
+            event_id="evt1",
+            summary="Past Meeting",
+            start_time=now - timedelta(minutes=5),
+            is_all_day=False,
+        )
+
+        received = []
+        integration.request_notification.connect(lambda ctx: received.append(ctx))
+
+        integration._process_reminders(event, now)
+
+        assert len(received) == 0
+
+    def test_no_duplicate_alerts(self, tmp_path):
+        integration = _make_integration(tmp_path, {"reminder_minutes": [30, 5, 0]})
+        now = datetime.now(timezone.utc)
+
+        event = CalendarEvent(
+            event_id="evt1",
+            summary="Meeting",
+            start_time=now + timedelta(minutes=20),
+            is_all_day=False,
+        )
+
+        received = []
+        integration.request_notification.connect(lambda ctx: received.append(ctx))
+
+        integration._process_reminders(event, now)
+        integration._process_reminders(event, now)
+
+        # Should only fire once for the 30-min interval
+        assert len(received) == 1
+
+    def test_event_outside_all_intervals(self, tmp_path):
+        integration = _make_integration(tmp_path, {"reminder_minutes": [30, 5, 0]})
+        now = datetime.now(timezone.utc)
+
+        event = CalendarEvent(
+            event_id="evt1",
+            summary="Far Future Meeting",
+            start_time=now + timedelta(minutes=60),
+            is_all_day=False,
+        )
+
+        received = []
+        integration.request_notification.connect(lambda ctx: received.append(ctx))
+
+        integration._process_reminders(event, now)
+
+        assert len(received) == 0
+
+    def test_multiple_intervals_fire_together(self, tmp_path):
+        """If event is within 30 seconds, all intervals fire at once."""
+        integration = _make_integration(tmp_path, {"reminder_minutes": [30, 5, 0]})
+        now = datetime.now(timezone.utc)
+
+        event = CalendarEvent(
+            event_id="evt1",
+            summary="Urgent",
+            start_time=now + timedelta(seconds=30),
+            is_all_day=False,
+        )
+
+        notifications = []
+        integration.request_notification.connect(lambda ctx: notifications.append(ctx))
+        behaviors = []
+        integration.request_behavior.connect(lambda name, ctx: behaviors.append((name, ctx)))
+
+        integration._process_reminders(event, now)
+
+        # 30-min and 5-min fire as notifications, 0-min fires as behavior
+        assert len(notifications) == 2
+        assert len(behaviors) == 1
+        assert event.alerted_intervals == {30, 5, 0}
+
+
+@pytest.mark.unit
+class TestDayPreview:
+    """Tests for _emit_day_preview."""
+
+    def test_no_events_free_day(self, tmp_path):
+        integration = _make_integration(tmp_path)
+        now = datetime.now(timezone.utc)
+
+        received = []
+        integration.request_notification.connect(lambda ctx: received.append(ctx))
+
+        integration._emit_day_preview(now)
+
+        assert len(received) == 1
+        assert "free day" in received[0]["bubble_text"]
+
+    def test_one_timed_event(self, tmp_path):
+        integration = _make_integration(tmp_path)
+        now = datetime.now(timezone.utc)
+
+        integration._events["evt1"] = CalendarEvent(
+            event_id="evt1",
+            summary="Standup",
+            start_time=now.replace(hour=9, minute=30, second=0, microsecond=0),
+            is_all_day=False,
+        )
+
+        received = []
+        integration.request_notification.connect(lambda ctx: received.append(ctx))
+
+        integration._emit_day_preview(now)
+
+        assert len(received) == 1
+        assert "1 meeting today" in received[0]["bubble_text"]
+        assert "Standup" in received[0]["bubble_text"]
+
+    def test_multiple_timed_events(self, tmp_path):
+        integration = _make_integration(tmp_path)
+        now = datetime.now(timezone.utc)
+
+        for i, (name, hour) in enumerate([("Standup", 9), ("Design Review", 11), ("Retro", 15)]):
+            integration._events[f"evt{i}"] = CalendarEvent(
+                event_id=f"evt{i}",
+                summary=name,
+                start_time=now.replace(hour=hour, minute=0, second=0, microsecond=0),
+                is_all_day=False,
+            )
+
+        received = []
+        integration.request_notification.connect(lambda ctx: received.append(ctx))
+
+        integration._emit_day_preview(now)
+
+        assert len(received) == 1
+        assert "3 meetings today" in received[0]["bubble_text"]
+        assert "Standup" in received[0]["bubble_text"]  # First event
+
+    def test_only_all_day_events(self, tmp_path):
+        integration = _make_integration(tmp_path)
+        now = datetime.now(timezone.utc)
+
+        integration._events["allday1"] = CalendarEvent(
+            event_id="allday1",
+            summary="Alice's Birthday",
+            start_time=now.replace(hour=0, minute=0, second=0, microsecond=0),
+            is_all_day=True,
+        )
+
+        received = []
+        integration.request_notification.connect(lambda ctx: received.append(ctx))
+
+        integration._emit_day_preview(now)
+
+        assert len(received) == 1
+        assert "all-day event" in received[0]["bubble_text"]
+        assert "Alice's Birthday" in received[0]["bubble_text"]
+
+    def test_bubble_duration_set(self, tmp_path):
+        integration = _make_integration(tmp_path)
+        now = datetime.now(timezone.utc)
+
+        received = []
+        integration.request_notification.connect(lambda ctx: received.append(ctx))
+
+        integration._emit_day_preview(now)
+
+        assert received[0]["bubble_duration_ms"] == 8000
 
 
 @pytest.mark.unit
@@ -358,7 +453,6 @@ class TestCleanupEvents:
         integration = _make_integration(tmp_path)
         now = datetime.now(timezone.utc)
 
-        # Add events to internal state
         for eid in ["evt1", "evt2", "evt3"]:
             integration._events[eid] = CalendarEvent(
                 event_id=eid,
@@ -407,11 +501,67 @@ class TestCleanupEvents:
 
 
 @pytest.mark.unit
+class TestGetNextEvent:
+    """Tests for get_next_event."""
+
+    def test_returns_nearest_event(self, tmp_path):
+        integration = _make_integration(tmp_path)
+        now = datetime.now(timezone.utc)
+
+        integration._events["evt1"] = CalendarEvent(
+            event_id="evt1",
+            summary="Later",
+            start_time=now + timedelta(minutes=60),
+            is_all_day=False,
+        )
+        integration._events["evt2"] = CalendarEvent(
+            event_id="evt2",
+            summary="Sooner",
+            start_time=now + timedelta(minutes=10),
+            is_all_day=False,
+        )
+
+        result = integration.get_next_event()
+        assert result is not None
+        assert result.event_id == "evt2"
+
+    def test_returns_none_when_empty(self, tmp_path):
+        integration = _make_integration(tmp_path)
+        assert integration.get_next_event() is None
+
+    def test_skips_all_day_events(self, tmp_path):
+        integration = _make_integration(tmp_path)
+        now = datetime.now(timezone.utc)
+
+        integration._events["allday1"] = CalendarEvent(
+            event_id="allday1",
+            summary="Holiday",
+            start_time=now + timedelta(minutes=10),
+            is_all_day=True,
+        )
+
+        assert integration.get_next_event() is None
+
+    def test_skips_past_events(self, tmp_path):
+        integration = _make_integration(tmp_path)
+        now = datetime.now(timezone.utc)
+
+        integration._events["evt1"] = CalendarEvent(
+            event_id="evt1",
+            summary="Past",
+            start_time=now - timedelta(minutes=5),
+            is_all_day=False,
+        )
+
+        assert integration.get_next_event() is None
+
+
+@pytest.mark.unit
 class TestStartWithoutCredentials:
     """Tests for start method without credentials."""
 
     @pytest.mark.asyncio
-    async def test_start_without_credentials_logs_error(self, tmp_path, caplog):
+    async def test_start_without_credentials_stays_dormant(self, tmp_path, caplog):
         integration = _make_integration(tmp_path)
 
         with patch(
@@ -441,348 +591,9 @@ class TestStop:
             is_all_day=False,
         )
 
-        with patch.object(integration, "_save_event_cache"):
-            await integration.stop()
+        await integration.stop()
 
         assert integration._timer is None
         assert integration._running is False
         assert integration._service is None
         assert integration._events == {}
-
-
-@pytest.mark.unit
-class TestNotifyPrepare:
-    """Tests for _notify_prepare (Phase 1: bubble only)."""
-
-    def test_emits_notification_signal(self, tmp_path):
-        integration = _make_integration(tmp_path)
-
-        received = []
-        integration.request_notification.connect(lambda ctx: received.append(ctx))
-
-        event = CalendarEvent(
-            event_id="evt1",
-            summary="Standup",
-            start_time=datetime(2025, 1, 15, 10, 0, tzinfo=timezone.utc),
-            is_all_day=False,
-        )
-        integration._notify_prepare(event, 10)
-
-        assert len(received) == 1
-        assert received[0]["action"] == "prepare"
-        assert "Get ready" in received[0]["bubble_text"]
-        assert "leave in 10 min" in received[0]["bubble_text"]
-
-    def test_does_not_trigger_behavior(self, tmp_path):
-        """Prepare phase should NOT trigger behavior system (edge case #1)."""
-        integration = _make_integration(tmp_path)
-
-        behavior_received = []
-        integration.request_behavior.connect(
-            lambda name, ctx: behavior_received.append((name, ctx))
-        )
-
-        event = CalendarEvent(
-            event_id="evt1",
-            summary="Meeting",
-            start_time=datetime(2025, 1, 15, 10, 0, tzinfo=timezone.utc),
-            is_all_day=False,
-        )
-        integration._notify_prepare(event, 5)
-
-        assert len(behavior_received) == 0
-
-
-@pytest.mark.unit
-class TestTriggerLeaveAlert:
-    """Tests for _trigger_leave_alert (Phase 2: full alert)."""
-
-    def test_triggers_alert_behavior(self, tmp_path):
-        integration = _make_integration(tmp_path, {"trigger_behavior": "alert"})
-
-        received = []
-        integration.request_behavior.connect(lambda name, ctx: received.append((name, ctx)))
-
-        event = CalendarEvent(
-            event_id="evt1",
-            summary="Client Meeting",
-            start_time=datetime(2025, 1, 15, 10, 0, tzinfo=timezone.utc),
-            is_all_day=False,
-            calendar_location="Downtown Office",
-        )
-        integration._trigger_leave_alert(event, 25, "DRIVE")
-
-        assert len(received) == 1
-        name, ctx = received[0]
-        assert name == "alert"
-        assert ctx["source"] == "google_calendar"
-        assert ctx["travel_minutes"] == 25
-        assert ctx["travel_mode"] == "DRIVE"
-        assert "Time to go" in ctx["bubble_text"]
-
-
-@pytest.mark.unit
-class TestDefaultSettings:
-    """Tests for new default settings."""
-
-    def test_new_settings_present(self, tmp_path):
-        integration = _make_integration(tmp_path)
-        defaults = integration.get_default_settings()
-        assert defaults["recheck_offset_minutes"] == 20
-        assert defaults["leave_buffer_minutes"] == 5
-        assert defaults["tap_refresh_debounce_ms"] == 5000
-
-
-@pytest.mark.unit
-class TestTwoFetchModel:
-    """Tests for the two-fetch model (initial fetch + scheduled recheck)."""
-
-    @pytest.mark.asyncio
-    async def test_initial_fetch_sets_flag_and_schedules_recheck(self, tmp_path):
-        """Route-confirmed event triggers initial fetch and schedules recheck."""
-        from integrations.google_calendar.calendar_event import TravelEstimate, TravelInfo
-
-        integration = _make_integration(tmp_path, {"preparation_minutes": 15})
-        now = datetime.now(timezone.utc)
-        event_time = now + timedelta(minutes=90)
-        raw = _make_event("evt1", "Meeting", event_time, "Office")
-
-        # Upsert and manually confirm route
-        event = integration._upsert_event(raw)
-        event.route_confirmed = True
-        event.origin_address = "Home"
-
-        # Mock _fetch_travel_info to populate travel_info
-        async def mock_fetch(ev, origin):
-            ev.travel_info = TravelInfo(
-                location="Office",
-                estimates=[TravelEstimate(mode="DRIVE", duration_minutes=25)],
-                fetched_at=now,
-            )
-
-        with patch.object(integration, "_fetch_travel_info", side_effect=mock_fetch):
-            with patch.object(integration, "_has_routing_provider", return_value=True):
-                await integration._process_events([raw], now)
-
-        assert event.initial_fetch_done is True
-        # Recheck timer should be scheduled
-        assert event.event_id in integration._recheck_timers
-
-        # Clean up timer
-        integration._cancel_recheck_timer(event.event_id)
-
-    @pytest.mark.asyncio
-    async def test_no_refetch_after_initial_fetch_done(self, tmp_path):
-        """Once initial_fetch_done is True, no automatic re-fetch via poll."""
-        from integrations.google_calendar.calendar_event import TravelEstimate, TravelInfo
-
-        integration = _make_integration(tmp_path)
-        now = datetime.now(timezone.utc)
-        event_time = now + timedelta(minutes=90)
-        raw = _make_event("evt1", "Meeting", event_time, "Office")
-
-        event = integration._upsert_event(raw)
-        event.route_confirmed = True
-        event.origin_address = "Home"
-        event.initial_fetch_done = True
-        event.travel_info = TravelInfo(
-            location="Office",
-            estimates=[TravelEstimate(mode="DRIVE", duration_minutes=25)],
-            fetched_at=now,
-        )
-
-        fetch_called = False
-
-        async def mock_fetch(ev, origin):
-            nonlocal fetch_called
-            fetch_called = True
-
-        with patch.object(integration, "_fetch_travel_info", side_effect=mock_fetch):
-            with patch.object(integration, "_has_routing_provider", return_value=True):
-                await integration._process_events([raw], now)
-
-        assert fetch_called is False
-
-    @pytest.mark.asyncio
-    async def test_recheck_sets_done_flag(self, tmp_path):
-        """Executing recheck sets recheck_done=True."""
-        from integrations.google_calendar.calendar_event import TravelEstimate, TravelInfo
-
-        integration = _make_integration(tmp_path)
-        now = datetime.now(timezone.utc)
-
-        event = CalendarEvent(
-            event_id="evt1",
-            summary="Meeting",
-            start_time=now + timedelta(minutes=60),
-            is_all_day=False,
-            calendar_location="Office",
-        )
-        event.route_confirmed = True
-        event.origin_address = "Home"
-        event.initial_fetch_done = True
-        event.travel_info = TravelInfo(
-            location="Office",
-            estimates=[TravelEstimate(mode="DRIVE", duration_minutes=25)],
-            fetched_at=now,
-        )
-        integration._events["evt1"] = event
-
-        async def mock_fetch(ev, origin):
-            ev.travel_info = TravelInfo(
-                location="Office",
-                estimates=[TravelEstimate(mode="DRIVE", duration_minutes=28)],
-                fetched_at=now,
-            )
-
-        with patch.object(integration, "_fetch_travel_info", side_effect=mock_fetch):
-            with patch.object(integration, "_save_event_cache"):
-                await integration._execute_recheck("evt1")
-
-        assert event.recheck_done is True
-
-
-@pytest.mark.unit
-class TestTapRefresh:
-    """Tests for tap-to-refresh functionality."""
-
-    def test_finds_most_imminent_event(self, tmp_path):
-        """_find_most_imminent_event returns the event with nearest departure."""
-        from integrations.google_calendar.calendar_event import TravelEstimate, TravelInfo
-
-        integration = _make_integration(tmp_path)
-        now = datetime.now(timezone.utc)
-
-        # Event A: departs in 30 min (start in 60, travel 30)
-        event_a = CalendarEvent(
-            event_id="a",
-            summary="Event A",
-            start_time=now + timedelta(minutes=60),
-            is_all_day=False,
-            calendar_location="Place A",
-        )
-        event_a.route_confirmed = True
-        event_a.travel_info = TravelInfo(
-            location="Place A",
-            estimates=[TravelEstimate(mode="DRIVE", duration_minutes=30)],
-            fetched_at=now,
-        )
-
-        # Event B: departs in 50 min (start in 90, travel 40)
-        event_b = CalendarEvent(
-            event_id="b",
-            summary="Event B",
-            start_time=now + timedelta(minutes=90),
-            is_all_day=False,
-            calendar_location="Place B",
-        )
-        event_b.route_confirmed = True
-        event_b.travel_info = TravelInfo(
-            location="Place B",
-            estimates=[TravelEstimate(mode="DRIVE", duration_minutes=40)],
-            fetched_at=now,
-        )
-
-        integration._events = {"a": event_a, "b": event_b}
-
-        result = integration._find_most_imminent_event()
-        assert result is not None
-        assert result.event_id == "a"
-
-    def test_returns_none_when_no_eligible_events(self, tmp_path):
-        """Returns None when no events have confirmed routes."""
-        integration = _make_integration(tmp_path)
-        now = datetime.now(timezone.utc)
-
-        event = CalendarEvent(
-            event_id="evt1",
-            summary="Meeting",
-            start_time=now + timedelta(minutes=60),
-            is_all_day=False,
-        )
-        integration._events = {"evt1": event}
-
-        assert integration._find_most_imminent_event() is None
-
-    def test_debounce_prevents_rapid_calls(self, tmp_path):
-        """Tap-to-refresh is debounced."""
-        from integrations.google_calendar.calendar_event import TravelEstimate, TravelInfo
-
-        integration = _make_integration(tmp_path, {"tap_refresh_debounce_ms": 5000})
-        now = datetime.now(timezone.utc)
-
-        event = CalendarEvent(
-            event_id="evt1",
-            summary="Meeting",
-            start_time=now + timedelta(minutes=60),
-            is_all_day=False,
-            calendar_location="Office",
-        )
-        event.route_confirmed = True
-        event.origin_address = "Home"
-        event.travel_info = TravelInfo(
-            location="Office",
-            estimates=[TravelEstimate(mode="DRIVE", duration_minutes=25)],
-            fetched_at=now,
-        )
-        integration._events = {"evt1": event}
-
-        # First call sets debounce timestamp
-        integration._last_tap_refresh_time = now
-
-        # Immediate second call should be debounced
-        with patch.object(integration, "_find_most_imminent_event") as mock_find:
-            integration.tap_refresh()
-            mock_find.assert_not_called()
-
-
-@pytest.mark.unit
-class TestCleanupEventsTimers:
-    """Tests for timer cleanup during event removal."""
-
-    def test_cancels_recheck_timer_on_cleanup(self, tmp_path):
-        """Recheck timer is cancelled when event is removed."""
-        from PyQt6.QtCore import QTimer
-
-        integration = _make_integration(tmp_path)
-        now = datetime.now(timezone.utc)
-
-        integration._events["evt1"] = CalendarEvent(
-            event_id="evt1",
-            summary="Event",
-            start_time=now + timedelta(minutes=30),
-            is_all_day=False,
-        )
-        timer = QTimer()
-        integration._recheck_timers["evt1"] = timer
-
-        integration._cleanup_events([])
-
-        assert "evt1" not in integration._events
-        assert "evt1" not in integration._recheck_timers
-
-
-@pytest.mark.unit
-class TestSmarterOrigin:
-    """Tests for smarter origin suggestion (last destination as next origin)."""
-
-    def test_confirm_route_stores_destination(self, tmp_path):
-        """confirm_route stores the confirmed destination for next event."""
-        integration = _make_integration(tmp_path)
-        now = datetime.now(timezone.utc)
-
-        event = CalendarEvent(
-            event_id="evt1",
-            summary="Meeting",
-            start_time=now + timedelta(minutes=60),
-            is_all_day=False,
-            calendar_location="Office",
-        )
-        event.confirmed_destination = "123 Main St, Singapore"
-        event.origin_address = "Home"
-        integration._events["evt1"] = event
-
-        with patch.object(integration, "_save_event_cache"):
-            integration.confirm_route("evt1")
-
-        assert integration._last_confirmed_destination == "123 Main St, Singapore"
