@@ -214,9 +214,10 @@ class SettingsDialog(QDialog):
 
     settings_changed = pyqtSignal(dict)
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, parent: QWidget | None = None, integration_manager=None):
         super().__init__(parent)
         self._drag_position: QPoint | None = None
+        self._integration_manager = integration_manager
 
         # Load custom font
         self._font_family = self._load_font()
@@ -363,7 +364,7 @@ class SettingsDialog(QDialog):
         sidebar.setFixedWidth(150)
         sidebar.setStyleSheet(_SIDEBAR_STYLE.format(font=self._font_family))
 
-        for tab_name in ["General", "Behaviors", "Time / Schedule", "Pomodoro"]:
+        for tab_name in ["General", "Behaviors", "Time / Schedule", "Pomodoro", "Calendar"]:
             item = QListWidgetItem(tab_name)
             item.setSizeHint(item.sizeHint())
             sidebar.addItem(item)
@@ -379,6 +380,7 @@ class SettingsDialog(QDialog):
             self._build_behaviors_tab,
             self._build_time_schedule_tab,
             self._build_pomodoro_tab,
+            self._build_calendar_tab,
         ]
         for builder in tabs:
             page = builder()
@@ -905,6 +907,203 @@ class SettingsDialog(QDialog):
 
         layout.addStretch()
         return page
+
+    # ------------------------------------------------------------------
+    # Tab: Calendar
+    # ------------------------------------------------------------------
+
+    def _build_calendar_tab(self) -> QWidget:
+        page, layout = self._make_tab_page()
+
+        # --- Connection section ---
+        section, sec_layout = self._make_section("Google Account")
+
+        from config import BASE_DIR
+        from integrations.google_calendar.auth import is_authenticated
+
+        connected = is_authenticated(BASE_DIR)
+
+        self._cal_status_label = QLabel("Connected" if connected else "Not connected")
+        self._cal_status_label.setStyleSheet(
+            f"color: {'#22aa22' if connected else '#888888'}; font-size: 10pt;"
+            f"font-family: '{self._font_family}'; background: transparent;"
+            f"border: none; font-weight: bold;"
+        )
+        sec_layout.addWidget(self._cal_status_label)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
+
+        self._cal_connect_btn = QPushButton("Connect Google Calendar")
+        self._cal_connect_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._cal_connect_btn.setVisible(not connected)
+        self._cal_connect_btn.clicked.connect(self._on_calendar_connect)
+        btn_row.addWidget(self._cal_connect_btn)
+
+        self._cal_disconnect_btn = QPushButton("Disconnect")
+        self._cal_disconnect_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._cal_disconnect_btn.setVisible(connected)
+        self._cal_disconnect_btn.clicked.connect(self._on_calendar_disconnect)
+        btn_row.addWidget(self._cal_disconnect_btn)
+
+        btn_row.addStretch()
+        sec_layout.addLayout(btn_row)
+        layout.addWidget(section)
+
+        # --- Reminders section ---
+        section, sec_layout = self._make_section("Reminders")
+
+        current_reminders = self._get_nested(
+            ["integrations", "google_calendar", "reminder_minutes"], [30, 5, 0]
+        )
+
+        for minutes, label in [
+            (30, "30 minutes before"),
+            (5, "5 minutes before"),
+            (0, "At event start"),
+        ]:
+            cb = QCheckBox(label)
+            cb.setChecked(minutes in current_reminders)
+
+            def _on_reminder_toggle(checked, m=minutes):
+                reminders = self._get_nested(
+                    ["integrations", "google_calendar", "reminder_minutes"], [30, 5, 0]
+                )
+                if checked and m not in reminders:
+                    reminders.append(m)
+                    reminders.sort(reverse=True)
+                elif not checked and m in reminders:
+                    reminders.remove(m)
+                self._set_nested(["integrations", "google_calendar", "reminder_minutes"], reminders)
+
+            cb.toggled.connect(_on_reminder_toggle)
+            sec_layout.addWidget(cb)
+
+        layout.addWidget(section)
+
+        # --- Day Preview section ---
+        section, sec_layout = self._make_section("Day Preview")
+
+        preview_cb = QCheckBox("Show daily summary on startup")
+        preview_cb.setChecked(
+            self._get_nested(["integrations", "google_calendar", "day_preview_enabled"], True)
+        )
+        preview_cb.toggled.connect(
+            lambda v: self._set_nested(
+                ["integrations", "google_calendar", "day_preview_enabled"], v
+            )
+        )
+        sec_layout.addWidget(preview_cb)
+        layout.addWidget(section)
+
+        # --- Poll Interval section ---
+        section, sec_layout = self._make_section("Poll Interval")
+
+        current_ms = self._get_nested(
+            ["integrations", "google_calendar", "check_interval_ms"], 300000
+        )
+        current_min = max(1, min(15, current_ms // 60000))
+
+        slider_row = QHBoxLayout()
+        slider_row.setSpacing(8)
+
+        lbl = QLabel("Check every")
+        lbl.setFixedWidth(120)
+        lbl.setStyleSheet(
+            f"color: #555555; font-size: 10pt;"
+            f"font-family: '{self._font_family}'; background: transparent;"
+            f"border: none;"
+        )
+        slider_row.addWidget(lbl)
+
+        slider = QSlider(Qt.Orientation.Horizontal)
+        slider.setRange(1, 15)
+        slider.setValue(current_min)
+        slider_row.addWidget(slider, 1)
+
+        value_label = QLabel(f"{current_min} min")
+        value_label.setFixedWidth(50)
+        value_label.setStyleSheet(
+            "color: #333333; font-size: 10pt; background: transparent; border: none;"
+        )
+        slider_row.addWidget(value_label)
+
+        def _on_interval_slider(v):
+            value_label.setText(f"{v} min")
+            self._set_nested(["integrations", "google_calendar", "check_interval_ms"], v * 60000)
+
+        slider.valueChanged.connect(_on_interval_slider)
+        sec_layout.addLayout(slider_row)
+        layout.addWidget(section)
+
+        layout.addStretch()
+        return page
+
+    def _on_calendar_connect(self):
+        """Run OAuth flow and start the calendar integration."""
+        import asyncio
+
+        from config import BASE_DIR
+        from integrations.google_calendar.auth import run_auth_flow
+
+        creds = run_auth_flow(BASE_DIR)
+        if creds is None:
+            self._cal_status_label.setText("Connection failed")
+            self._cal_status_label.setStyleSheet(
+                f"color: #cc0000; font-size: 10pt;"
+                f"font-family: '{self._font_family}'; background: transparent;"
+                f"border: none; font-weight: bold;"
+            )
+            return
+
+        # Update UI
+        self._cal_status_label.setText("Connected")
+        self._cal_status_label.setStyleSheet(
+            f"color: #22aa22; font-size: 10pt;"
+            f"font-family: '{self._font_family}'; background: transparent;"
+            f"border: none; font-weight: bold;"
+        )
+        self._cal_connect_btn.setVisible(False)
+        self._cal_disconnect_btn.setVisible(True)
+
+        # Enable and start integration
+        self._set_nested(["integrations", "google_calendar", "enabled"], True)
+        if self._integration_manager:
+            try:
+                loop = asyncio.get_event_loop()
+                loop.create_task(self._integration_manager.start("google_calendar"))
+            except RuntimeError:
+                pass
+
+    def _on_calendar_disconnect(self):
+        """Clear credentials and stop the calendar integration."""
+        import asyncio
+
+        from config import BASE_DIR
+        from integrations.google_calendar.auth import clear_credentials
+
+        # Stop integration first
+        if self._integration_manager:
+            try:
+                loop = asyncio.get_event_loop()
+                loop.create_task(self._integration_manager.stop("google_calendar"))
+            except RuntimeError:
+                pass
+
+        clear_credentials(BASE_DIR)
+
+        # Update UI
+        self._cal_status_label.setText("Not connected")
+        self._cal_status_label.setStyleSheet(
+            f"color: #888888; font-size: 10pt;"
+            f"font-family: '{self._font_family}'; background: transparent;"
+            f"border: none; font-weight: bold;"
+        )
+        self._cal_connect_btn.setVisible(True)
+        self._cal_disconnect_btn.setVisible(False)
+
+        # Disable integration
+        self._set_nested(["integrations", "google_calendar", "enabled"], False)
 
     # ------------------------------------------------------------------
     # Ok / Cancel

@@ -1,7 +1,7 @@
 """Shared test fixtures for desktop pet tests."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -86,7 +86,7 @@ def temp_settings_file(tmp_path):
     default_settings = {
         "general": {"always_on_top": True, "start_minimized": False},
         "behaviors": {},
-        "integrations": {"telegram": {"enabled": True, "trigger_behavior": "alert"}},
+        "integrations": {"weather": {"enabled": True, "trigger_behavior": "alert"}},
     }
     settings_file.write_text(json.dumps(default_settings))
     return settings_file
@@ -94,12 +94,12 @@ def temp_settings_file(tmp_path):
 
 @pytest.fixture
 def temp_settings_with_users(tmp_path):
-    """Create a temporary settings.json (users are now in .env, not here)."""
+    """Create a temporary settings.json with behaviors."""
     settings_file = tmp_path / "settings.json"
     settings = {
         "general": {"always_on_top": True, "start_minimized": False},
         "behaviors": {"wander": {"wander_chance": 0.5}},
-        "integrations": {"telegram": {"enabled": True, "trigger_behavior": "alert"}},
+        "integrations": {"weather": {"enabled": True, "trigger_behavior": "alert"}},
     }
     settings_file.write_text(json.dumps(settings))
     return settings_file
@@ -267,33 +267,6 @@ def integration_manager(mock_integrations_dir, behavior_registry, temp_settings_
         settings=settings,
     )
     return manager
-
-
-@pytest.fixture
-def mock_telegram_client():
-    """Create a mocked TelegramClient."""
-    client = MagicMock()
-    client.start = AsyncMock()
-    client.disconnect = AsyncMock()
-    client.run_until_disconnected = AsyncMock()
-    client.on = MagicMock(return_value=lambda f: f)
-    return client
-
-
-@pytest.fixture
-def mock_env_with_users(monkeypatch):
-    """Set up environment with monitored users."""
-    monkeypatch.setenv("MONITORED_USERS", "123456789,987654321")
-    monkeypatch.setenv("API_ID", "test_id")
-    monkeypatch.setenv("API_HASH", "test_hash")
-
-
-@pytest.fixture
-def mock_env_empty_users(monkeypatch):
-    """Set up environment with no monitored users."""
-    monkeypatch.setenv("MONITORED_USERS", "")
-    monkeypatch.setenv("API_ID", "test_id")
-    monkeypatch.setenv("API_HASH", "test_hash")
 
 
 # Legacy fixtures for backwards compatibility

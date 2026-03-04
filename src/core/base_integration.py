@@ -37,13 +37,13 @@ class BaseIntegration(QObject, metaclass=QObjectABCMeta):
     @property
     @abstractmethod
     def name(self) -> str:
-        """Unique identifier (e.g., 'telegram')."""
+        """Unique identifier (e.g., 'weather')."""
         pass
 
     @property
     @abstractmethod
     def display_name(self) -> str:
-        """Human-readable name (e.g., 'Telegram Notifications')."""
+        """Human-readable name (e.g., 'Weather')."""
         pass
 
     @property

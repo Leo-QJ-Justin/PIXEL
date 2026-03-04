@@ -7,12 +7,13 @@ A modular desktop companion app. Supports pluggable **behaviors** (visual animat
 - Transparent, draggable desktop pet that stays on top
 - **Modular behavior system** - easily add new animations
 - **Pluggable integrations** - connect to external services
-- **Telegram integration** - alerts when monitored users send messages
 - **Weather integration** - pet reacts to local weather (umbrella in rain, sunglasses in sun)
-- **Google Calendar integration** - travel-time-aware event alerts with two-phase notifications
+- **Google Calendar integration** - configurable event reminders with day preview
+- **Pomodoro timer** - focus sessions with floating widget and pet reactions
 - Animated sprites with idle, alert, wander, rainy, sunny, and time-of-day states
 - Wandering behavior - pet randomly moves around your screen
-- System tray icon with integration controls and API usage display
+- **Settings GUI** - MapleStory-themed dialog for all configuration
+- System tray icon with integration controls
 
 ## Requirements
 
@@ -41,16 +42,6 @@ A modular desktop companion app. Supports pluggable **behaviors** (visual animat
 
 Each integration requires its own one-time setup. Only set up the ones you plan to use.
 
-### Telegram
-
-1. Get your API credentials from [my.telegram.org](https://my.telegram.org/apps)
-2. Add `API_ID`, `API_HASH`, and `MONITORED_USERS` to `.env`
-3. On first run, the terminal will prompt you to:
-   - Enter your phone number (with country code, e.g., +1234567890)
-   - Enter the verification code sent to your Telegram app
-   - Enter your 2FA password (if enabled)
-4. The session is saved to `pet_session.session` and reused on subsequent runs
-
 ### Weather
 
 1. Get a free API key from [openweathermap.org](https://openweathermap.org/api)
@@ -59,36 +50,12 @@ Each integration requires its own one-time setup. Only set up the ones you plan 
 
 ### Google Calendar
 
-1. Create OAuth credentials at [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+1. Create a project at [Google Cloud Console](https://console.cloud.google.com)
 2. Enable the **Google Calendar API**
-3. Add `GOOGLE_CALENDAR_CLIENT_ID` and `GOOGLE_CALENDAR_CLIENT_SECRET` to `.env`
-4. Run the auth script:
-   ```bash
-   uv run python scripts/auth_google_calendar.py
-   ```
-5. (Optional) For travel-time alerts, also enable **Routes API** and **Geocoding API**, then add `GOOGLE_MAPS_API_KEY` to `.env`
-6. (Optional) For OneMap routing (Singapore), register at [onemap.gov.sg](https://www.onemap.gov.sg/apidocs/register) and add `ONEMAP_EMAIL`/`ONEMAP_PASSWORD` to `.env`
-
-#### OneMap API Notes
-
-OneMap tokens expire every 3 days — the app handles renewal automatically. There is a 300 calls/min rate limit across all OneMap APIs (routing, geocoding, etc.). The app makes at most 2-4 calls per 5-minute cycle, so this limit is unlikely to be reached in normal use.
-
-#### Google Cloud Configuration
-
-**API key restriction**: Restrict your key to only the Geocoding API and Routes API under Credentials > Edit API Key > API restrictions.
-
-**Quota limits**: Set per-minute and per-day limits under Google Maps Platform > Quotas to prevent accidental overage.
-
-Routes API and Geocoding API are **separate SKUs** with independent free pools:
-
-| API | Free Tier | Recommended Quota |
-|-----|-----------|-------------------|
-| Routes: Compute Routes (Essentials) | 10,000 requests/month | 20/min, 300/day |
-| Geocoding | 10,000 requests/month | 10/min, 100/day |
-
-Quota buckets to restrict:
-- **Routes API**: `Directions - ComputeRoutes per request quota per minute per user`, `Directions - ComputeRoutes per request quota per minute`, `Directions - ComputeRoutes per request quota per day`
-- **Geocoding API**: `v3 requests per minute per user`, `v3 requests per minute`, `v3 requests per day`
+3. Create **OAuth client ID** credentials (Application type: Desktop app)
+4. Add `GOOGLE_CALENDAR_CLIENT_ID` and `GOOGLE_CALENDAR_CLIENT_SECRET` to `.env`
+5. Add your Gmail address as a test user under **OAuth consent screen** → **Test users**
+6. Open **Settings → Calendar** in the app and click **Connect Google Calendar**
 
 ## Usage
 
@@ -107,25 +74,22 @@ Start-Process '.venv\Scripts\pythonw.exe' -ArgumentList 'main.py' -WindowStyle H
 ### Controls
 
 - **Left-click + drag**: Move the pet around the screen
-- **Left-click**: Dismiss alert / provide event route / tap-to-refresh travel estimate
-- **Right-click**: Open context menu (Reset Position, Quit)
+- **Left-click**: Dismiss alert
+- **Right-click**: Open context menu (Reset Position, Settings, Quit)
 - **System tray**: Double-click to show/hide, right-click for menu
-- **Tray > Integrations**: Enable/disable integrations
-- **Tray > API Usage**: View Google Maps API call counts
+- **Tray > Pomodoro**: Start/skip focus sessions, show timer widget
+- **Tray > Calendar**: View next event, refresh calendar
+- **Tray > Integrations**: Enable/disable other integrations
 
 ### Behavior
 
 The pet will randomly wander around your screen. It reacts to:
-- **Telegram messages** from monitored users (bounce + alert sound)
 - **Weather conditions** (umbrella sprite in rain, sunglasses in sun)
-- **Calendar events** with smart travel alerts:
-  - *Route prompt* — click pet to set origin/destination for upcoming events (one at a time, in chronological order)
-  - *Two-fetch model* — initial fetch on route confirmation + scheduled recheck before departure
-  - *Prepare alert* (speech bubble) when it's time to get ready
-  - *Leave alert* (bounce + sound) when it's time to depart
-  - *Tap-to-refresh* — click pet anytime for a fresh travel estimate
-  - *Smart origin* — suggests previous event's destination as the next event's origin
-  - Falls back to a flat 30-minute alert if no routing API is configured
+- **Calendar events** with configurable reminders:
+  - *Day preview* on startup — "You have 3 meetings today. First is Standup at 9:30 AM."
+  - *Countdown reminders* — speech bubble at 30 min and 5 min before
+  - *Starting now* alert — pet alert behavior when event begins
+  - All-day events mentioned in day preview only (no countdown)
 - **Time of day** (morning, afternoon, night greetings)
 
 ## Configuration
@@ -151,10 +115,6 @@ The pet will randomly wander around your screen. It reacts to:
     }
   },
   "integrations": {
-    "telegram": {
-      "enabled": true,
-      "trigger_behavior": "alert"
-    },
     "weather": {
       "enabled": true,
       "city": "New York",
@@ -164,16 +124,20 @@ The pet will randomly wander around your screen. It reacts to:
     "google_calendar": {
       "enabled": false,
       "check_interval_ms": 300000,
-      "alert_before_minutes": 30,
-      "trigger_behavior": "alert",
       "calendar_id": "primary",
-      "preparation_minutes": 15,
-      "leave_buffer_minutes": 5,
-      "recheck_offset_minutes": 20,
-      "tap_refresh_debounce_ms": 5000,
-      "travel_modes": ["DRIVE", "TRANSIT"],
       "fetch_window_minutes": 120,
-      "api_quota_limit": 9500
+      "trigger_behavior": "alert",
+      "reminder_minutes": [30, 5, 0],
+      "day_preview_enabled": true
+    },
+    "pomodoro": {
+      "enabled": true,
+      "work_duration_minutes": 25,
+      "short_break_minutes": 5,
+      "long_break_minutes": 15,
+      "auto_start": false,
+      "sound_enabled": true,
+      "sessions_per_cycle": 4
     }
   }
 }
@@ -183,25 +147,9 @@ The pet will randomly wander around your screen. It reacts to:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `API_ID` | For Telegram | Telegram API ID from [my.telegram.org](https://my.telegram.org) |
-| `API_HASH` | For Telegram | Telegram API Hash |
-| `MONITORED_USERS` | For Telegram | Comma-separated Telegram user IDs to monitor |
 | `OPENWEATHER_API_KEY` | For Weather | API key from [openweathermap.org](https://openweathermap.org/api) |
 | `GOOGLE_CALENDAR_CLIENT_ID` | For Calendar | OAuth client ID from Google Cloud Console |
 | `GOOGLE_CALENDAR_CLIENT_SECRET` | For Calendar | OAuth client secret |
-| `GOOGLE_MAPS_API_KEY` | Optional | For travel-time alerts (Routes + Geocoding APIs) |
-| `ONEMAP_EMAIL` | Optional | [OneMap Singapore](https://www.onemap.gov.sg/apidocs/register) fallback routing |
-| `ONEMAP_PASSWORD` | Optional | OneMap password |
-
-### Travel-Time Alert Providers
-
-The calendar integration uses a cascading provider system for travel-time calculations:
-
-1. **Google Routes API** - used if `GOOGLE_MAPS_API_KEY` is set and quota available
-2. **OneMap Singapore** - used if `ONEMAP_EMAIL`/`ONEMAP_PASSWORD` are set (with Nominatim geocoding)
-3. **Flat alert** - 30-minute fixed alert if no routing credentials are configured
-
-The app's internal tracker (configurable via `api_quota_limit`, default 9,500) provides an additional safety net per API.
 
 ## Project Structure
 
@@ -223,15 +171,13 @@ The app's internal tracker (configurable via `api_quota_limit`, default 9,500) p
 │   └── sunny/
 │
 ├── integrations/                     # External service connections
-│   ├── telegram/
 │   ├── weather/
+│   ├── pomodoro/
+│   │   └── integration.py            # Focus timer logic
 │   └── google_calendar/
-│       ├── integration.py            # Two-phase alert logic
+│       ├── integration.py            # Reminder + day preview logic
 │       ├── calendar_event.py         # Event model
-│       ├── routes.py                 # Google Routes API client
-│       ├── geocoding.py              # Geocoding (Google + Nominatim)
-│       ├── onemap.py                 # OneMap Singapore routing
-│       └── usage_tracker.py          # API quota tracking
+│       └── auth.py                   # OAuth2 helpers
 │
 └── src/
     ├── core/
@@ -242,7 +188,8 @@ The app's internal tracker (configurable via `api_quota_limit`, default 9,500) p
         ├── pet_window.py             # Desktop pet widget
         ├── dialog_box.py             # MapleStory-styled dialog boxes
         ├── speech_bubble.py          # Speech bubble overlay
-        ├── settings_dialog.py        # Settings GUI
+        ├── settings_dialog.py        # Settings GUI (5 tabs)
+        ├── pomodoro_widget.py        # Floating Pomodoro timer
         └── tray_icon.py              # System tray icon
 ```
 
@@ -291,7 +238,6 @@ uv run ruff format .
 
 - **PyQt6** - GUI framework
 - **qasync** - Qt-asyncio integration
-- **Telethon** - Telegram client library
 - **aiohttp** - Async HTTP client (API calls)
 - **python-dotenv** - Environment variable management
 - **google-api-python-client** - Google Calendar API
