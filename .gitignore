@@ -2,10 +2,6 @@
 .env
 CLAUDE.md
 
-# Telegram session files
-*.session
-*.session-journal
-
 # Google Calendar token
 google_calendar_token.json
 
@@ -13,6 +9,7 @@ google_calendar_token.json
 api_usage.json
 event_cache.json
 settings.json
+integrations/pomodoro/stats.json
 
 # Python
 __pycache__/
