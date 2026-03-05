@@ -364,7 +364,15 @@ class SettingsDialog(QDialog):
         sidebar.setFixedWidth(150)
         sidebar.setStyleSheet(_SIDEBAR_STYLE.format(font=self._font_family))
 
-        for tab_name in ["General", "Behaviors", "Time / Schedule", "Pomodoro", "Calendar"]:
+        for tab_name in [
+            "General",
+            "Behaviors",
+            "Time / Schedule",
+            "Pomodoro",
+            "Calendar",
+            "Personality",
+            "Encouraging",
+        ]:
             item = QListWidgetItem(tab_name)
             item.setSizeHint(item.sizeHint())
             sidebar.addItem(item)
@@ -381,6 +389,8 @@ class SettingsDialog(QDialog):
             self._build_time_schedule_tab,
             self._build_pomodoro_tab,
             self._build_calendar_tab,
+            self._build_personality_tab,
+            self._build_encouraging_tab,
         ]
         for builder in tabs:
             page = builder()
@@ -599,7 +609,7 @@ class SettingsDialog(QDialog):
         dur_value_label = QLabel(f"{duration_val} ms")
         dur_value_label.setFixedWidth(70)
         dur_value_label.setStyleSheet(
-            "color: #333333; font-size: 10pt; background: transparent;" "border: none;"
+            "color: #333333; font-size: 10pt; background: transparent;border: none;"
         )
         slider_row.addWidget(dur_value_label)
 
@@ -648,7 +658,7 @@ class SettingsDialog(QDialog):
         chance_value_label = QLabel(f"{chance_pct}%")
         chance_value_label.setFixedWidth(50)
         chance_value_label.setStyleSheet(
-            "color: #333333; font-size: 10pt; background: transparent;" "border: none;"
+            "color: #333333; font-size: 10pt; background: transparent;border: none;"
         )
         slider_row.addWidget(chance_value_label)
 
@@ -682,7 +692,7 @@ class SettingsDialog(QDialog):
 
         to_label = QLabel("to")
         to_label.setStyleSheet(
-            "color: #555555; font-size: 10pt; background: transparent;" "border: none;"
+            "color: #555555; font-size: 10pt; background: transparent;border: none;"
         )
         to_label.setFixedWidth(20)
         interval_row.addWidget(to_label)
@@ -752,7 +762,7 @@ class SettingsDialog(QDialog):
         start_label = QLabel("Start")
         start_label.setFixedWidth(40)
         start_label.setStyleSheet(
-            "color: #555555; font-size: 10pt; background: transparent;" "border: none;"
+            "color: #555555; font-size: 10pt; background: transparent;border: none;"
         )
         time_row.addWidget(start_label)
 
@@ -775,7 +785,7 @@ class SettingsDialog(QDialog):
         end_label = QLabel("End")
         end_label.setFixedWidth(40)
         end_label.setStyleSheet(
-            "color: #555555; font-size: 10pt; background: transparent;" "border: none;"
+            "color: #555555; font-size: 10pt; background: transparent;border: none;"
         )
         time_row.addWidget(end_label)
 
@@ -860,7 +870,7 @@ class SettingsDialog(QDialog):
             value_label = QLabel(f"{val}")
             value_label.setFixedWidth(30)
             value_label.setStyleSheet(
-                "color: #333333; font-size: 10pt; background: transparent;" "border: none;"
+                "color: #333333; font-size: 10pt; background: transparent;border: none;"
             )
             slider_row.addWidget(value_label)
 
@@ -1039,6 +1049,109 @@ class SettingsDialog(QDialog):
         layout.addStretch()
         return page
 
+    # ------------------------------------------------------------------
+    # Tab: Personality
+    # ------------------------------------------------------------------
+
+    def _build_personality_tab(self) -> QWidget:
+        page, layout = self._make_tab_page()
+
+        # --- Enable section ---
+        section, sec_layout = self._make_section("Personality Engine")
+
+        enable_cb = QCheckBox("Enable LLM personality enrichment")
+        enable_cb.setChecked(self._get_nested(["personality_engine", "enabled"], False))
+        enable_cb.toggled.connect(lambda v: self._set_nested(["personality_engine", "enabled"], v))
+        sec_layout.addWidget(enable_cb)
+
+        note = QLabel(
+            "When enabled, bubble text is rewritten in Haro's voice "
+            "using an LLM. Bypassed when OpenClaw is running."
+        )
+        note.setWordWrap(True)
+        note.setStyleSheet(
+            f"color: #888888; font-size: 9pt;"
+            f"font-family: '{self._font_family}';"
+            f"background: transparent; border: none;"
+        )
+        sec_layout.addWidget(note)
+
+        layout.addWidget(section)
+
+        # --- OpenAI section ---
+        section, sec_layout = self._make_section("OpenAI (Cloud)")
+
+        openai_key_edit = QLineEdit(
+            self._get_nested(["personality_engine", "openai_api_key"], "")
+        )
+        openai_key_edit.setPlaceholderText("sk-...")
+        openai_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        openai_key_edit.textChanged.connect(
+            lambda text: self._set_nested(["personality_engine", "openai_api_key"], text)
+        )
+        self._make_form_row("API Key", openai_key_edit, sec_layout)
+
+        openai_model_edit = QLineEdit(
+            self._get_nested(["personality_engine", "openai_model"], "gpt-4o-mini")
+        )
+        openai_model_edit.textChanged.connect(
+            lambda text: self._set_nested(["personality_engine", "openai_model"], text)
+        )
+        self._make_form_row("Model", openai_model_edit, sec_layout)
+
+        layout.addWidget(section)
+
+        # --- OpenRouter section ---
+        section, sec_layout = self._make_section("OpenRouter (Cloud)")
+
+        api_key_edit = QLineEdit(self._get_nested(["personality_engine", "openrouter_api_key"], ""))
+        api_key_edit.setPlaceholderText("sk-or-...")
+        api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        api_key_edit.textChanged.connect(
+            lambda text: self._set_nested(["personality_engine", "openrouter_api_key"], text)
+        )
+        self._make_form_row("API Key", api_key_edit, sec_layout)
+
+        or_model_edit = QLineEdit(
+            self._get_nested(
+                ["personality_engine", "openrouter_model"],
+                "meta-llama/llama-3-8b-instruct",
+            )
+        )
+        or_model_edit.textChanged.connect(
+            lambda text: self._set_nested(["personality_engine", "openrouter_model"], text)
+        )
+        self._make_form_row("Model", or_model_edit, sec_layout)
+
+        layout.addWidget(section)
+
+        # --- Ollama section ---
+        section, sec_layout = self._make_section("Ollama (Local)")
+
+        ollama_endpoint_edit = QLineEdit(
+            self._get_nested(
+                ["personality_engine", "ollama_endpoint"],
+                "http://localhost:11434",
+            )
+        )
+        ollama_endpoint_edit.textChanged.connect(
+            lambda text: self._set_nested(["personality_engine", "ollama_endpoint"], text)
+        )
+        self._make_form_row("Endpoint", ollama_endpoint_edit, sec_layout)
+
+        ollama_model_edit = QLineEdit(
+            self._get_nested(["personality_engine", "ollama_model"], "llama3")
+        )
+        ollama_model_edit.textChanged.connect(
+            lambda text: self._set_nested(["personality_engine", "ollama_model"], text)
+        )
+        self._make_form_row("Model", ollama_model_edit, sec_layout)
+
+        layout.addWidget(section)
+
+        layout.addStretch()
+        return page
+
     def _on_calendar_connect(self):
         """Run OAuth flow and start the calendar integration."""
         import asyncio
@@ -1104,6 +1217,142 @@ class SettingsDialog(QDialog):
 
         # Disable integration
         self._set_nested(["integrations", "google_calendar", "enabled"], False)
+
+    # ------------------------------------------------------------------
+    # Tab: Encouraging
+    # ------------------------------------------------------------------
+
+    def _build_encouraging_tab(self) -> QWidget:
+        page, layout = self._make_tab_page()
+
+        # --- Enable section ---
+        section, sec_layout = self._make_section("General")
+
+        enable_cb = QCheckBox("Enable Encouraging Messages")
+        enable_cb.setChecked(self._get_nested(["integrations", "encouraging", "enabled"], True))
+        enable_cb.toggled.connect(
+            lambda v: self._set_nested(["integrations", "encouraging", "enabled"], v)
+        )
+        sec_layout.addWidget(enable_cb)
+
+        # Cooldown slider
+        cd_val = self._get_nested(["integrations", "encouraging", "cooldown_min_minutes"], 30)
+        slider_row = QHBoxLayout()
+        slider_row.setSpacing(8)
+        cd_label = QLabel("Min Cooldown")
+        cd_label.setFixedWidth(120)
+        cd_label.setStyleSheet(
+            f"color: #555555; font-size: 10pt;"
+            f"font-family: '{self._font_family}'; background: transparent;"
+            f"border: none;"
+        )
+        slider_row.addWidget(cd_label)
+
+        cd_slider = QSlider(Qt.Orientation.Horizontal)
+        cd_slider.setRange(15, 120)
+        cd_slider.setValue(cd_val)
+        slider_row.addWidget(cd_slider, 1)
+
+        cd_value_label = QLabel(f"{cd_val} min")
+        cd_value_label.setFixedWidth(60)
+        cd_value_label.setStyleSheet(
+            "color: #333333; font-size: 10pt;background: transparent; border: none;"
+        )
+        slider_row.addWidget(cd_value_label)
+
+        def on_cd_changed(v):
+            cd_value_label.setText(f"{v} min")
+            self._set_nested(["integrations", "encouraging", "cooldown_min_minutes"], v)
+
+        cd_slider.valueChanged.connect(on_cd_changed)
+        sec_layout.addLayout(slider_row)
+
+        layout.addWidget(section)
+
+        # --- Triggers section ---
+        section, sec_layout = self._make_section("Triggers")
+
+        trigger_labels = {
+            "restless": "Restless (long activity)",
+            "observant": "Observant (time of day)",
+            "excited": "Excited (return from idle)",
+            "proud": "Proud (pomodoro streak)",
+            "curious": "Curious (meeting ended)",
+            "impressed": "Impressed (session milestones)",
+        }
+        for key, label in trigger_labels.items():
+            cb = QCheckBox(label)
+            cb.setChecked(
+                self._get_nested(
+                    ["integrations", "encouraging", "triggers", key, "enabled"],
+                    True,
+                )
+            )
+            cb.toggled.connect(
+                lambda v, k=key: self._set_nested(
+                    ["integrations", "encouraging", "triggers", k, "enabled"],
+                    v,
+                )
+            )
+            sec_layout.addWidget(cb)
+
+        layout.addWidget(section)
+
+        # --- Restless threshold section ---
+        section, sec_layout = self._make_section("Restless Threshold")
+
+        thresh_val = self._get_nested(
+            [
+                "integrations",
+                "encouraging",
+                "triggers",
+                "restless",
+                "threshold_minutes",
+            ],
+            90,
+        )
+        thresh_row = QHBoxLayout()
+        thresh_row.setSpacing(8)
+        thresh_label = QLabel("Active Time")
+        thresh_label.setFixedWidth(120)
+        thresh_label.setStyleSheet(
+            f"color: #555555; font-size: 10pt;"
+            f"font-family: '{self._font_family}'; background: transparent;"
+            f"border: none;"
+        )
+        thresh_row.addWidget(thresh_label)
+
+        thresh_slider = QSlider(Qt.Orientation.Horizontal)
+        thresh_slider.setRange(30, 180)
+        thresh_slider.setValue(thresh_val)
+        thresh_row.addWidget(thresh_slider, 1)
+
+        thresh_value_label = QLabel(f"{thresh_val} min")
+        thresh_value_label.setFixedWidth(60)
+        thresh_value_label.setStyleSheet(
+            "color: #333333; font-size: 10pt;background: transparent; border: none;"
+        )
+        thresh_row.addWidget(thresh_value_label)
+
+        def on_thresh_changed(v):
+            thresh_value_label.setText(f"{v} min")
+            self._set_nested(
+                [
+                    "integrations",
+                    "encouraging",
+                    "triggers",
+                    "restless",
+                    "threshold_minutes",
+                ],
+                v,
+            )
+
+        thresh_slider.valueChanged.connect(on_thresh_changed)
+        sec_layout.addLayout(thresh_row)
+        layout.addWidget(section)
+
+        layout.addStretch()
+        return page
 
     # ------------------------------------------------------------------
     # Ok / Cancel

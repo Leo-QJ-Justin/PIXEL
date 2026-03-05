@@ -72,6 +72,15 @@ DEFAULT_SETTINGS = {
             },
         },
     },
+    "personality_engine": {
+        "enabled": False,
+        "openai_api_key": "",
+        "openai_model": "gpt-4o-mini",
+        "openrouter_api_key": "",
+        "openrouter_model": "meta-llama/llama-3-8b-instruct",
+        "ollama_endpoint": "http://localhost:11434",
+        "ollama_model": "llama3",
+    },
     "integrations": {
         "pomodoro": {
             "enabled": True,
@@ -81,6 +90,20 @@ DEFAULT_SETTINGS = {
             "auto_start": False,
             "sound_enabled": True,
             "sessions_per_cycle": 4,
+        },
+        "encouraging": {
+            "enabled": True,
+            "cooldown_min_minutes": 30,
+            "cooldown_max_minutes": 60,
+            "evaluation_interval_seconds": 30,
+            "triggers": {
+                "restless": {"enabled": True, "threshold_minutes": 90},
+                "observant": {"enabled": True},
+                "excited": {"enabled": True, "idle_threshold_minutes": 15},
+                "proud": {"enabled": True, "streak_threshold": 3},
+                "curious": {"enabled": True},
+                "impressed": {"enabled": True, "milestone_interval": 10},
+            },
         },
         "google_calendar": {
             "enabled": False,
