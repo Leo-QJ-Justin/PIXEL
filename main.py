@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 
 def main():
     app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
