@@ -25,6 +25,7 @@ SETTINGS_FILE = BASE_DIR / "settings.json"
 # Default settings structure
 DEFAULT_SETTINGS = {
     "user_name": "",
+    "birthday": "",
     "general": {
         "always_on_top": True,
         "start_minimized": False,
@@ -49,7 +50,7 @@ DEFAULT_SETTINGS = {
             "interval_min_ms": 20000,
             "interval_max_ms": 60000,
             "chance": 0.4,
-            "behaviors": ["look_around", "yawn", "chill", "play_ball"],
+            "behaviors": ["look_around", "yawn", "chill", "play_ball", "crochet"],
         },
         "sleep": {
             "inactivity_timeout_ms": 60000,

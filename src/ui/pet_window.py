@@ -1,7 +1,7 @@
 import logging
 import os
 import random
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from PyQt6.QtCore import (
     QEasingCurve,
@@ -129,6 +129,13 @@ class PetWidget(QWidget):
             interval = self._time_period_settings.get("check_interval_ms", 30000)
             self._time_period_timer.start(interval)
             self._last_time_period = self._get_current_period()
+
+        # Birthday checker (SGT / UTC+8, once per day)
+        self._sgt = timezone(timedelta(hours=8))
+        self._birthday_celebrated_date: str | None = None
+        self._birthday_timer = QTimer()
+        self._birthday_timer.timeout.connect(self._check_birthday)
+        self._birthday_timer.start(60_000)
 
     def _init_speech_bubble(self):
         """Set up speech bubble widget and its settings."""
@@ -436,6 +443,39 @@ class PetWidget(QWidget):
         greeting = self._time_period_settings.get("greetings", {}).get(current_period)
         if greeting:
             self.show_bubble(self._personalize_greeting(greeting))
+
+    # ------------------------------------------------------------------
+    # Birthday celebration
+    # ------------------------------------------------------------------
+
+    def _check_birthday(self) -> None:
+        """Check if today is the user's birthday (SGT) and celebrate once."""
+        settings = load_settings()
+        birthday = settings.get("birthday", "")
+        if not birthday:
+            return
+
+        now_sgt = datetime.now(self._sgt)
+        today_str = now_sgt.strftime("%m-%d")
+
+        if today_str != birthday:
+            return
+
+        if self._birthday_celebrated_date == today_str:
+            return
+
+        self._birthday_celebrated_date = today_str
+
+        if not self._state_machine.transition(PetState.REACTING):
+            # Pet is busy — reset so we retry next tick
+            self._birthday_celebrated_date = None
+            return
+
+        logger.info("Happy Birthday! Triggering celebration.")
+        name = self._get_display_name()
+        greeting = f"Happy Birthday, {name}!" if name else "Happy Birthday!"
+        self._behavior_registry.trigger("celebrate_birthday")
+        self.show_bubble(greeting, 8000)
 
     # ------------------------------------------------------------------
     # Qt event overrides
