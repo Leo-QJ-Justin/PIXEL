@@ -82,13 +82,8 @@ class PetWidget(QWidget):
         self._notification_callback = None
 
     def _init_animations(self):
-        """Set up move and bounce animations. Sound is lazy-created."""
-        self._alert_sound = None  # lazy-created on first use
-
-        self._bounce_animation = QPropertyAnimation(self, b"pos")
-        self._bounce_animation.setDuration(200)
-        self._bounce_animation.setEasingCurve(QEasingCurve.Type.OutBounce)
-        self._bounce_animation.setLoopCount(10)
+        """Set up move animation. Sound is lazy-created."""
+        self._sound_effect = None  # lazy-created on first use
 
         self._move_animation = QPropertyAnimation(self, b"pos")
         self._move_animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
@@ -214,14 +209,8 @@ class PetWidget(QWidget):
     def _on_behavior_changed(self, behavior_name: str, context: dict):
         logger.debug(f"Behavior changed to: {behavior_name}")
 
-        if behavior_name == "alert":
-            self._last_activity_time = datetime.now()
-
         self._handle_behavior_sound()
         self._handle_behavior_greeting(behavior_name, context)
-
-        if behavior_name == "alert":
-            self._start_bounce()
 
         # Return to IDLE when a REACTING behavior finishes (flinch, idle variety, etc.)
         if behavior_name == "idle" and self._state_machine.state == PetState.REACTING:
@@ -233,13 +222,13 @@ class PetWidget(QWidget):
         if not sound_path or not sound_path.exists():
             return
 
-        if self._alert_sound is None:
+        if self._sound_effect is None:
             from PyQt6.QtMultimedia import QSoundEffect
 
-            self._alert_sound = QSoundEffect()
+            self._sound_effect = QSoundEffect()
 
-        self._alert_sound.setSource(QUrl.fromLocalFile(str(sound_path)))
-        self._alert_sound.play()
+        self._sound_effect.setSource(QUrl.fromLocalFile(str(sound_path)))
+        self._sound_effect.play()
 
     def _handle_behavior_greeting(self, behavior_name: str, context: dict):
         """Show speech bubble for wave greetings or integration context text."""
@@ -290,17 +279,6 @@ class PetWidget(QWidget):
             return
 
         self._behavior_registry.trigger(random.choice(available))
-
-    # ------------------------------------------------------------------
-    # Alert bounce
-    # ------------------------------------------------------------------
-
-    def _start_bounce(self):
-        start_pos = self.pos()
-        bounce_pos = QPoint(start_pos.x(), start_pos.y() - 20)
-        self._bounce_animation.setStartValue(bounce_pos)
-        self._bounce_animation.setEndValue(start_pos)
-        self._bounce_animation.start()
 
     # ------------------------------------------------------------------
     # Wander
@@ -505,10 +483,6 @@ class PetWidget(QWidget):
                 self._wake_up()
                 return
 
-            if self._state_machine.state == PetState.ALERTING:
-                self.stop_alert()
-                return
-
             # Handle notification callback
             if self._notification_callback:
                 cb = self._notification_callback
@@ -559,28 +533,7 @@ class PetWidget(QWidget):
 
         menu.exec(event.globalPos())
 
-    # ------------------------------------------------------------------
-    # Alert
-    # ------------------------------------------------------------------
-
     def _quit_app(self):
         from PyQt6.QtWidgets import QApplication
 
         QApplication.quit()
-
-    @pyqtSlot(str)
-    def trigger_alert(self, sender_name: str):
-        """Trigger alert animation and sound."""
-        if self._state_machine.state == PetState.ALERTING:
-            return
-
-        if self._state_machine.state == PetState.WANDERING:
-            self._move_animation.stop()
-
-        self._state_machine.force(PetState.ALERTING)
-        self._behavior_registry.trigger("alert", {"sender": sender_name})
-
-    def stop_alert(self):
-        self._bounce_animation.stop()
-        self._state_machine.force(PetState.IDLE)
-        self._behavior_registry.stop_current()

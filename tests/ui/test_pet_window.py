@@ -85,52 +85,6 @@ class TestPetWidgetWindowFlags:
 
 
 @pytest.mark.ui
-class TestPetWidgetAlert:
-    def test_trigger_alert_sets_alerting_state(self, qtbot, behavior_registry):
-        with _patch_settings():
-            widget = PetWidget(behavior_registry)
-            qtbot.addWidget(widget)
-            widget.trigger_alert("Test User")
-
-        assert widget._state_machine.state == PetState.ALERTING
-
-    def test_stop_alert_clears_alerting_state(self, qtbot, behavior_registry):
-        with _patch_settings():
-            widget = PetWidget(behavior_registry)
-            qtbot.addWidget(widget)
-            widget.trigger_alert("Test User")
-            widget.stop_alert()
-
-        assert widget._state_machine.state == PetState.IDLE
-
-    def test_trigger_alert_while_alerting_does_nothing(self, qtbot, behavior_registry):
-        with _patch_settings():
-            widget = PetWidget(behavior_registry)
-            qtbot.addWidget(widget)
-            widget.trigger_alert("User 1")
-            widget.trigger_alert("User 2")
-
-        assert widget._state_machine.state == PetState.ALERTING
-
-    def test_alert_triggers_alert_behavior(self, qtbot, behavior_registry):
-        with _patch_settings():
-            widget = PetWidget(behavior_registry)
-            qtbot.addWidget(widget)
-            widget.trigger_alert("Test User")
-
-        assert behavior_registry.current == "alert"
-
-    def test_stop_alert_returns_to_idle(self, qtbot, behavior_registry):
-        with _patch_settings():
-            widget = PetWidget(behavior_registry)
-            qtbot.addWidget(widget)
-            widget.trigger_alert("Test User")
-            widget.stop_alert()
-
-        assert behavior_registry.current == "idle"
-
-
-@pytest.mark.ui
 class TestWaveGreeting:
     def test_wave_shows_greeting_bubble(self, qtbot, behavior_registry):
         settings = _make_settings(
@@ -151,25 +105,20 @@ class TestBehaviorRegistry:
     def test_behavior_registry_discovers_behaviors(self, behavior_registry):
         behaviors = behavior_registry.list_behaviors()
         assert "idle" in behaviors
-        assert "alert" in behaviors
         assert "wander" in behaviors
 
     def test_behavior_has_correct_priority(self, behavior_registry):
         idle = behavior_registry.get_behavior("idle")
-        alert = behavior_registry.get_behavior("alert")
         wander = behavior_registry.get_behavior("wander")
 
         assert idle.priority == 0
-        assert alert.priority == 10
         assert wander.priority == 5
 
     def test_behavior_has_gif_path(self, behavior_registry):
         idle = behavior_registry.get_behavior("idle")
-        alert = behavior_registry.get_behavior("alert")
         wander = behavior_registry.get_behavior("wander")
 
         assert idle.gif_path.exists()
-        assert alert.gif_path.exists()
         assert wander.gif_path.exists()
 
 

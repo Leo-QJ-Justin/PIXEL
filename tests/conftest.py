@@ -107,7 +107,7 @@ def temp_settings_with_users(tmp_path):
 
 @pytest.fixture
 def mock_behaviors_dir(tmp_path):
-    """Create a temporary behaviors directory with idle, alert, and fly behaviors."""
+    """Create a temporary behaviors directory with idle, wander, and other behaviors."""
     behaviors_dir = tmp_path / "behaviors"
     behaviors_dir.mkdir()
 
@@ -124,23 +124,6 @@ def mock_behaviors_dir(tmp_path):
                 "loop": True,
                 "priority": 0,
                 "can_be_interrupted": True,
-            }
-        )
-    )
-
-    # Create alert behavior
-    alert_dir = behaviors_dir / "alert"
-    alert_media = alert_dir / "media"
-    alert_media.mkdir(parents=True)
-    (alert_media / "alert_1.png").write_bytes(MINIMAL_PNG)
-    (alert_media / "alert_2.png").write_bytes(MINIMAL_PNG)
-    (alert_dir / "config.json").write_text(
-        json.dumps(
-            {
-                "frame_duration_ms": 300,
-                "loop": False,
-                "priority": 10,
-                "can_be_interrupted": False,
             }
         )
     )
@@ -276,7 +259,7 @@ def mock_media_dir(tmp_path):
     media_dir = tmp_path / "media"
     media_dir.mkdir()
 
-    for name in ["idle_1.png", "idle_2.png", "alert_1.png", "alert_2.png"]:
+    for name in ["idle_1.png", "idle_2.png"]:
         (media_dir / name).write_bytes(MINIMAL_PNG)
 
     return media_dir

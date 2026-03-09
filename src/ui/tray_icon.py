@@ -76,9 +76,9 @@ class TrayIcon(QSystemTrayIcon):
 
         menu.addSeparator()
 
-        test_alert_action = QAction("Test Alert", menu)
-        test_alert_action.triggered.connect(self._test_alert)
-        menu.addAction(test_alert_action)
+        behaviors_menu = QMenu("Behaviors", menu)
+        self._build_behaviors_menu(behaviors_menu)
+        menu.addMenu(behaviors_menu)
 
         menu.addSeparator()
 
@@ -167,6 +167,23 @@ class TrayIcon(QSystemTrayIcon):
                 menu.addAction(action)
                 self._integration_actions[name] = action
 
+    def _build_behaviors_menu(self, menu: QMenu):
+        if not self._behavior_registry:
+            no_behaviors = QAction("No behaviors loaded", menu)
+            no_behaviors.setEnabled(False)
+            menu.addAction(no_behaviors)
+            return
+
+        for name in sorted(self._behavior_registry.list_behaviors()):
+            display_name = name.replace("_", " ").title()
+            action = QAction(display_name, menu)
+            action.triggered.connect(lambda checked, n=name: self._trigger_behavior(n))
+            menu.addAction(action)
+
+    def _trigger_behavior(self, name: str):
+        if self._behavior_registry:
+            self._behavior_registry.trigger(name)
+
     def _toggle_integration(self, name: str, enabled: bool):
         integration = self._integration_manager.get_integration(name)
         if not integration:
@@ -193,10 +210,6 @@ class TrayIcon(QSystemTrayIcon):
     def _on_activated(self, reason):
         if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
             self._toggle_visibility()
-
-    def _test_alert(self):
-        if self._behavior_registry:
-            self._behavior_registry.trigger("alert", {"sender": "Test User"})
 
     def _open_settings(self):
         from src.ui.settings_dialog import SettingsDialog

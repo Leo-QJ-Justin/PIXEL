@@ -10,7 +10,8 @@ A modular desktop companion app. Supports pluggable **behaviors** (visual animat
 - **Weather integration** - pet reacts to local weather (umbrella in rain, sunglasses in sun)
 - **Google Calendar integration** - configurable event reminders with day preview
 - **Pomodoro timer** - focus sessions with floating widget and pet reactions
-- Animated sprites with idle, alert, wander, rainy, sunny, and time-of-day states
+- **Birthday celebration** - set your birthday and the pet celebrates on the day (SGT)
+- Animated sprites with idle, wander, rainy, and time-of-day states
 - Wandering behavior - pet randomly moves around your screen
 - **Settings GUI** - MapleStory-themed dialog for all configuration
 - System tray icon with integration controls
@@ -74,9 +75,10 @@ Start-Process '.venv\Scripts\pythonw.exe' -ArgumentList 'main.py' -WindowStyle H
 ### Controls
 
 - **Left-click + drag**: Move the pet around the screen
-- **Left-click**: Dismiss alert
+- **Left-click**: Tap reaction
 - **Right-click**: Open context menu (Reset Position, Settings, Quit)
 - **System tray**: Double-click to show/hide, right-click for menu
+- **Tray > Behaviors**: Manually trigger any loaded behavior
 - **Tray > Pomodoro**: Start/skip focus sessions, show timer widget
 - **Tray > Calendar**: View next event, refresh calendar
 - **Tray > Integrations**: Enable/disable other integrations
@@ -88,7 +90,7 @@ The pet will randomly wander around your screen. It reacts to:
 - **Calendar events** with configurable reminders:
   - *Day preview* on startup — "You have 3 meetings today. First is Standup at 9:30 AM."
   - *Countdown reminders* — speech bubble at 30 min and 5 min before
-  - *Starting now* alert — pet alert behavior when event begins
+  - *Starting now* — pet reacts when event begins
   - All-day events mentioned in day preview only (no countdown)
 - **Time of day** (morning, afternoon, night greetings)
 
@@ -161,14 +163,13 @@ The pet will randomly wander around your screen. It reacts to:
 │
 ├── behaviors/                        # Visual animation states
 │   ├── idle/
-│   ├── alert/
 │   ├── wander/
 │   ├── wave/
 │   ├── sleep/
-│   ├── morning/
-│   ├── night/
+│   ├── crochet/
+│   ├── celebrate_birthday/
 │   ├── rainy/
-│   └── sunny/
+│   └── ...
 │
 ├── integrations/                     # External service connections
 │   ├── weather/
@@ -207,7 +208,7 @@ The pet will randomly wander around your screen. It reacts to:
    }
    ```
 
-3. Add sprite images in `sprites/` subfolder (e.g., `sleep_1.png`, `sleep_2.png`)
+3. Add a GIF in `media/` subfolder (e.g., `sleep.gif`)
 
 4. Optionally add sounds in `sounds/` subfolder
 
