@@ -12,17 +12,15 @@ class PetState(Enum):
     IDLE = auto()
     WANDERING = auto()
     SLEEPING = auto()
-    ALERTING = auto()
     REACTING = auto()
 
 
 # Valid transitions from each state
 _TRANSITIONS: dict[PetState, set[PetState]] = {
-    PetState.IDLE: {PetState.WANDERING, PetState.SLEEPING, PetState.ALERTING, PetState.REACTING},
-    PetState.WANDERING: {PetState.IDLE, PetState.ALERTING},
-    PetState.SLEEPING: {PetState.IDLE, PetState.ALERTING},
-    PetState.ALERTING: {PetState.IDLE},
-    PetState.REACTING: {PetState.IDLE, PetState.ALERTING},
+    PetState.IDLE: {PetState.WANDERING, PetState.SLEEPING, PetState.REACTING},
+    PetState.WANDERING: {PetState.IDLE, PetState.REACTING},
+    PetState.SLEEPING: {PetState.IDLE, PetState.REACTING},
+    PetState.REACTING: {PetState.IDLE},
 }
 
 
@@ -70,7 +68,6 @@ class PetStateMachine(QObject):
     @property
     def is_busy(self) -> bool:
         return self._state in (
-            PetState.ALERTING,
             PetState.WANDERING,
             PetState.SLEEPING,
             PetState.REACTING,

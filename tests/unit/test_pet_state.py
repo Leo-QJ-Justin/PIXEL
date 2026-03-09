@@ -23,11 +23,6 @@ class TestPetStateMachine:
         assert sm.transition(PetState.SLEEPING) is True
         assert sm.state == PetState.SLEEPING
 
-    def test_valid_transition_idle_to_alerting(self):
-        sm = PetStateMachine()
-        assert sm.transition(PetState.ALERTING) is True
-        assert sm.state == PetState.ALERTING
-
     def test_invalid_transition_wandering_to_sleeping(self):
         sm = PetStateMachine()
         sm.transition(PetState.WANDERING)
@@ -40,25 +35,25 @@ class TestPetStateMachine:
         assert sm.transition(PetState.WANDERING) is False
         assert sm.state == PetState.SLEEPING
 
-    def test_alerting_can_only_go_to_idle(self):
+    def test_reacting_can_only_go_to_idle(self):
         sm = PetStateMachine()
-        sm.transition(PetState.ALERTING)
+        sm.transition(PetState.REACTING)
         assert sm.transition(PetState.WANDERING) is False
         assert sm.transition(PetState.SLEEPING) is False
         assert sm.transition(PetState.IDLE) is True
         assert sm.state == PetState.IDLE
 
-    def test_wandering_can_be_interrupted_by_alert(self):
+    def test_wandering_can_be_interrupted_by_reacting(self):
         sm = PetStateMachine()
         sm.transition(PetState.WANDERING)
-        assert sm.transition(PetState.ALERTING) is True
-        assert sm.state == PetState.ALERTING
+        assert sm.transition(PetState.REACTING) is True
+        assert sm.state == PetState.REACTING
 
-    def test_sleeping_can_be_interrupted_by_alert(self):
+    def test_sleeping_can_be_interrupted_by_reacting(self):
         sm = PetStateMachine()
         sm.transition(PetState.SLEEPING)
-        assert sm.transition(PetState.ALERTING) is True
-        assert sm.state == PetState.ALERTING
+        assert sm.transition(PetState.REACTING) is True
+        assert sm.state == PetState.REACTING
 
     def test_transition_to_same_state_succeeds(self):
         sm = PetStateMachine()
@@ -67,7 +62,7 @@ class TestPetStateMachine:
 
     def test_force_bypasses_rules(self):
         sm = PetStateMachine()
-        sm.transition(PetState.ALERTING)
+        sm.transition(PetState.REACTING)
         sm.force(PetState.SLEEPING)  # normally invalid
         assert sm.state == PetState.SLEEPING
 
@@ -81,7 +76,7 @@ class TestPetStateMachine:
         sm = PetStateMachine()
         assert sm.is_busy is False
 
-        sm.transition(PetState.ALERTING)
+        sm.transition(PetState.REACTING)
         assert sm.is_busy is True
 
         sm.force(PetState.WANDERING)
