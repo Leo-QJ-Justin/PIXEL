@@ -4,12 +4,13 @@ import copy
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import QPoint, Qt, QTime, pyqtSignal
+from PyQt6.QtCore import QDate, QPoint, Qt, QTime, pyqtSignal
 from PyQt6.QtGui import QColor, QFontDatabase
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
+    QDateEdit,
     QDialog,
     QFrame,
     QGraphicsDropShadowEffect,
@@ -541,6 +542,20 @@ class SettingsDialog(QDialog):
         name_edit.setPlaceholderText("Enter username...")
         name_edit.textChanged.connect(lambda text: self._set_nested(["user_name"], text))
         self._make_form_row("User Name", name_edit, sec_layout)
+
+        birthday_edit = QDateEdit()
+        birthday_edit.setDisplayFormat("MM-dd")
+        birthday_edit.setCalendarPopup(True)
+        stored_birthday = self._get_nested(["birthday"], "")
+        if stored_birthday:
+            date = QDate.fromString(stored_birthday, "MM-dd")
+            if date.isValid():
+                birthday_edit.setDate(date)
+        birthday_edit.dateChanged.connect(
+            lambda d: self._set_nested(["birthday"], d.toString("MM-dd"))
+        )
+        self._make_form_row("Birthday", birthday_edit, sec_layout)
+
         layout.addWidget(section)
 
         # --- Window section ---
@@ -1081,9 +1096,7 @@ class SettingsDialog(QDialog):
         # --- OpenAI section ---
         section, sec_layout = self._make_section("OpenAI (Cloud)")
 
-        openai_key_edit = QLineEdit(
-            self._get_nested(["personality_engine", "openai_api_key"], "")
-        )
+        openai_key_edit = QLineEdit(self._get_nested(["personality_engine", "openai_api_key"], ""))
         openai_key_edit.setPlaceholderText("sk-...")
         openai_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
         openai_key_edit.textChanged.connect(
