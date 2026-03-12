@@ -35,7 +35,7 @@ COLORS: dict[str, str] = {
     "card": "#FFFFFF",
     "foreground": "#9A3412",
     "text": "#44403C",
-    "text_muted": "#78716C",
+    "text_muted": "#57534E",
     "border": "#FED7AA",
     "border_strong": "#FDBA74",
     "muted": "#FFF1E6",
