@@ -1,8 +1,7 @@
-"""MapleStory-themed Pomodoro timer floating widget."""
+"""Warm dark claymorphism Pomodoro timer floating widget."""
 
 import logging
 from datetime import date, timedelta
-from pathlib import Path
 
 from PyQt6.QtCore import QPoint, QRectF, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QPainter, QPen
@@ -21,8 +20,6 @@ from config import load_settings, save_settings
 from src.ui import pomodoro_theme as theme
 
 logger = logging.getLogger(__name__)
-
-ASSETS_DIR = Path(__file__).resolve().parent.parent.parent / "assets"
 
 
 class ProgressRing(QWidget):
