@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from PyQt6.QtCore import QPoint, QRectF, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QFontDatabase, QPainter, QPen
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen
 from PyQt6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
@@ -18,146 +18,11 @@ from PyQt6.QtWidgets import (
 )
 
 from config import load_settings, save_settings
+from src.ui import pomodoro_theme as theme
 
 logger = logging.getLogger(__name__)
 
 ASSETS_DIR = Path(__file__).resolve().parent.parent.parent / "assets"
-
-# -- Colors --
-COLOR_BG = QColor(26, 26, 26)  # #1A1A1A
-COLOR_HEADER_TOP = QColor(68, 68, 68)  # #444444
-COLOR_HEADER_BOT = QColor(34, 34, 34)  # #222222
-COLOR_YELLOW = QColor(255, 204, 0)  # #FFCC00
-COLOR_TEAL = QColor(0, 136, 170)  # #0088AA
-COLOR_AMBER = QColor(255, 170, 0)  # #FFAA00
-COLOR_GREEN_TOP = QColor(170, 221, 0)  # #AADD00
-COLOR_GREEN_BOT = QColor(102, 153, 0)  # #669900
-COLOR_PINK = QColor(255, 102, 136)  # #FF6688
-COLOR_TEXT_LIGHT = QColor(238, 238, 238)  # #EEEEEE
-COLOR_TEXT_DIM = QColor(153, 153, 153)  # #999999
-COLOR_DIAMOND_EMPTY = QColor(68, 68, 68)  # #444444
-COLOR_SETTINGS_BG = QColor(44, 44, 44)  # #2C2C2C
-COLOR_BORDER = QColor(68, 68, 68)  # #444444
-
-WIDGET_WIDTH = 280
-RING_SIZE = 160
-RING_THICKNESS = 8
-
-# -- Button QSS --
-_START_BTN = """
-QPushButton {
-    background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #AADD00, stop:1 #669900);
-    border: 2px solid #446600; border-radius: 4px;
-    color: #ffffff; font-weight: bold; font-size: 10pt;
-    padding: 8px 20px;
-}
-QPushButton:hover {
-    background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #BBEE11, stop:1 #77AA00);
-}
-QPushButton:pressed {
-    background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #669900, stop:1 #446600);
-}
-"""
-
-_SKIP_BTN = """
-QPushButton {
-    background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #FF6688, stop:1 #CC3355);
-    border: 2px solid #AA2244; border-radius: 4px;
-    color: #ffffff; font-weight: bold; font-size: 10pt;
-    padding: 8px 20px;
-}
-QPushButton:hover {
-    background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #FF88AA, stop:1 #DD4466);
-}
-QPushButton:pressed {
-    background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #CC3355, stop:1 #AA2244);
-}
-"""
-
-_LINK_BTN = """
-QPushButton {
-    background: transparent; border: none;
-    color: #999999; font-size: 9pt; text-decoration: underline;
-}
-QPushButton:hover { color: #cccccc; }
-"""
-
-_ICON_BTN = """
-QPushButton {
-    background: transparent; border: none;
-    color: #999999; font-size: 14pt;
-}
-QPushButton:hover { color: #cccccc; }
-"""
-
-_CLOSE_BTN = """
-QPushButton {
-    background: transparent; border: none;
-    color: #999999; font-size: 14pt; font-weight: bold;
-}
-QPushButton:hover { color: #ffffff; }
-"""
-
-_SETTINGS_SLIDER = """
-QSlider::groove:horizontal {
-    border: 1px solid #555555; height: 6px;
-    background: #333333; border-radius: 3px;
-}
-QSlider::handle:horizontal {
-    background: #FFCC00; border: 1px solid #CC9900;
-    width: 16px; margin: -6px 0; border-radius: 8px;
-}
-QSlider::sub-page:horizontal {
-    background: #FFCC00; border-radius: 3px;
-}
-"""
-
-_SETTINGS_CHECK = """
-QCheckBox {
-    color: #cccccc; font-size: 10pt; spacing: 8px; background: transparent;
-}
-QCheckBox::indicator {
-    width: 18px; height: 18px;
-    border: 2px solid #666666; border-radius: 3px;
-    background-color: #333333;
-}
-QCheckBox::indicator:checked {
-    background-color: #FFCC00; border-color: #CC9900;
-}
-"""
-
-_OK_BTN = """
-QPushButton {
-    background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #AADD00, stop:1 #669900);
-    border: 2px solid #446600; border-radius: 4px;
-    color: #ffffff; font-weight: bold; font-size: 10pt; padding: 6px 16px;
-}
-QPushButton:hover {
-    background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #BBEE11, stop:1 #77AA00);
-}
-"""
-
-_CANCEL_BTN = """
-QPushButton {
-    background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #888888, stop:1 #555555);
-    border: 2px solid #555555; border-radius: 4px;
-    color: #ffffff; font-weight: bold; font-size: 10pt; padding: 6px 16px;
-}
-QPushButton:hover {
-    background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #999999, stop:1 #666666);
-}
-"""
-
-_BACK_BTN = """
-QPushButton {
-    background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #555555, stop:1 #333333);
-    border: 2px solid #444444; border-radius: 4px;
-    color: #cccccc; font-weight: bold; font-size: 10pt; padding: 6px 16px;
-}
-QPushButton:hover {
-    background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #666666, stop:1 #444444);
-}
-"""
 
 
 class ProgressRing(QWidget):
@@ -165,9 +30,9 @@ class ProgressRing(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedSize(RING_SIZE, RING_SIZE)
+        self.setFixedSize(theme.RING_SIZE, theme.RING_SIZE)
         self._progress = 1.0  # 0.0 to 1.0
-        self._color = COLOR_TEAL
+        self._color = QColor(theme.COLORS["ring_focus"])
 
     def set_progress(self, progress: float) -> None:
         self._progress = max(0.0, min(1.0, progress))
@@ -182,21 +47,23 @@ class ProgressRing(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         rect = QRectF(
-            RING_THICKNESS / 2,
-            RING_THICKNESS / 2,
-            self.width() - RING_THICKNESS,
-            self.height() - RING_THICKNESS,
+            theme.RING_THICKNESS / 2,
+            theme.RING_THICKNESS / 2,
+            self.width() - theme.RING_THICKNESS,
+            self.height() - theme.RING_THICKNESS,
         )
 
         # Background track
-        painter.setPen(QPen(COLOR_DIAMOND_EMPTY, RING_THICKNESS, Qt.PenStyle.SolidLine))
+        painter.setPen(
+            QPen(QColor(theme.COLORS["diamond_empty"]), theme.RING_THICKNESS, Qt.PenStyle.SolidLine)
+        )
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(rect)
 
         # Progress arc (Qt uses 1/16th degree units, starts at 12 o'clock = 90°)
         if self._progress > 0:
             span = int(self._progress * 360 * 16)
-            painter.setPen(QPen(self._color, RING_THICKNESS, Qt.PenStyle.SolidLine))
+            painter.setPen(QPen(self._color, theme.RING_THICKNESS, Qt.PenStyle.SolidLine))
             painter.drawArc(rect, 90 * 16, -span)
 
         painter.end()
@@ -238,7 +105,11 @@ class DiamondStreak(QWidget):
             painter.translate(cx, cy)
             painter.rotate(45)
 
-            color = COLOR_YELLOW if i < self._filled else COLOR_DIAMOND_EMPTY
+            color = (
+                QColor(theme.COLORS["diamond_filled"])
+                if i < self._filled
+                else QColor(theme.COLORS["diamond_empty"])
+            )
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(color)
             painter.drawRect(QRectF(-size / 2, -size / 2, size, size))
@@ -284,11 +155,15 @@ class WeeklyChart(QWidget):
 
             # Bar
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(COLOR_TEAL if val > 0 else COLOR_DIAMOND_EMPTY)
+            painter.setBrush(
+                QColor(theme.COLORS["chart_bar"])
+                if val > 0
+                else QColor(theme.COLORS["chart_empty"])
+            )
             painter.drawRoundedRect(QRectF(x, y, bar_w, bar_h), 2, 2)
 
             # Label
-            painter.setPen(COLOR_TEXT_DIM)
+            painter.setPen(QColor(theme.COLORS["text_muted"]))
             painter.setFont(QFont("sans-serif", 7))
             painter.drawText(
                 QRectF(x, h - label_h, bar_w, label_h),
@@ -318,7 +193,7 @@ class PomodoroWidget(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
-        self.setFixedWidth(WIDGET_WIDTH)
+        self.setFixedWidth(theme.WIDGET_WIDTH)
 
         self._stack = QStackedWidget()
         self._build_timer_view()
@@ -344,34 +219,27 @@ class PomodoroWidget(QWidget):
 
     def _build_header(self) -> QWidget:
         header = QWidget()
+        header.setObjectName("pomo_header")
         header.setFixedHeight(36)
-        header.setStyleSheet(
-            "background: qlineargradient(x1:0,y1:0,x2:0,y2:1,"
-            "stop:0 #444444, stop:1 #222222);"
-            "border-top-left-radius: 8px; border-top-right-radius: 8px;"
-        )
+        header.setStyleSheet(theme.header_style(self._font_family))
         layout = QHBoxLayout(header)
         layout.setContentsMargins(10, 0, 6, 0)
 
         dot = QLabel()
         dot.setFixedSize(12, 12)
-        dot.setStyleSheet(
-            "background: qlineargradient(x1:0,y1:0,x2:0,y2:1,"
-            "stop:0 #FFE066, stop:1 #CCAA00);"
-            "border-radius: 6px;"
-        )
+        dot.setStyleSheet(f"background: {theme.COLORS['accent']};" "border-radius: 6px;")
         layout.addWidget(dot)
 
         title = QLabel("Focus Timer")
         title.setStyleSheet(
-            f"color: #FFCC00; font-weight: bold; font-size: 11pt;"
+            f"color: {theme.COLORS['accent']}; font-weight: bold; font-size: 11pt;"
             f"font-family: '{self._font_family}'; background: transparent;"
         )
         layout.addWidget(title)
         layout.addStretch()
 
         close_btn = QPushButton("\u2715")
-        close_btn.setStyleSheet(_CLOSE_BTN)
+        close_btn.setStyleSheet(theme.close_button_style())
         close_btn.setFixedSize(24, 24)
         close_btn.clicked.connect(self.hide)
         layout.addWidget(close_btn)
@@ -382,9 +250,7 @@ class PomodoroWidget(QWidget):
 
     def _build_timer_view(self) -> None:
         page = QWidget()
-        page.setStyleSheet(
-            "background: #1A1A1A; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;"
-        )
+        page.setStyleSheet(theme.timer_page_style())
         layout = QVBoxLayout(page)
         layout.setContentsMargins(16, 12, 16, 12)
         layout.setSpacing(8)
@@ -402,11 +268,11 @@ class PomodoroWidget(QWidget):
         self._countdown_label = QLabel("00:00")
         self._countdown_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._countdown_label.setStyleSheet(
-            f"color: #eeeeee; font-size: 28pt; font-weight: bold;"
+            f"color: {theme.COLORS['text']}; font-size: 28pt; font-weight: bold;"
             f"font-family: '{self._font_family}'; background: transparent;"
         )
         self._countdown_label.setParent(self._ring)
-        self._countdown_label.setGeometry(0, 0, RING_SIZE, RING_SIZE)
+        self._countdown_label.setGeometry(0, 0, theme.RING_SIZE, theme.RING_SIZE)
 
         layout.addWidget(ring_container, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -414,7 +280,7 @@ class PomodoroWidget(QWidget):
         self._phase_label = QLabel("Ready to focus?")
         self._phase_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._phase_label.setStyleSheet(
-            f"color: #999999; font-size: 10pt;"
+            f"color: {theme.COLORS['text_muted']}; font-size: 10pt;"
             f"font-family: '{self._font_family}'; background: transparent;"
         )
         layout.addWidget(self._phase_label)
@@ -436,22 +302,22 @@ class PomodoroWidget(QWidget):
         row1.setSpacing(8)
 
         self._start_btn = QPushButton("START")
-        self._start_btn.setStyleSheet(_START_BTN)
+        self._start_btn.setStyleSheet(theme.start_button_style(self._font_family))
         self._start_btn.clicked.connect(self._integration.start_session)
         row1.addWidget(self._start_btn)
 
         self._pause_btn = QPushButton("PAUSE")
-        self._pause_btn.setStyleSheet(_START_BTN)
+        self._pause_btn.setStyleSheet(theme.start_button_style(self._font_family))
         self._pause_btn.clicked.connect(self._on_pause_clicked)
         row1.addWidget(self._pause_btn)
 
         self._skip_btn = QPushButton("SKIP")
-        self._skip_btn.setStyleSheet(_SKIP_BTN)
+        self._skip_btn.setStyleSheet(theme.skip_button_style(self._font_family))
         self._skip_btn.clicked.connect(self._integration.skip)
         row1.addWidget(self._skip_btn)
 
         self._break_btn = QPushButton("START BREAK")
-        self._break_btn.setStyleSheet(_START_BTN)
+        self._break_btn.setStyleSheet(theme.start_button_style(self._font_family))
         self._break_btn.clicked.connect(self._integration.start_break)
         row1.addWidget(self._break_btn)
 
@@ -459,7 +325,7 @@ class PomodoroWidget(QWidget):
 
         # Row 2: skip break link
         self._skip_break_btn = QPushButton("Skip Break")
-        self._skip_break_btn.setStyleSheet(_LINK_BTN)
+        self._skip_break_btn.setStyleSheet(theme.link_button_style())
         self._skip_break_btn.clicked.connect(self._integration.skip_break)
         self._btn_layout.addWidget(self._skip_break_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -471,21 +337,21 @@ class PomodoroWidget(QWidget):
 
         self._today_label = QLabel("Today: 0 pomodoros")
         self._today_label.setStyleSheet(
-            f"color: #999999; font-size: 8pt;"
+            f"color: {theme.COLORS['text_muted']}; font-size: 8pt;"
             f"font-family: '{self._font_family}'; background: transparent;"
         )
         footer.addWidget(self._today_label)
         footer.addStretch()
 
         settings_btn = QPushButton("\u2699")
-        settings_btn.setStyleSheet(_ICON_BTN)
+        settings_btn.setStyleSheet(theme.icon_button_style())
         settings_btn.setFixedSize(28, 28)
         settings_btn.setToolTip("Settings")
         settings_btn.clicked.connect(lambda: self._stack.setCurrentIndex(1))
         footer.addWidget(settings_btn)
 
         stats_btn = QPushButton("\U0001F4CA")
-        stats_btn.setStyleSheet(_ICON_BTN)
+        stats_btn.setStyleSheet(theme.icon_button_style())
         stats_btn.setFixedSize(28, 28)
         stats_btn.setToolTip("Statistics")
         stats_btn.clicked.connect(lambda: self._stack.setCurrentIndex(2))
@@ -499,9 +365,8 @@ class PomodoroWidget(QWidget):
 
     def _build_settings_view(self) -> None:
         page = QWidget()
-        page.setStyleSheet(
-            "background: #2C2C2C; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;"
-        )
+        page.setObjectName("pomo_settings_page")
+        page.setStyleSheet(theme.settings_page_style(self._font_family))
         layout = QVBoxLayout(page)
         layout.setContentsMargins(16, 12, 16, 12)
         layout.setSpacing(12)
@@ -509,7 +374,7 @@ class PomodoroWidget(QWidget):
         # Title
         title = QLabel("Settings")
         title.setStyleSheet(
-            f"color: #FFCC00; font-weight: bold; font-size: 12pt;"
+            f"color: {theme.COLORS['accent']}; font-weight: bold; font-size: 12pt;"
             f"font-family: '{self._font_family}'; background: transparent;"
         )
         layout.addWidget(title)
@@ -533,12 +398,10 @@ class PomodoroWidget(QWidget):
 
         # Checkboxes
         self._auto_start_check = QCheckBox("Auto-start next session")
-        self._auto_start_check.setStyleSheet(_SETTINGS_CHECK)
         self._auto_start_check.setChecked(s.get("auto_start", False))
         layout.addWidget(self._auto_start_check)
 
         self._sound_check = QCheckBox("Sound effects")
-        self._sound_check.setStyleSheet(_SETTINGS_CHECK)
         self._sound_check.setChecked(s.get("sound_enabled", True))
         layout.addWidget(self._sound_check)
 
@@ -548,12 +411,12 @@ class PomodoroWidget(QWidget):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
         ok_btn = QPushButton("OK")
-        ok_btn.setStyleSheet(_OK_BTN)
+        ok_btn.setStyleSheet(theme.ok_button_style(self._font_family))
         ok_btn.clicked.connect(self._save_settings)
         btn_row.addWidget(ok_btn)
 
         cancel_btn = QPushButton("Cancel")
-        cancel_btn.setStyleSheet(_CANCEL_BTN)
+        cancel_btn.setStyleSheet(theme.cancel_button_style(self._font_family))
         cancel_btn.clicked.connect(lambda: self._stack.setCurrentIndex(0))
         btn_row.addWidget(cancel_btn)
         layout.addLayout(btn_row)
@@ -566,21 +429,20 @@ class PomodoroWidget(QWidget):
         row = QHBoxLayout()
         lbl = QLabel(label)
         lbl.setStyleSheet(
-            f"color: #cccccc; font-size: 9pt;"
+            f"color: {theme.COLORS['text']}; font-size: 9pt;"
             f"font-family: '{self._font_family}'; background: transparent;"
         )
         lbl.setFixedWidth(80)
         row.addWidget(lbl)
 
         slider = QSlider(Qt.Orientation.Horizontal)
-        slider.setStyleSheet(_SETTINGS_SLIDER)
         slider.setRange(min_val, max_val)
         slider.setValue(value)
         row.addWidget(slider)
 
         val_lbl = QLabel(f"{value}{suffix}")
         val_lbl.setStyleSheet(
-            f"color: #FFCC00; font-size: 9pt; font-weight: bold;"
+            f"color: {theme.COLORS['accent']}; font-size: 9pt; font-weight: bold;"
             f"font-family: '{self._font_family}'; background: transparent;"
         )
         val_lbl.setFixedWidth(30)
@@ -613,16 +475,14 @@ class PomodoroWidget(QWidget):
 
     def _build_stats_view(self) -> None:
         page = QWidget()
-        page.setStyleSheet(
-            "background: #1A1A1A; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;"
-        )
+        page.setStyleSheet(theme.timer_page_style())
         layout = QVBoxLayout(page)
         layout.setContentsMargins(16, 12, 16, 12)
         layout.setSpacing(8)
 
         title = QLabel("QUEST LOG")
         title.setStyleSheet(
-            f"color: #FFCC00; font-weight: bold; font-size: 12pt;"
+            f"color: {theme.COLORS['accent']}; font-weight: bold; font-size: 12pt;"
             f"font-family: '{self._font_family}'; background: transparent;"
         )
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -631,7 +491,7 @@ class PomodoroWidget(QWidget):
         # Streak
         self._streak_label = QLabel("Streak: 0 days")
         self._streak_label.setStyleSheet(
-            f"color: #eeeeee; font-size: 11pt;"
+            f"color: {theme.COLORS['text']}; font-size: 11pt;"
             f"font-family: '{self._font_family}'; background: transparent;"
         )
         self._streak_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -640,7 +500,7 @@ class PomodoroWidget(QWidget):
         # Weekly chart
         chart_label = QLabel("This Week")
         chart_label.setStyleSheet(
-            f"color: #999999; font-size: 9pt;"
+            f"color: {theme.COLORS['text_muted']}; font-size: 9pt;"
             f"font-family: '{self._font_family}'; background: transparent;"
         )
         chart_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -652,7 +512,7 @@ class PomodoroWidget(QWidget):
         # Stats summary
         self._total_label = QLabel("Total: 0 sessions")
         self._total_label.setStyleSheet(
-            f"color: #cccccc; font-size: 9pt;"
+            f"color: {theme.COLORS['text']}; font-size: 9pt;"
             f"font-family: '{self._font_family}'; background: transparent;"
         )
         self._total_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -660,7 +520,7 @@ class PomodoroWidget(QWidget):
 
         self._best_label = QLabel("Best day: 0 sessions")
         self._best_label.setStyleSheet(
-            f"color: #cccccc; font-size: 9pt;"
+            f"color: {theme.COLORS['text']}; font-size: 9pt;"
             f"font-family: '{self._font_family}'; background: transparent;"
         )
         self._best_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -669,7 +529,7 @@ class PomodoroWidget(QWidget):
         layout.addStretch()
 
         back_btn = QPushButton("Back")
-        back_btn.setStyleSheet(_BACK_BTN)
+        back_btn.setStyleSheet(theme.back_button_style(self._font_family))
         back_btn.clicked.connect(lambda: self._stack.setCurrentIndex(0))
         layout.addWidget(back_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -689,12 +549,12 @@ class PomodoroWidget(QWidget):
         if state_name == "FOCUS":
             work_min = self._integration._settings.get("work_duration_minutes", 25)
             self._total_seconds = work_min * 60
-            self._ring.set_color(COLOR_TEAL)
+            self._ring.set_color(QColor(theme.COLORS["ring_focus"]))
             self._ring.set_progress(1.0)
             self._countdown_label.setText(f"{work_min:02d}:00")
             self._phase_label.setText("FOCUSING...")
             self._phase_label.setStyleSheet(
-                f"color: #0088AA; font-size: 10pt; font-weight: bold;"
+                f"color: {theme.COLORS['ring_focus']}; font-size: 10pt; font-weight: bold;"
                 f"font-family: '{self._font_family}'; background: transparent;"
             )
         elif state_name == "SESSION_COMPLETE":
@@ -702,7 +562,7 @@ class PomodoroWidget(QWidget):
             self._countdown_label.setText("00:00")
             self._phase_label.setText("SESSION CLEAR!")
             self._phase_label.setStyleSheet(
-                f"color: #FFCC00; font-size: 10pt; font-weight: bold;"
+                f"color: {theme.COLORS['accent']}; font-size: 10pt; font-weight: bold;"
                 f"font-family: '{self._font_family}'; background: transparent;"
             )
         elif state_name in ("SHORT_BREAK", "LONG_BREAK"):
@@ -711,22 +571,22 @@ class PomodoroWidget(QWidget):
             else:
                 break_min = self._integration._settings.get("long_break_minutes", 15)
             self._total_seconds = break_min * 60
-            self._ring.set_color(COLOR_AMBER)
+            self._ring.set_color(QColor(theme.COLORS["ring_break"]))
             self._ring.set_progress(1.0)
             self._countdown_label.setText(f"{break_min:02d}:00")
             self._phase_label.setText("RESTING...")
             self._phase_label.setStyleSheet(
-                f"color: #FFAA00; font-size: 10pt; font-weight: bold;"
+                f"color: {theme.COLORS['ring_break']}; font-size: 10pt; font-weight: bold;"
                 f"font-family: '{self._font_family}'; background: transparent;"
             )
         elif state_name == "IDLE":
             self._total_seconds = 0
-            self._ring.set_color(COLOR_TEAL)
+            self._ring.set_color(QColor(theme.COLORS["ring_focus"]))
             self._ring.set_progress(1.0)
             self._countdown_label.setText("00:00")
             self._phase_label.setText("Ready to focus?")
             self._phase_label.setStyleSheet(
-                f"color: #999999; font-size: 10pt;"
+                f"color: {theme.COLORS['text_muted']}; font-size: 10pt;"
                 f"font-family: '{self._font_family}'; background: transparent;"
             )
 
@@ -790,18 +650,12 @@ class PomodoroWidget(QWidget):
 
         # Draw rounded rectangle background
         rect = QRectF(0, 0, self.width(), self.height())
-        painter.setPen(QPen(COLOR_BORDER, 1))
-        painter.setBrush(COLOR_BG)
-        painter.drawRoundedRect(rect, 8, 8)
+        painter.setPen(QPen(QColor(theme.COLORS["border"]), 1))
+        painter.setBrush(QColor(theme.COLORS["bg"]))
+        painter.drawRoundedRect(rect, 16, 16)
         painter.end()
 
     # -- Font --
 
     def _load_font(self) -> str:
-        font_path = ASSETS_DIR / "fonts" / "MPLUSRounded1c-Regular.ttf"
-        if font_path.exists():
-            font_id = QFontDatabase.addApplicationFont(str(font_path))
-            families = QFontDatabase.applicationFontFamilies(font_id)
-            if families:
-                return families[0]
-        return "sans-serif"
+        return theme.load_font()
