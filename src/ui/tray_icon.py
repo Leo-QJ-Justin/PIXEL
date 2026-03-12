@@ -212,7 +212,7 @@ class TrayIcon(QSystemTrayIcon):
             self._toggle_visibility()
 
     def _open_settings(self):
-        from src.ui.settings_dialog import SettingsDialog
+        from src.ui.settings import SettingsDialog
 
         dialog = SettingsDialog(integration_manager=self._integration_manager)
         dialog.settings_changed.connect(self.settings_changed)
