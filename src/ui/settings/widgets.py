@@ -5,7 +5,9 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
+    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QLabel,
     QSlider,
@@ -131,12 +133,12 @@ def make_slider_row(
 
 
 # ---------------------------------------------------------------------------
-# CollapsibleSection
+# SectionCard
 # ---------------------------------------------------------------------------
 
 
-class CollapsibleSection(QWidget):
-    """A section card with a clickable header that toggles content visibility."""
+class SectionCard(QWidget):
+    """A styled section card with a title header."""
 
     def __init__(self, title: str, font: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -148,40 +150,32 @@ class CollapsibleSection(QWidget):
         self.setStyleSheet(
             f"QWidget#sectionBox {{"
             f"  background-color: {c['card']};"
-            f"  border: {theme.CLAY_BORDER} solid {c['border']};"
+            f"  border: {theme.CLAY_BORDER} solid {c['border_subtle']};"
             f"  border-radius: {theme.CLAY_RADIUS};"
             f"}}\n" + theme.content_style(font)
         )
 
-        self._expanded = True
+        # Claymorphism drop shadow for depth
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(16)
+        shadow.setOffset(0, 4)
+        shadow.setColor(QColor(154, 52, 18, 25))
+        self.setGraphicsEffect(shadow)
 
         # --- Outer layout ---
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(16, 12, 16, 12)
-        outer.setSpacing(10)
+        outer.setContentsMargins(18, 14, 18, 14)
+        outer.setSpacing(12)
 
-        # --- Header row ---
-        header_row = QHBoxLayout()
-        header_row.setSpacing(8)
-
-        self._arrow = QLabel("▼")
-        self._arrow.setStyleSheet(
-            f"color: {theme.COLORS['primary']}; font-size: 13px; font-family: '{font}';"
-        )
-
+        # --- Title ---
         self._title_lbl = QLabel(title)
         self._title_lbl.setStyleSheet(
             f"color: {theme.COLORS['foreground']}; font-family: '{font}'; "
-            f"font-size: 14px; font-weight: bold; "
-            f"border-bottom: 2px solid {theme.COLORS['border']};"
+            f"font-size: 15px; font-weight: bold; "
+            f"padding-bottom: 6px;"
+            f"border-bottom: 2px solid {theme.COLORS['border_subtle']};"
         )
-        self._title_lbl.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._title_lbl.mousePressEvent = lambda _event: self.toggle()  # type: ignore[method-assign]
-
-        header_row.addWidget(self._arrow)
-        header_row.addWidget(self._title_lbl, stretch=1)
-
-        outer.addLayout(header_row)
+        outer.addWidget(self._title_lbl)
 
         # --- Content container ---
         self._content = QWidget()
@@ -191,23 +185,13 @@ class CollapsibleSection(QWidget):
 
         outer.addWidget(self._content)
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
     def content_layout(self) -> QVBoxLayout:
         """Return the QVBoxLayout inside the content area."""
         return self._content_layout
 
-    def is_expanded(self) -> bool:
-        """Return True if the section is currently expanded."""
-        return self._expanded
 
-    def toggle(self) -> None:
-        """Toggle the visibility of the content widget and update the arrow."""
-        self._expanded = not self._expanded
-        self._content.setVisible(self._expanded)
-        self._arrow.setText("▼" if self._expanded else "▶")
+# Backward-compatible alias
+CollapsibleSection = SectionCard
 
 
 # ---------------------------------------------------------------------------

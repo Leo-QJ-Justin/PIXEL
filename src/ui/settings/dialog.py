@@ -71,7 +71,7 @@ class SettingsDialog(QDialog):
             f"QFrame#settingsContainer {{"
             f"  background-color: {theme.COLORS['background']};"
             f"  border-radius: {theme.CLAY_RADIUS};"
-            f"  border: {theme.CLAY_BORDER} solid {theme.COLORS['border']};"
+            f"  border: {theme.CLAY_BORDER} solid {theme.COLORS['border_subtle']};"
             f"}}"
         )
 
@@ -93,6 +93,7 @@ class SettingsDialog(QDialog):
 
     def _build_header(self):
         header = QWidget()
+        header.setObjectName("header")
         header.setFixedHeight(48)
         header.setStyleSheet(theme.header_style())
 
@@ -111,10 +112,11 @@ class SettingsDialog(QDialog):
         layout.addSpacing(6)
 
         title = QLabel("Settings")
+        title.setObjectName("header_title")
         title.setStyleSheet(
             f"color: #FFFFFF;"
             f"font-family: '{self._heading_font}';"
-            f"font-size: 14pt;"
+            f"font-size: 17px;"
             f"font-weight: bold;"
             f"background: transparent;"
         )
@@ -184,6 +186,7 @@ class SettingsDialog(QDialog):
 
     def _build_footer(self):
         footer = QWidget()
+        footer.setObjectName("footer")
         footer.setFixedHeight(56)
         footer.setStyleSheet(theme.footer_style())
 
@@ -192,7 +195,7 @@ class SettingsDialog(QDialog):
 
         ok_btn = QPushButton("Ok")
         ok_btn.setObjectName("okButton")
-        ok_btn.setStyleSheet(theme.ok_button_style())
+        ok_btn.setStyleSheet(theme.ok_button_style(self._body_font))
         ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         ok_btn.clicked.connect(self._on_ok)
         layout.addWidget(ok_btn)
@@ -201,7 +204,7 @@ class SettingsDialog(QDialog):
 
         cancel_btn = QPushButton("Cancel")
         cancel_btn.setObjectName("cancelButton")
-        cancel_btn.setStyleSheet(theme.cancel_button_style())
+        cancel_btn.setStyleSheet(theme.cancel_button_style(self._body_font))
         cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         cancel_btn.clicked.connect(self.reject)
         layout.addWidget(cancel_btn)

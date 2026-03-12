@@ -18,7 +18,7 @@ ASSETS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "assets"
 # Claymorphism constants
 # ---------------------------------------------------------------------------
 
-CLAY_RADIUS = "16px"
+CLAY_RADIUS = "18px"
 CLAY_BORDER = "3px"
 
 # ---------------------------------------------------------------------------
@@ -31,13 +31,14 @@ COLORS: dict[str, str] = {
     "primary_pressed": "#EA580C",
     "accent": "#2563EB",
     "accent_light": "#3B82F6",
-    "background": "#FFF7ED",
+    "background": "#FEF3E2",
     "card": "#FFFFFF",
     "foreground": "#9A3412",
-    "text": "#44403C",
+    "text": "#292524",
     "text_muted": "#57534E",
-    "border": "#FED7AA",
-    "border_strong": "#FDBA74",
+    "border": "#FDBA74",
+    "border_strong": "#F97316",
+    "border_subtle": "#FED7AA",
     "muted": "#FFF1E6",
     "sidebar_bg": "#7C2D12",
     "sidebar_selected": "#9A3412",
@@ -60,6 +61,7 @@ COLORS: dict[str, str] = {
     "slider_groove": "#E7E5E4",
     "scrollbar_bg": "#FFF1E6",
     "scrollbar_handle": "#D6D3D1",
+    "input_bg": "#FFFBF5",
 }
 
 # ---------------------------------------------------------------------------
@@ -70,27 +72,30 @@ COLORS: dict[str, str] = {
 def load_fonts() -> tuple[str, str]:
     """Load custom fonts and return (heading_family, body_family).
 
-    Tries Varela Round for headings and Nunito Sans for body text.
-    Falls back to M+ Rounded 1c, then "sans-serif".
+    Uses M PLUS Rounded 1c for a distinctive bubbly claymorphism feel.
+    Falls back to Varela Round, then Nunito, then sans-serif.
     """
     fonts_dir = ASSETS_DIR / "fonts"
 
-    heading_family = _load_font(fonts_dir / "VarelaRound-Regular.ttf", "Varela Round")
-    body_family = _load_font(fonts_dir / "NunitoSans-Regular.ttf", "Nunito Sans")
+    # Primary: M PLUS Rounded 1c (bubbly, characterful)
+    rounded = _load_font(fonts_dir / "MPLUSRounded1c-Medium.ttf")
 
-    # Apply M+ Rounded 1c fallback for whichever failed
-    fallback_family = _load_font(fonts_dir / "MPLUSRounded1c-Regular.ttf", "M PLUS Rounded 1c")
-    final_fallback = fallback_family if fallback_family != "sans-serif" else "sans-serif"
+    if rounded != "sans-serif":
+        return rounded, rounded
 
-    if heading_family == "sans-serif":
-        heading_family = final_fallback
-    if body_family == "sans-serif":
-        body_family = final_fallback
+    # Fallback chain
+    heading = _load_font(fonts_dir / "VarelaRound-Regular.ttf")
+    body = _load_font(fonts_dir / "NunitoSans-Regular.ttf")
 
-    return heading_family, body_family
+    if heading == "sans-serif":
+        heading = body
+    if body == "sans-serif":
+        body = heading
+
+    return heading, body
 
 
-def _load_font(path: Path, preferred_family: str) -> str:
+def _load_font(path: Path) -> str:
     """Attempt to load a font file; return its family name or 'sans-serif'."""
     if path.exists():
         font_id = QFontDatabase.addApplicationFont(str(path))
@@ -117,80 +122,83 @@ def content_style(font: str) -> str:
         QLabel {{
             color: {c['text']};
             font-family: '{font}';
-            font-size: 13px;
+            font-size: 14px;
         }}
         QLabel#section_title {{
             color: {c['foreground']};
             font-family: '{font}';
-            font-size: 14px;
+            font-size: 15px;
             font-weight: bold;
         }}
         QLineEdit {{
-            background-color: {c['card']};
+            background-color: {c['input_bg']};
             color: {c['text']};
-            border: 2px solid {c['border']};
-            border-radius: 8px;
-            padding: 6px 10px;
+            border: 2px solid {c['border_subtle']};
+            border-radius: 10px;
+            padding: 8px 12px;
             font-family: '{font}';
-            font-size: 13px;
+            font-size: 14px;
         }}
         QLineEdit:focus {{
             border: 2px solid {c['primary']};
         }}
         QLineEdit:hover {{
-            border: 2px solid {c['border_strong']};
+            border: 2px solid {c['border']};
         }}
         QTextEdit {{
-            background-color: {c['card']};
+            background-color: {c['input_bg']};
             color: {c['text']};
-            border: 2px solid {c['border']};
-            border-radius: 8px;
-            padding: 6px 10px;
+            border: 2px solid {c['border_subtle']};
+            border-radius: 10px;
+            padding: 8px 12px;
             font-family: '{font}';
-            font-size: 13px;
+            font-size: 14px;
         }}
         QTextEdit:focus {{
             border: 2px solid {c['primary']};
         }}
         QComboBox {{
-            background-color: {c['card']};
+            background-color: {c['input_bg']};
             color: {c['text']};
-            border: 2px solid {c['border']};
-            border-radius: 8px;
-            padding: 5px 10px;
+            border: 2px solid {c['border_subtle']};
+            border-radius: 10px;
+            padding: 7px 12px;
             font-family: '{font}';
-            font-size: 13px;
+            font-size: 14px;
         }}
         QComboBox:hover {{
-            border: 2px solid {c['border_strong']};
+            border: 2px solid {c['border']};
         }}
         QComboBox:focus {{
             border: 2px solid {c['primary']};
         }}
         QComboBox::drop-down {{
             border: none;
-            width: 24px;
+            width: 28px;
         }}
         QComboBox QAbstractItemView {{
             background-color: {c['card']};
             color: {c['text']};
             border: 2px solid {c['border']};
-            border-radius: 8px;
+            border-radius: 10px;
             selection-background-color: {c['muted']};
             selection-color: {c['foreground']};
+            font-family: '{font}';
+            font-size: 14px;
+            padding: 4px;
         }}
         QCheckBox {{
             color: {c['text']};
             font-family: '{font}';
-            font-size: 13px;
-            spacing: 8px;
+            font-size: 14px;
+            spacing: 10px;
         }}
         QCheckBox::indicator {{
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             border: 2px solid {c['checkbox_border']};
-            border-radius: 6px;
-            background-color: {c['card']};
+            border-radius: 7px;
+            background-color: {c['input_bg']};
         }}
         QCheckBox::indicator:checked {{
             background-color: {c['checkbox_checked']};
@@ -199,34 +207,66 @@ def content_style(font: str) -> str:
         QCheckBox::indicator:hover {{
             border: 2px solid {c['primary']};
         }}
-        QSpinBox, QDoubleSpinBox {{
-            background-color: {c['card']};
+        QRadioButton {{
             color: {c['text']};
-            border: 2px solid {c['border']};
-            border-radius: 8px;
-            padding: 5px 8px;
             font-family: '{font}';
-            font-size: 13px;
+            font-size: 14px;
+            spacing: 10px;
+        }}
+        QRadioButton::indicator {{
+            width: 22px;
+            height: 22px;
+            border: 2px solid {c['checkbox_border']};
+            border-radius: 11px;
+            background-color: {c['input_bg']};
+        }}
+        QRadioButton::indicator:checked {{
+            background-color: {c['checkbox_checked']};
+            border: 2px solid {c['primary_pressed']};
+        }}
+        QRadioButton::indicator:hover {{
+            border: 2px solid {c['primary']};
+        }}
+        QTimeEdit, QDateEdit {{
+            background-color: {c['input_bg']};
+            color: {c['text']};
+            border: 2px solid {c['border_subtle']};
+            border-radius: 10px;
+            padding: 7px 10px;
+            font-family: '{font}';
+            font-size: 14px;
+        }}
+        QTimeEdit:focus, QDateEdit:focus {{
+            border: 2px solid {c['primary']};
+        }}
+        QSpinBox, QDoubleSpinBox {{
+            background-color: {c['input_bg']};
+            color: {c['text']};
+            border: 2px solid {c['border_subtle']};
+            border-radius: 10px;
+            padding: 7px 10px;
+            font-family: '{font}';
+            font-size: 14px;
         }}
         QSpinBox:focus, QDoubleSpinBox:focus {{
             border: 2px solid {c['primary']};
         }}
         QSlider::groove:horizontal {{
-            height: 6px;
+            height: 8px;
             background-color: {c['slider_groove']};
-            border-radius: 3px;
+            border-radius: 4px;
         }}
         QSlider::sub-page:horizontal {{
             background-color: {c['slider_track']};
-            border-radius: 3px;
+            border-radius: 4px;
         }}
         QSlider::handle:horizontal {{
             background-color: {c['slider_handle']};
-            border: 2px solid {c['primary_pressed']};
-            width: 18px;
-            height: 18px;
-            margin: -6px 0;
-            border-radius: 9px;
+            border: 3px solid {c['primary_pressed']};
+            width: 20px;
+            height: 20px;
+            margin: -7px 0;
+            border-radius: 11px;
         }}
         QSlider::handle:horizontal:hover {{
             background-color: {c['primary_hover']};
@@ -234,17 +274,18 @@ def content_style(font: str) -> str:
         QPushButton {{
             background-color: {c['muted']};
             color: {c['foreground']};
-            border: 2px solid {c['border']};
-            border-radius: 10px;
-            padding: 6px 14px;
+            border: 2px solid {c['border_subtle']};
+            border-radius: 12px;
+            padding: 8px 16px;
             font-family: '{font}';
-            font-size: 13px;
+            font-size: 14px;
         }}
         QPushButton:hover {{
-            background-color: {c['border']};
+            background-color: {c['border_subtle']};
+            border: 2px solid {c['border']};
         }}
         QPushButton:pressed {{
-            background-color: {c['border_strong']};
+            background-color: {c['border']};
         }}
     """
 
@@ -258,13 +299,14 @@ def sidebar_style(font: str) -> str:
             color: {c['sidebar_text']};
             border: none;
             font-family: '{font}';
-            font-size: 13px;
+            font-size: 14px;
             outline: none;
+            padding-top: 8px;
         }}
         QListWidget::item {{
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin: 2px 6px;
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin: 3px 8px;
             color: {c['sidebar_text']};
             border-left: 4px solid transparent;
         }}
@@ -276,6 +318,7 @@ def sidebar_style(font: str) -> str:
             background-color: {c['sidebar_selected']};
             color: {c['sidebar_text_active']};
             border-left: 4px solid {c['primary']};
+            font-weight: bold;
         }}
     """
 
@@ -303,25 +346,27 @@ def footer_style() -> str:
     return f"""
         QWidget#footer {{
             background-color: {c['muted']};
-            border-top: 2px solid {c['border']};
+            border-top: 2px solid {c['border_subtle']};
             border-bottom-left-radius: {CLAY_RADIUS};
             border-bottom-right-radius: {CLAY_RADIUS};
         }}
     """
 
 
-def ok_button_style() -> str:
+def ok_button_style(font: str = "") -> str:
     """Return QSS for the OK / Save button."""
     c = COLORS
+    font_rule = f"font-family: '{font}';" if font else ""
     return f"""
         QPushButton {{
             background-color: {c['ok_bg']};
             color: #FFFFFF;
             border: {CLAY_BORDER} solid {c['primary_pressed']};
-            border-radius: 10px;
-            padding: 7px 22px;
-            font-size: 13px;
+            border-radius: 12px;
+            padding: 8px 28px;
+            font-size: 14px;
             font-weight: bold;
+            {font_rule}
         }}
         QPushButton:hover {{
             background-color: {c['ok_hover']};
@@ -332,17 +377,19 @@ def ok_button_style() -> str:
     """
 
 
-def cancel_button_style() -> str:
+def cancel_button_style(font: str = "") -> str:
     """Return QSS for the Cancel button."""
     c = COLORS
+    font_rule = f"font-family: '{font}';" if font else ""
     return f"""
         QPushButton {{
             background-color: {c['cancel_bg']};
             color: #FFFFFF;
             border: {CLAY_BORDER} solid {c['cancel_pressed']};
-            border-radius: 10px;
-            padding: 7px 22px;
-            font-size: 13px;
+            border-radius: 12px;
+            padding: 8px 28px;
+            font-size: 14px;
+            {font_rule}
         }}
         QPushButton:hover {{
             background-color: {c['cancel_hover']};
@@ -400,7 +447,7 @@ def scroll_area_style() -> str:
             min-height: 24px;
         }}
         QScrollBar::handle:vertical:hover {{
-            background-color: {c['border_strong']};
+            background-color: {c['border']};
         }}
         QScrollBar::add-line:vertical,
         QScrollBar::sub-line:vertical {{
@@ -419,7 +466,7 @@ def scroll_area_style() -> str:
             min-width: 24px;
         }}
         QScrollBar::handle:horizontal:hover {{
-            background-color: {c['border_strong']};
+            background-color: {c['border']};
         }}
         QScrollBar::add-line:horizontal,
         QScrollBar::sub-line:horizontal {{
@@ -435,17 +482,17 @@ def section_style() -> str:
     return f"""
         QFrame#section_card {{
             background-color: {c['card']};
-            border: {CLAY_BORDER} solid {c['border']};
+            border: {CLAY_BORDER} solid {c['border_subtle']};
             border-radius: {CLAY_RADIUS};
-            padding: 12px;
+            padding: 14px;
         }}
         QGroupBox {{
             background-color: {c['card']};
-            border: {CLAY_BORDER} solid {c['border']};
+            border: {CLAY_BORDER} solid {c['border_subtle']};
             border-radius: {CLAY_RADIUS};
             margin-top: 16px;
-            padding: 12px 8px 8px 8px;
-            font-size: 13px;
+            padding: 14px 10px 10px 10px;
+            font-size: 14px;
             font-weight: bold;
             color: {c['foreground']};
         }}
