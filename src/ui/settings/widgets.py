@@ -142,7 +142,16 @@ class CollapsibleSection(QWidget):
         super().__init__(parent)
 
         self.setObjectName("sectionBox")
-        self.setStyleSheet(theme.section_style())
+        # Combine section card appearance + content widget styles so QSS
+        # cascades correctly to child widgets (checkboxes, sliders, etc.).
+        c = theme.COLORS
+        self.setStyleSheet(
+            f"QWidget#sectionBox {{"
+            f"  background-color: {c['card']};"
+            f"  border: {theme.CLAY_BORDER} solid {c['border']};"
+            f"  border-radius: {theme.CLAY_RADIUS};"
+            f"}}\n" + theme.content_style(font)
+        )
 
         self._expanded = True
 
