@@ -11,9 +11,11 @@ A modular desktop companion app. Supports pluggable **behaviors** (visual animat
 - **Google Calendar integration** - configurable event reminders with day preview
 - **Pomodoro timer** - focus sessions with floating widget and pet reactions
 - **Birthday celebration** - set your birthday and the pet celebrates on the day (SGT)
+- **MapleStory-style UI** - 9-slice sprite-based dialog boxes and speech bubbles
 - Animated sprites with idle, wander, rainy, and time-of-day states
 - Wandering behavior - pet randomly moves around your screen
-- **Settings GUI** - MapleStory-themed dialog for all configuration
+- **AI personality engine** - optional LLM-powered speech rewriting (OpenAI, OpenRouter, Ollama)
+- **Settings GUI** - claymorphism-themed dialog for all configuration
 - System tray icon with integration controls
 
 ## Requirements
@@ -116,6 +118,13 @@ The pet will randomly wander around your screen. It reacts to:
       "wander_interval_max_ms": 15000
     }
   },
+  "personality_engine": {
+    "enabled": false,
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "api_key": "",
+    "endpoint": ""
+  },
   "integrations": {
     "weather": {
       "enabled": true,
@@ -152,6 +161,8 @@ The pet will randomly wander around your screen. It reacts to:
 | `OPENWEATHER_API_KEY` | For Weather | API key from [openweathermap.org](https://openweathermap.org/api) |
 | `GOOGLE_CALENDAR_CLIENT_ID` | For Calendar | OAuth client ID from Google Cloud Console |
 | `GOOGLE_CALENDAR_CLIENT_SECRET` | For Calendar | OAuth client secret |
+| `LLM_API_KEY` | No | Override personality engine API key (takes precedence over Settings UI) |
+| `LLM_ENDPOINT` | No | Override personality engine endpoint (e.g. for Ollama) |
 
 ## Project Structure
 
@@ -161,6 +172,13 @@ The pet will randomly wander around your screen. It reacts to:
 ├── settings.json                     # Runtime config
 ├── .env                              # API credentials (never commit)
 │
+├── assets/                           # UI sprite assets
+│   ├── dialog_frame.png              # 9-slice dialog frame
+│   ├── speech_bubble.png             # 9-slice speech bubble
+│   ├── button_yellow.png             # Accept button sprite
+│   ├── button_pink.png               # Reject button sprite
+│   └── fonts/                        # Custom fonts
+│
 ├── behaviors/                        # Visual animation states
 │   ├── idle/
 │   ├── wander/
@@ -168,7 +186,12 @@ The pet will randomly wander around your screen. It reacts to:
 │   ├── sleep/
 │   ├── crochet/
 │   ├── celebrate_birthday/
+│   ├── chill/
+│   ├── flinch/
+│   ├── look_around/
+│   ├── play_ball/
 │   ├── rainy/
+│   ├── yawn/
 │   └── ...
 │
 ├── integrations/                     # External service connections
@@ -184,14 +207,23 @@ The pet will randomly wander around your screen. It reacts to:
     ├── core/
     │   ├── base_integration.py       # Abstract integration class
     │   ├── behavior_registry.py      # Behavior discovery & management
-    │   └── integration_manager.py    # Integration lifecycle
+    │   ├── integration_manager.py    # Integration lifecycle
+    │   └── pet_state.py              # Pet state machine
     └── ui/
         ├── pet_window.py             # Desktop pet widget
         ├── dialog_box.py             # MapleStory-styled dialog boxes
-        ├── speech_bubble.py          # Speech bubble overlay
-        ├── settings_dialog.py        # Settings GUI (5 tabs)
+        ├── speech_bubble.py          # 9-slice speech bubble overlay
         ├── pomodoro_widget.py        # Floating Pomodoro timer
-        └── tray_icon.py              # System tray icon
+        ├── pomodoro_theme.py         # Pomodoro widget theming
+        ├── tray_icon.py              # System tray icon
+        └── settings/                 # Settings GUI
+            ├── dialog.py             # Main settings dialog
+            ├── tab_general.py        # General settings tab
+            ├── tab_behaviors.py      # Behavior configuration tab
+            ├── tab_integrations.py   # Integration settings (dynamic discovery)
+            ├── tab_personality.py    # AI & Personality tab
+            ├── theme.py              # Settings UI theming
+            └── widgets.py            # Reusable settings widgets
 ```
 
 ## Adding Custom Behaviors

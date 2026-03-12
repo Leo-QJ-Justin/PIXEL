@@ -1,8 +1,13 @@
+"""Tests for the personality settings tab (LiteLLM provider dropdown)."""
+
+from __future__ import annotations
+
 import copy
 
-from PyQt6.QtWidgets import QCheckBox, QLineEdit, QRadioButton, QStackedWidget, QWidget
+from PyQt6.QtWidgets import QCheckBox, QComboBox, QLineEdit, QWidget
 
 import config
+from src.services.personality_engine import PROVIDER_CONFIG
 from src.ui.settings.tab_personality import build_personality_tab
 
 
@@ -12,85 +17,88 @@ def _make_pending():
 
 class TestPersonalityTab:
     def test_creates_widget(self, qtbot):
-        pending = _make_pending()
-        page = build_personality_tab(pending, font="sans-serif")
+        page = build_personality_tab(_make_pending(), font="sans-serif")
         qtbot.addWidget(page)
         assert isinstance(page, QWidget)
 
     def test_has_enable_checkbox(self, qtbot):
-        pending = _make_pending()
-        page = build_personality_tab(pending, font="sans-serif")
+        page = build_personality_tab(_make_pending(), font="sans-serif")
         qtbot.addWidget(page)
-        cb = None
-        for w in page.findChildren(QCheckBox):
-            if "LLM" in w.text() or "personality" in w.text().lower():
-                cb = w
-                break
-        assert cb is not None
+        cbs = [
+            w
+            for w in page.findChildren(QCheckBox)
+            if "LLM" in w.text() or "personality" in w.text().lower()
+        ]
+        assert len(cbs) >= 1
 
-    def test_has_three_radio_buttons(self, qtbot):
-        pending = _make_pending()
-        page = build_personality_tab(pending, font="sans-serif")
+    def test_has_provider_combobox(self, qtbot):
+        page = build_personality_tab(_make_pending(), font="sans-serif")
         qtbot.addWidget(page)
-        radios = page.findChildren(QRadioButton)
-        assert len(radios) == 3
+        combos = page.findChildren(QComboBox)
+        assert len(combos) >= 1
 
-    def test_radio_labels(self, qtbot):
-        pending = _make_pending()
-        page = build_personality_tab(pending, font="sans-serif")
+    def test_combobox_has_all_providers(self, qtbot):
+        page = build_personality_tab(_make_pending(), font="sans-serif")
         qtbot.addWidget(page)
-        radios = page.findChildren(QRadioButton)
-        labels = sorted([r.text() for r in radios])
-        assert "Ollama" in labels
-        assert "OpenAI" in labels
-        assert "OpenRouter" in labels
+        combo = page.findChildren(QComboBox)[0]
+        items = [combo.itemData(i) for i in range(combo.count())]
+        for provider_key in PROVIDER_CONFIG:
+            assert provider_key in items, f"Missing provider: {provider_key}"
 
     def test_default_selects_openai(self, qtbot):
-        pending = _make_pending()
-        page = build_personality_tab(pending, font="sans-serif")
+        page = build_personality_tab(_make_pending(), font="sans-serif")
         qtbot.addWidget(page)
-        radios = page.findChildren(QRadioButton)
-        openai_radio = [r for r in radios if "OpenAI" in r.text()][0]
-        assert openai_radio.isChecked()
+        combo = page.findChildren(QComboBox)[0]
+        assert combo.currentData() == "openai"
 
-    def test_has_stacked_widget(self, qtbot):
+    def test_selects_saved_provider(self, qtbot):
         pending = _make_pending()
+        pending["personality_engine"]["provider"] = "ollama"
         page = build_personality_tab(pending, font="sans-serif")
         qtbot.addWidget(page)
-        stacked = page.findChildren(QStackedWidget)
-        assert len(stacked) >= 1
-        assert stacked[0].count() == 3
+        combo = page.findChildren(QComboBox)[0]
+        assert combo.currentData() == "ollama"
 
-    def test_openai_api_key_field_exists(self, qtbot):
-        pending = _make_pending()
-        page = build_personality_tab(pending, font="sans-serif")
+    def test_has_model_field(self, qtbot):
+        page = build_personality_tab(_make_pending(), font="sans-serif")
         qtbot.addWidget(page)
-        fields = [w for w in page.findChildren(QLineEdit) if w.placeholderText() == "sk-..."]
-        assert len(fields) >= 1
+        fields = page.findChildren(QLineEdit)
+        model_fields = [f for f in fields if f.text() == "gpt-4o-mini"]
+        assert len(model_fields) >= 1
 
-    def test_switching_radio_changes_stacked(self, qtbot):
-        pending = _make_pending()
-        page = build_personality_tab(pending, font="sans-serif")
+    def test_cloud_provider_shows_api_key_field(self, qtbot):
+        page = build_personality_tab(_make_pending(), font="sans-serif")
         qtbot.addWidget(page)
-        radios = page.findChildren(QRadioButton)
-        stacked = page.findChildren(QStackedWidget)[0]
-        ollama_radio = [r for r in radios if "Ollama" in r.text()][0]
-        ollama_radio.setChecked(True)
-        assert stacked.currentIndex() == 2
+        password_fields = [
+            f for f in page.findChildren(QLineEdit) if f.echoMode() == QLineEdit.EchoMode.Password
+        ]
+        assert len(password_fields) >= 1
 
-    def test_auto_selects_openrouter_when_key_present(self, qtbot):
+    def test_provider_change_updates_pending(self, qtbot):
         pending = _make_pending()
-        pending["personality_engine"]["openrouter_api_key"] = "sk-or-test123"
         page = build_personality_tab(pending, font="sans-serif")
         qtbot.addWidget(page)
-        radios = page.findChildren(QRadioButton)
-        or_radio = [r for r in radios if "OpenRouter" in r.text()][0]
-        assert or_radio.isChecked()
+        combo = page.findChildren(QComboBox)[0]
+        for i in range(combo.count()):
+            if combo.itemData(i) == "anthropic":
+                combo.setCurrentIndex(i)
+                break
+        assert pending["personality_engine"]["provider"] == "anthropic"
 
     def test_api_key_updates_pending(self, qtbot):
         pending = _make_pending()
         page = build_personality_tab(pending, font="sans-serif")
         qtbot.addWidget(page)
-        fields = [w for w in page.findChildren(QLineEdit) if w.placeholderText() == "sk-..."]
-        fields[0].setText("sk-test-key")
-        assert pending["personality_engine"]["openai_api_key"] == "sk-test-key"
+        password_fields = [
+            f for f in page.findChildren(QLineEdit) if f.echoMode() == QLineEdit.EchoMode.Password
+        ]
+        password_fields[0].setText("sk-test-key")
+        assert pending["personality_engine"]["api_key"] == "sk-test-key"
+
+    def test_no_radio_buttons(self, qtbot):
+        from PyQt6.QtWidgets import QRadioButton
+
+        page = build_personality_tab(_make_pending(), font="sans-serif")
+        qtbot.addWidget(page)
+        radios = page.findChildren(QRadioButton)
+        assert len(radios) == 0
