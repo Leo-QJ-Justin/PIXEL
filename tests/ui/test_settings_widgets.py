@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QCheckBox, QSlider, QVBoxLayout, QWidget
 
 from src.ui.settings.widgets import (
-    CollapsibleSection,
+    SectionCard,
     make_form_row,
     make_slider_row,
     make_tab_page,
@@ -43,29 +43,16 @@ class TestMakeSliderRow:
         assert 75 in received
 
 
-class TestCollapsibleSection:
-    def test_starts_expanded(self, qtbot):
-        section = CollapsibleSection("Test Section", font="sans-serif")
-        qtbot.addWidget(section)
-        assert section.is_expanded()
-
-    def test_toggle_collapses(self, qtbot):
-        section = CollapsibleSection("Test Section", font="sans-serif")
-        qtbot.addWidget(section)
-        section.toggle()
-        assert not section.is_expanded()
-
-    def test_toggle_expands_again(self, qtbot):
-        section = CollapsibleSection("Test Section", font="sans-serif")
-        qtbot.addWidget(section)
-        section.toggle()
-        section.toggle()
-        assert section.is_expanded()
-
+class TestSectionCard:
     def test_content_layout_exists(self, qtbot):
-        section = CollapsibleSection("Test Section", font="sans-serif")
+        section = SectionCard("Test Section", font="sans-serif")
         qtbot.addWidget(section)
         assert section.content_layout() is not None
+
+    def test_has_title(self, qtbot):
+        section = SectionCard("My Title", font="sans-serif")
+        qtbot.addWidget(section)
+        assert section._title_lbl.text() == "My Title"
 
 
 class TestMakeTabPage:

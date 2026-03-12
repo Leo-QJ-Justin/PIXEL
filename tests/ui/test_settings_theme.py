@@ -37,7 +37,7 @@ class TestClayConstants:
     def test_clay_radius(self):
         from src.ui.settings.theme import CLAY_RADIUS
 
-        assert CLAY_RADIUS == "16px"
+        assert CLAY_RADIUS == "18px"
 
     def test_clay_border(self):
         from src.ui.settings.theme import CLAY_BORDER
