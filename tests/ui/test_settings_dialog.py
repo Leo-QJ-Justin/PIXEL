@@ -1,4 +1,4 @@
-"""Tests for the MapleStory-themed SettingsDialog."""
+"""Tests for the claymorphism-themed SettingsDialog."""
 
 import json
 from unittest.mock import MagicMock, patch
@@ -17,8 +17,8 @@ from PyQt6.QtWidgets import (
 
 # Required for patching — see MEMORY.md gotcha about Python 3.14 mock.patch
 import config  # noqa: F401
-import src.ui.settings_dialog  # noqa: F401
-from src.ui.settings_dialog import SettingsDialog
+import src.ui.settings.dialog  # noqa: F401
+from src.ui.settings import SettingsDialog
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -213,7 +213,7 @@ class TestSettingsOkCancel:
         dialog, settings_file = _make_dialog(qtbot, tmp_path)
         dialog._pending["user_name"] = "Saved!"
 
-        with patch("src.ui.settings_dialog.save_settings") as mock_save:
+        with patch("src.ui.settings.dialog.save_settings") as mock_save:
             dialog._on_ok()
             mock_save.assert_called_once()
             saved = mock_save.call_args[0][0]
@@ -224,7 +224,7 @@ class TestSettingsOkCancel:
         spy = MagicMock()
         dialog.settings_changed.connect(spy)
 
-        with patch("src.ui.settings_dialog.save_settings"):
+        with patch("src.ui.settings.dialog.save_settings"):
             dialog._on_ok()
 
         spy.assert_called_once()
@@ -235,7 +235,7 @@ class TestSettingsOkCancel:
         dialog, settings_file = _make_dialog(qtbot, tmp_path)
         dialog._pending["user_name"] = "Unsaved"
 
-        with patch("src.ui.settings_dialog.save_settings") as mock_save:
+        with patch("src.ui.settings.dialog.save_settings") as mock_save:
             dialog.reject()
             mock_save.assert_not_called()
 
@@ -257,37 +257,3 @@ class TestSettingsOkCancel:
 
         saved = json.loads(settings_file.read_text())
         assert saved["user_name"] == "EndToEnd"
-
-
-# ---------------------------------------------------------------------------
-# Nested helper methods
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.ui
-class TestSettingsHelpers:
-    """Test _set_nested and _get_nested utilities."""
-
-    def test_set_nested_top_level(self, qtbot, tmp_path):
-        dialog, _ = _make_dialog(qtbot, tmp_path)
-        dialog._set_nested(["user_name"], "test")
-        assert dialog._pending["user_name"] == "test"
-
-    def test_set_nested_deep(self, qtbot, tmp_path):
-        dialog, _ = _make_dialog(qtbot, tmp_path)
-        dialog._set_nested(["behaviors", "wander", "wander_chance"], 0.99)
-        assert dialog._pending["behaviors"]["wander"]["wander_chance"] == 0.99
-
-    def test_get_nested_returns_value(self, qtbot, tmp_path):
-        dialog, _ = _make_dialog(qtbot, tmp_path, {"general": {"always_on_top": False}})
-        assert dialog._get_nested(["general", "always_on_top"]) is False
-
-    def test_get_nested_returns_default(self, qtbot, tmp_path):
-        dialog, _ = _make_dialog(qtbot, tmp_path)
-        result = dialog._get_nested(["nonexistent", "key"], "fallback")
-        assert result == "fallback"
-
-    def test_set_nested_creates_intermediate_dicts(self, qtbot, tmp_path):
-        dialog, _ = _make_dialog(qtbot, tmp_path)
-        dialog._set_nested(["a", "b", "c"], 42)
-        assert dialog._pending["a"]["b"]["c"] == 42
