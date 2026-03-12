@@ -29,6 +29,9 @@ REQUIRED_TOKENS = [
     "input_bg",
     "chart_bar",
     "chart_empty",
+    "success_light",
+    "danger_light",
+    "white",
 ]
 
 HEX_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")

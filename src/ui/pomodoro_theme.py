@@ -38,6 +38,9 @@ COLORS: dict[str, str] = {
     "input_bg": "#2A1F1A",
     "chart_bar": "#F97316",
     "chart_empty": "#3D2E25",
+    "success_light": "#B8E68B",
+    "danger_light": "#FCA5A5",
+    "white": "#FFFFFF",
 }
 
 
@@ -142,18 +145,18 @@ def start_button_style(font: str) -> str:
             background-color: {c['success']};
             border: {CLAY_BORDER} solid {c['success_dark']};
             border-radius: 12px;
-            color: #1C1210;
+            color: {c['bg']};
             font-weight: bold;
             font-size: 10pt;
             font-family: '{font}';
             padding: 10px 22px;
         }}
         QPushButton:hover {{
-            background-color: #B8E68B;
+            background-color: {c['success_light']};
         }}
         QPushButton:pressed {{
             background-color: {c['success_dark']};
-            color: #FFFFFF;
+            color: {c['white']};
         }}
     """
 
@@ -166,14 +169,14 @@ def skip_button_style(font: str) -> str:
             background-color: {c['danger']};
             border: {CLAY_BORDER} solid {c['danger_dark']};
             border-radius: 12px;
-            color: #FFFFFF;
+            color: {c['white']};
             font-weight: bold;
             font-size: 10pt;
             font-family: '{font}';
             padding: 10px 22px;
         }}
         QPushButton:hover {{
-            background-color: #FCA5A5;
+            background-color: {c['danger_light']};
         }}
         QPushButton:pressed {{
             background-color: {c['danger_dark']};
@@ -239,14 +242,14 @@ def ok_button_style(font: str) -> str:
             background-color: {c['success']};
             border: {CLAY_BORDER} solid {c['success_dark']};
             border-radius: 10px;
-            color: #1C1210;
+            color: {c['bg']};
             font-weight: bold;
             font-size: 10pt;
             font-family: '{font}';
             padding: 8px 18px;
         }}
         QPushButton:hover {{
-            background-color: #B8E68B;
+            background-color: {c['success_light']};
         }}
     """
 
@@ -274,20 +277,4 @@ def cancel_button_style(font: str) -> str:
 
 def back_button_style(font: str) -> str:
     """Return QSS for the Back button in stats view."""
-    c = COLORS
-    return f"""
-        QPushButton {{
-            background-color: {c['surface_light']};
-            border: {CLAY_BORDER} solid {c['border']};
-            border-radius: 10px;
-            color: {c['text_muted']};
-            font-weight: bold;
-            font-size: 10pt;
-            font-family: '{font}';
-            padding: 8px 18px;
-        }}
-        QPushButton:hover {{
-            background-color: {c['border']};
-            color: {c['text']};
-        }}
-    """
+    return cancel_button_style(font)
