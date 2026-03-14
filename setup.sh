@@ -82,12 +82,17 @@ if [[ "$(uname -s)" == "Linux" ]]; then
             echo ""
             echo "     Run: sudo apt-get install -y ${MISSING_LIBS[*]}"
             echo ""
-            read -rp "     Install now? (requires sudo) [y/N] " answer
-            if [[ "$answer" =~ ^[Yy]$ ]]; then
-                sudo apt-get install -y "${MISSING_LIBS[@]}"
-                info "System libraries installed"
+            if [ -t 0 ]; then
+                # Interactive terminal — ask
+                read -rp "     Install now? (requires sudo) [y/N] " answer
+                if [[ "$answer" =~ ^[Yy]$ ]]; then
+                    sudo apt-get install -y "${MISSING_LIBS[@]}"
+                    info "System libraries installed"
+                else
+                    warn "Skipped. Install them manually before opening React panels."
+                fi
             else
-                warn "Skipped. The app will start but React panels won't open until these are installed."
+                warn "Non-interactive shell. Install them manually before opening React panels."
             fi
         else
             warn "Install manually: ${MISSING_LIBS[*]}"
