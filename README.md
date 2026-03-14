@@ -24,7 +24,7 @@
 - Python 3.10+
 - uv (Python package manager)
 - Node.js 18+ and npm (for the React UI)
-- System libraries for WebEngine (Linux/WSL): `sudo apt install libnss3 libasound2`
+- System libraries for WebEngine (Linux/WSL): `sudo apt install libnss3 libasound2t64` (or `libasound2` on older Ubuntu)
 
 ## Installation
 
@@ -55,7 +55,7 @@ This checks prerequisites, installs all dependencies, builds the React UI, and c
 
 4. (Linux/WSL) Install system libraries for WebEngine:
    ```bash
-   sudo apt install libnss3 libasound2
+   sudo apt install libnss3 libasound2t64  # or libasound2 on older Ubuntu
    ```
 
 5. Add your sprites to the `behaviors/*/media/` directories (sprites are gitignored - each developer uses their own)

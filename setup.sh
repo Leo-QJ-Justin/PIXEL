@@ -73,7 +73,14 @@ info "npm $(npm -v)"
 if [[ "$(uname -s)" == "Linux" ]]; then
     MISSING_LIBS=()
     ldconfig -p 2>/dev/null | grep -q libnss3.so    || MISSING_LIBS+=("libnss3")
-    ldconfig -p 2>/dev/null | grep -q libasound.so.2 || MISSING_LIBS+=("libasound2")
+    if ! ldconfig -p 2>/dev/null | grep -q libasound.so.2; then
+        # Ubuntu 24.04+ renamed libasound2 to libasound2t64
+        if apt-cache show libasound2t64 &>/dev/null; then
+            MISSING_LIBS+=("libasound2t64")
+        else
+            MISSING_LIBS+=("libasound2")
+        fi
+    fi
 
     if [ ${#MISSING_LIBS[@]} -gt 0 ]; then
         warn "Missing system libraries: ${MISSING_LIBS[*]}"
