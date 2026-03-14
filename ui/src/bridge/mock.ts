@@ -7,20 +7,62 @@ const SAMPLE_SETTINGS: Settings = {
   user_name: 'Pixel User',
   birthday: '1990-01-01',
   general: {
-    launch_on_startup: false,
-    language: 'en',
+    always_on_top: true,
+    start_minimized: false,
+    start_on_boot: false,
+    sprite_default_facing: 'right',
+    speech_bubble: {
+      enabled: true,
+      duration_ms: 3000,
+    },
   },
   behaviors: {
-    idle_roam: true,
-    sound_effects: true,
-    notifications: true,
+    wander: {
+      wander_chance: 0.3,
+      wander_interval_min_ms: 5000,
+      wander_interval_max_ms: 15000,
+    },
+    wave: {
+      greeting: 'Hello!',
+    },
+    idle_variety: {
+      enabled: true,
+      interval_min_ms: 20000,
+      interval_max_ms: 60000,
+      chance: 0.4,
+      behaviors: ['look_around', 'yawn', 'chill', 'play_ball', 'crochet'],
+    },
+    sleep: {
+      inactivity_timeout_ms: 60000,
+      schedule_enabled: false,
+      schedule_start: '22:00',
+      schedule_end: '06:00',
+    },
+    time_periods: {
+      enabled: true,
+      check_interval_ms: 30000,
+      periods: { morning: '06:00', afternoon: '12:00', night: '20:00' },
+      greetings: { morning: 'Rise and shine!', afternoon: 'Lunch time~', night: 'Sleepy time~' },
+    },
   },
   personality_engine: {
+    enabled: false,
     provider: 'openai',
     model: 'gpt-4o-mini',
     api_key: '',
+    endpoint: '',
   },
-  integrations: {},
+  integrations: {
+    pomodoro: {
+      enabled: true,
+      work_duration_minutes: 25,
+      short_break_minutes: 5,
+      long_break_minutes: 15,
+      auto_start: false,
+      sound_enabled: true,
+      sessions_per_cycle: 4,
+    },
+  },
 }
 
 const today = new Date().toISOString().split('T')[0]
@@ -54,6 +96,8 @@ const SAMPLE_ENTRIES: JournalEntry[] = [
 export class MockBridge implements BridgeAPI {
   private listeners = new Map<string, Set<(payload: unknown) => void>>()
   private timerInterval: ReturnType<typeof setInterval> | null = null
+  private mockRemaining = 0
+  private mockCompleted = 0
 
   private emit<K extends keyof PyToJsEvents>(
     event: K,
@@ -65,18 +109,36 @@ export class MockBridge implements BridgeAPI {
     }
   }
 
-  private simulateTimer(seconds: number): void {
+  private simulateTimer(seconds: number, onFinishState: string): void {
     if (this.timerInterval !== null) {
       clearInterval(this.timerInterval)
     }
-    let remaining = seconds
+    this.mockRemaining = seconds
     this.timerInterval = setInterval(() => {
-      remaining -= 1
-      this.emit('timer.tick', { remaining, total: seconds })
-      if (remaining <= 0) {
+      this.mockRemaining -= 1
+      this.emit('timer.tick', { remaining: this.mockRemaining })
+      if (this.mockRemaining <= 0) {
         clearInterval(this.timerInterval!)
         this.timerInterval = null
-        this.emit('timer.finished', undefined as void)
+        if (onFinishState === 'SESSION_COMPLETE') {
+          this.mockCompleted += 1
+          this.emit('timer.state', {
+            state: 'SESSION_COMPLETE',
+            context: { previous_state: 'FOCUS', remaining_seconds: 0, completed_in_cycle: this.mockCompleted },
+          })
+          this.emit('pomodoro.session', { completed: this.mockCompleted })
+        } else {
+          this.emit('timer.state', {
+            state: 'IDLE',
+            context: { previous_state: onFinishState, remaining_seconds: 0, completed_in_cycle: this.mockCompleted },
+          })
+        }
+        this.emit('pomodoro.stats', {
+          daily: { [today]: this.mockCompleted },
+          streak: 3,
+          total: 42 + this.mockCompleted,
+          longest_streak: 7,
+        })
       }
     }, 1000)
   }
@@ -87,7 +149,7 @@ export class MockBridge implements BridgeAPI {
     setTimeout(() => {
       switch (event as keyof JsToPyEvents) {
         case 'settings.load':
-          this.emit('settings.loaded', SAMPLE_SETTINGS)
+          this.emit('settings.data', SAMPLE_SETTINGS)
           break
 
         case 'settings.save':
@@ -155,15 +217,11 @@ export class MockBridge implements BridgeAPI {
         }
 
         case 'timer.start': {
-          const timerPayload = payload as { duration: number }
-          const duration = timerPayload?.duration ?? 1500
-          this.emit('pomodoro.state', {
-            phase: 'focus',
-            remaining: duration,
-            total: duration,
-            sessions_completed: 0,
+          this.emit('timer.state', {
+            state: 'FOCUS',
+            context: { previous_state: 'IDLE', remaining_seconds: 1500, completed_in_cycle: this.mockCompleted },
           })
-          this.simulateTimer(duration)
+          this.simulateTimer(1500, 'SESSION_COMPLETE')
           break
         }
 
@@ -172,6 +230,10 @@ export class MockBridge implements BridgeAPI {
             clearInterval(this.timerInterval)
             this.timerInterval = null
           }
+          this.emit('timer.state', {
+            state: 'FOCUS',
+            context: { previous_state: 'FOCUS', remaining_seconds: this.mockRemaining, completed_in_cycle: this.mockCompleted, paused: true },
+          })
           break
 
         case 'timer.skip':
@@ -179,25 +241,29 @@ export class MockBridge implements BridgeAPI {
             clearInterval(this.timerInterval)
             this.timerInterval = null
           }
-          this.emit('pomodoro.state', {
-            phase: 'idle',
-            remaining: 0,
-            total: 0,
-            sessions_completed: 1,
+          this.mockCompleted += 1
+          this.emit('timer.state', {
+            state: 'SESSION_COMPLETE',
+            context: { previous_state: 'FOCUS', remaining_seconds: 0, completed_in_cycle: this.mockCompleted },
           })
-          this.emit('timer.finished', undefined as void)
+          this.emit('pomodoro.session', { completed: this.mockCompleted })
+          this.emit('pomodoro.stats', {
+            daily: { [today]: this.mockCompleted },
+            streak: 3,
+            total: 42 + this.mockCompleted,
+            longest_streak: 7,
+          })
           break
 
         case 'timer.startBreak': {
-          const breakPayload = payload as { duration: number }
-          const breakDuration = breakPayload?.duration ?? 300
-          this.emit('pomodoro.state', {
-            phase: 'break',
-            remaining: breakDuration,
-            total: breakDuration,
-            sessions_completed: 0,
+          const isLong = this.mockCompleted >= 4
+          const breakDuration = isLong ? 900 : 300
+          const breakState = isLong ? 'LONG_BREAK' : 'SHORT_BREAK'
+          this.emit('timer.state', {
+            state: breakState,
+            context: { previous_state: 'SESSION_COMPLETE', remaining_seconds: breakDuration, completed_in_cycle: this.mockCompleted },
           })
-          this.simulateTimer(breakDuration)
+          this.simulateTimer(breakDuration, breakState)
           break
         }
 
@@ -206,11 +272,9 @@ export class MockBridge implements BridgeAPI {
             clearInterval(this.timerInterval)
             this.timerInterval = null
           }
-          this.emit('pomodoro.state', {
-            phase: 'idle',
-            remaining: 0,
-            total: 0,
-            sessions_completed: 0,
+          this.emit('timer.state', {
+            state: 'IDLE',
+            context: { previous_state: 'SESSION_COMPLETE', remaining_seconds: 0, completed_in_cycle: this.mockCompleted },
           })
           break
 
