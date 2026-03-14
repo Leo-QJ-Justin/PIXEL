@@ -163,9 +163,5 @@ class JournalIntegration(BaseIntegration):
             )
 
     def build_dashboard(self):
-        """Return the journal dashboard window."""
-        if self._dashboard is None:
-            from integrations.journal.dashboard import JournalDashboard
-
-            self._dashboard = JournalDashboard(self)
-        return self._dashboard
+        """Dashboard is now provided by the React panel host."""
+        return None
