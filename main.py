@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import socket
 import sys
 from logging.handlers import RotatingFileHandler
 
@@ -45,9 +46,34 @@ def setup_logging():
 
 logger = logging.getLogger(__name__)
 
+# Single-instance lock: bind a local TCP socket on a fixed port.
+# If binding fails, another instance is already running.
+_INSTANCE_LOCK_PORT = 48721
+_instance_lock: socket.socket | None = None
+
+
+def _acquire_instance_lock() -> bool:
+    """Try to acquire a single-instance lock. Returns True if this is the only instance."""
+    global _instance_lock
+    _instance_lock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        _instance_lock.bind(("127.0.0.1", _INSTANCE_LOCK_PORT))
+        _instance_lock.listen(1)
+        return True
+    except OSError:
+        _instance_lock.close()
+        _instance_lock = None
+        return False
+
 
 def main():
     setup_logging()
+
+    if not _acquire_instance_lock():
+        logger.warning("Another PIXEL instance is already running — exiting.")
+        print("PIXEL is already running.", file=sys.stderr)
+        sys.exit(0)
+
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     loop = QEventLoop(app)
