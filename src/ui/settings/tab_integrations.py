@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Integration names in the order they should appear in the UI.
 # Only integrations that have a settings_ui module will show up.
-_INTEGRATION_ORDER = ["pomodoro", "weather", "google_calendar"]
+_INTEGRATION_ORDER = ["pomodoro", "weather", "google_calendar", "journal"]
 
 
 def build_integrations_tab(pending: dict, font: str, integration_manager=None) -> QWidget:

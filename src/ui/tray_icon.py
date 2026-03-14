@@ -61,6 +61,17 @@ class TrayIcon(QSystemTrayIcon):
 
         menu.addSeparator()
 
+        # Dashboard entries for integrations that provide one
+        dashboards = self._integration_manager.get_dashboards()
+        if dashboards:
+            for name, dashboard in dashboards.items():
+                integration = self._integration_manager.get_integration(name)
+                label = f"{integration.display_name} Dashboard" if integration else name
+                dash_action = QAction(label, menu)
+                dash_action.triggered.connect(lambda checked, d=dashboard: self._show_dashboard(d))
+                menu.addAction(dash_action)
+            menu.addSeparator()
+
         if self._pomodoro_widget:
             pomodoro_menu = QMenu("Pomodoro", menu)
             self._build_pomodoro_menu(pomodoro_menu)
@@ -200,6 +211,11 @@ class TrayIcon(QSystemTrayIcon):
             loop.create_task(self._integration_manager.start(name))
         else:
             loop.create_task(self._integration_manager.stop(name))
+
+    def _show_dashboard(self, dashboard):
+        dashboard.show()
+        dashboard.raise_()
+        dashboard.activateWindow()
 
     def _toggle_visibility(self):
         if self._pet_widget.isVisible():
