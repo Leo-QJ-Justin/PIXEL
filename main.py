@@ -94,6 +94,12 @@ def main():
         pomodoro_widget=pomodoro_widget, panel_host=panel_host,
     )
 
+    journal_integration = integration_manager.get_integration("journal")
+    if journal_integration:
+        from src.ui.bridge_journal import wire_journal_events
+
+        wire_journal_events(bridge, journal_integration)
+
     # Let integrations wire their own UI via setup_ui hook
     integration_manager.setup_all_ui(pet)
 
