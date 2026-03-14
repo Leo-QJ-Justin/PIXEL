@@ -43,6 +43,7 @@ class IntegrationManager(QObject):
 
         self._integrations: dict[str, BaseIntegration] = {}
         self._running: set[str] = set()
+        self._dashboards: dict[str, object] = {}
 
     def discover(self) -> list[str]:
         """
@@ -131,6 +132,11 @@ class IntegrationManager(QObject):
             self.integration_loaded.emit(name)
             logger.info(f"Loaded integration: {integration.display_name}")
 
+            # Build dashboard if integration provides one
+            dashboard = integration.build_dashboard()
+            if dashboard is not None:
+                self._dashboards[name] = dashboard
+
             return integration
 
         except Exception as e:
@@ -148,6 +154,7 @@ class IntegrationManager(QObject):
             logger.warning(f"Integration {name} is running, stopping...")
             self._running.discard(name)
 
+        self._dashboards.pop(name, None)
         del self._integrations[name]
         self.integration_unloaded.emit(name)
         logger.info(f"Unloaded integration: {name}")
@@ -156,6 +163,10 @@ class IntegrationManager(QObject):
     def get_integration(self, name: str) -> BaseIntegration | None:
         """Get a loaded integration by name."""
         return self._integrations.get(name)
+
+    def get_dashboards(self) -> dict:
+        """Get all registered dashboards keyed by integration name."""
+        return dict(self._dashboards)
 
     def list_integrations(self) -> list[str]:
         """Get list of all loaded integration names."""

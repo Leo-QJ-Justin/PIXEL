@@ -10,6 +10,7 @@ api_usage.json
 event_cache.json
 settings.json
 integrations/pomodoro/stats.json
+integrations/journal/journal.db
 
 # Python
 __pycache__/
@@ -64,6 +65,8 @@ logs/
 
 #Local Development
 plans/
+docs/
 _bmad/
 _bmad-output/
 .claude/
+.superpowers/

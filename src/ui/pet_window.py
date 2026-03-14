@@ -45,9 +45,10 @@ class PetWidget(QWidget):
 
     clicked = pyqtSignal()
 
-    def __init__(self, behavior_registry: BehaviorRegistry):
+    def __init__(self, behavior_registry: BehaviorRegistry, personality_engine=None):
         super().__init__()
         self._behavior_registry = behavior_registry
+        self._personality_engine = personality_engine
         self._state_machine = PetStateMachine()
         self._current_sprite = QPixmap()
 
@@ -372,8 +373,20 @@ class PetWidget(QWidget):
             return
         if duration_ms is None:
             duration_ms = self._speech_bubble_settings.get("duration_ms", 3000)
-        self._speech_bubble.update_position(self.pos(), self.size())
-        self._speech_bubble.show_message(text, duration_ms)
+
+        if self._personality_engine and self._personality_engine._enabled:
+            import asyncio
+
+            async def _enrich_and_show():
+                enriched = await self._personality_engine.enrich(text)
+                self._speech_bubble.update_position(self.pos(), self.size())
+                self._speech_bubble.show_message(enriched, duration_ms)
+
+            loop = asyncio.get_running_loop()
+            loop.create_task(_enrich_and_show())
+        else:
+            self._speech_bubble.update_position(self.pos(), self.size())
+            self._speech_bubble.show_message(text, duration_ms)
 
     def show_notification(self, text: str, duration_ms: int = 5000, on_click=None) -> None:
         """Show a notification bubble. Optionally call on_click when pet is clicked."""

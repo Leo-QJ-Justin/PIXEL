@@ -9,6 +9,7 @@ from qasync import QEventLoop
 from config import BASE_DIR, BEHAVIORS_DIR, INTEGRATIONS_DIR, load_settings
 from src.core.behavior_registry import BehaviorRegistry
 from src.core.integration_manager import IntegrationManager
+from src.services.personality_engine import PersonalityEngine
 from src.ui.pet_window import PetWidget
 from src.ui.tray_icon import TrayIcon
 
@@ -50,6 +51,7 @@ def main():
     asyncio.set_event_loop(loop)
 
     settings = load_settings()
+    personality_engine = PersonalityEngine(settings)
 
     sprites_face_left = settings.get("general", {}).get("sprite_default_facing", "right") == "left"
     behavior_registry = BehaviorRegistry(sprites_face_left=sprites_face_left)
@@ -68,7 +70,7 @@ def main():
     for name in discovered:
         integration_manager.load(name)
 
-    pet = PetWidget(behavior_registry)
+    pet = PetWidget(behavior_registry, personality_engine=personality_engine)
 
     # Create Pomodoro widget if integration is loaded
     pomodoro_widget = None
@@ -101,6 +103,7 @@ def main():
             pet.setWindowFlags(pet.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         else:
             pet.setWindowFlags(pet.windowFlags() & ~Qt.WindowType.WindowStaysOnTopHint)
+        personality_engine.update_settings(new_settings)
         pet.show()
 
     tray.settings_changed.connect(_on_settings_changed)

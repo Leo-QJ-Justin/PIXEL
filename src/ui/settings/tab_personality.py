@@ -1,22 +1,36 @@
-"""Personality settings tab with provider radio selector."""
+"""Personality settings tab with LiteLLM provider dropdown."""
 
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
-    QHBoxLayout,
+    QComboBox,
     QLabel,
     QLineEdit,
-    QRadioButton,
     QScrollArea,
-    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from src.services.personality_engine import PROVIDER_CONFIG
+
 from . import theme
 from .widgets import CollapsibleSection, make_form_row, make_tab_page
+
+# Display name → provider key pairs in a friendly order
+_PROVIDER_DISPLAY: list[tuple[str, str]] = [
+    ("OpenAI", "openai"),
+    ("Anthropic", "anthropic"),
+    ("OpenRouter", "openrouter"),
+    ("Groq", "groq"),
+    ("Mistral", "mistral"),
+    ("Google Gemini", "google_gemini"),
+    ("Together AI", "together_ai"),
+    ("DeepSeek", "deepseek"),
+    ("Ollama (local)", "ollama"),
+    ("Custom / OpenAI-compatible", "custom"),
+]
 
 
 def build_personality_tab(pending: dict, font: str) -> QWidget:
@@ -93,122 +107,87 @@ def build_personality_tab(pending: dict, font: str) -> QWidget:
     provider_section = CollapsibleSection("Provider", font)
     provider_layout = provider_section.content_layout()
 
-    # Radio buttons row
-    radio_row = QHBoxLayout()
-    radio_row.setSpacing(16)
+    # Provider dropdown
+    provider_combo = QComboBox()
+    for display_name, key in _PROVIDER_DISPLAY:
+        provider_combo.addItem(display_name, userData=key)
 
-    radio_openai = QRadioButton("OpenAI")
-    radio_openrouter = QRadioButton("OpenRouter")
-    radio_ollama = QRadioButton("Ollama")
+    make_form_row("Provider", provider_combo, provider_layout, font)
 
-    radio_row.addWidget(radio_openai)
-    radio_row.addWidget(radio_openrouter)
-    radio_row.addWidget(radio_ollama)
-    radio_row.addStretch()
+    # --- API Key field (shown for cloud providers) ---
+    api_key_row_container = QWidget()
+    api_key_row_layout = QVBoxLayout(api_key_row_container)
+    api_key_row_layout.setContentsMargins(0, 0, 0, 0)
+    api_key_row_layout.setSpacing(0)
 
-    provider_layout.addLayout(radio_row)
+    api_key_field = QLineEdit()
+    api_key_field.setEchoMode(QLineEdit.EchoMode.Password)
+    api_key_field.setPlaceholderText("sk-...")
+    api_key_field.setText(_get(["personality_engine", "api_key"], ""))
+    api_key_field.textChanged.connect(lambda v: _set(["personality_engine", "api_key"], v))
+    make_form_row("API Key", api_key_field, api_key_row_layout, font)
 
-    # Stacked widget with one page per provider
-    stacked = QStackedWidget()
+    provider_layout.addWidget(api_key_row_container)
 
-    # --- Page 0: OpenAI ---
-    openai_page = QWidget()
-    openai_layout = QVBoxLayout(openai_page)
-    openai_layout.setContentsMargins(0, 8, 0, 0)
-    openai_layout.setSpacing(8)
+    # --- Endpoint field (shown for Ollama / custom) ---
+    endpoint_row_container = QWidget()
+    endpoint_row_layout = QVBoxLayout(endpoint_row_container)
+    endpoint_row_layout.setContentsMargins(0, 0, 0, 0)
+    endpoint_row_layout.setSpacing(0)
 
-    openai_key = QLineEdit()
-    openai_key.setEchoMode(QLineEdit.EchoMode.Password)
-    openai_key.setPlaceholderText("sk-...")
-    openai_key.setText(_get(["personality_engine", "openai_api_key"], ""))
-    openai_key.textChanged.connect(lambda v: _set(["personality_engine", "openai_api_key"], v))
-    make_form_row("API Key", openai_key, openai_layout, font)
+    endpoint_field = QLineEdit()
+    endpoint_field.setPlaceholderText("http://localhost:11434")
+    endpoint_field.setText(_get(["personality_engine", "endpoint"], ""))
+    endpoint_field.textChanged.connect(lambda v: _set(["personality_engine", "endpoint"], v))
+    make_form_row("Endpoint", endpoint_field, endpoint_row_layout, font)
 
-    openai_model = QLineEdit()
-    openai_model.setText(_get(["personality_engine", "openai_model"], "gpt-4o-mini"))
-    openai_model.textChanged.connect(lambda v: _set(["personality_engine", "openai_model"], v))
-    make_form_row("Model", openai_model, openai_layout, font)
+    provider_layout.addWidget(endpoint_row_container)
 
-    openai_layout.addStretch()
-    stacked.addWidget(openai_page)
+    # --- Model field (always shown) ---
+    model_field = QLineEdit()
+    model_field.setText(_get(["personality_engine", "model"], "gpt-4o-mini"))
+    model_field.textChanged.connect(lambda v: _set(["personality_engine", "model"], v))
+    make_form_row("Model", model_field, provider_layout, font)
 
-    # --- Page 1: OpenRouter ---
-    openrouter_page = QWidget()
-    openrouter_layout = QVBoxLayout(openrouter_page)
-    openrouter_layout.setContentsMargins(0, 8, 0, 0)
-    openrouter_layout.setSpacing(8)
+    # -----------------------------------------------------------------------
+    # Dynamic visibility callback
+    # -----------------------------------------------------------------------
 
-    openrouter_key = QLineEdit()
-    openrouter_key.setEchoMode(QLineEdit.EchoMode.Password)
-    openrouter_key.setPlaceholderText("sk-or-...")
-    openrouter_key.setText(_get(["personality_engine", "openrouter_api_key"], ""))
-    openrouter_key.textChanged.connect(
-        lambda v: _set(["personality_engine", "openrouter_api_key"], v)
-    )
-    make_form_row("API Key", openrouter_key, openrouter_layout, font)
+    def _on_provider_changed(index: int) -> None:
+        key = provider_combo.itemData(index)
+        cfg = PROVIDER_CONFIG.get(key, {})
 
-    openrouter_model = QLineEdit()
-    openrouter_model.setText(
-        _get(
-            ["personality_engine", "openrouter_model"],
-            "meta-llama/llama-3-8b-instruct",
+        # Update pending provider
+        _set(["personality_engine", "provider"], key)
+
+        # Show/hide api_key and endpoint rows based on provider needs
+        api_key_row_container.setVisible(bool(cfg.get("needs_api_key", False)))
+        endpoint_row_container.setVisible(bool(cfg.get("needs_endpoint", False)))
+
+        # Auto-fill model if current value is empty or matches the previous provider's default
+        current_model = model_field.text().strip()
+        provider_default = cfg.get("default_model", "")
+
+        # Check if the current model text matches any known provider default
+        is_default_model = any(
+            current_model == pc.get("default_model", "") for pc in PROVIDER_CONFIG.values()
         )
-    )
-    openrouter_model.textChanged.connect(
-        lambda v: _set(["personality_engine", "openrouter_model"], v)
-    )
-    make_form_row("Model", openrouter_model, openrouter_layout, font)
 
-    openrouter_layout.addStretch()
-    stacked.addWidget(openrouter_page)
+        if not current_model or is_default_model:
+            model_field.setText(provider_default)
 
-    # --- Page 2: Ollama ---
-    ollama_page = QWidget()
-    ollama_layout = QVBoxLayout(ollama_page)
-    ollama_layout.setContentsMargins(0, 8, 0, 0)
-    ollama_layout.setSpacing(8)
+    provider_combo.currentIndexChanged.connect(_on_provider_changed)
 
-    ollama_endpoint = QLineEdit()
-    ollama_endpoint.setText(
-        _get(["personality_engine", "ollama_endpoint"], "http://localhost:11434")
-    )
-    ollama_endpoint.textChanged.connect(
-        lambda v: _set(["personality_engine", "ollama_endpoint"], v)
-    )
-    make_form_row("Endpoint", ollama_endpoint, ollama_layout, font)
+    # Select the saved provider
+    saved_provider = _get(["personality_engine", "provider"], "openai")
+    for i in range(provider_combo.count()):
+        if provider_combo.itemData(i) == saved_provider:
+            provider_combo.setCurrentIndex(i)
+            break
 
-    ollama_model = QLineEdit()
-    ollama_model.setText(_get(["personality_engine", "ollama_model"], "llama3"))
-    ollama_model.textChanged.connect(lambda v: _set(["personality_engine", "ollama_model"], v))
-    make_form_row("Model", ollama_model, ollama_layout, font)
-
-    ollama_layout.addStretch()
-    stacked.addWidget(ollama_page)
-
-    provider_layout.addWidget(stacked)
-
-    # Auto-select logic: determine which radio to check based on current settings
-    openrouter_key_val = _get(["personality_engine", "openrouter_api_key"], "")
-    openai_key_val = _get(["personality_engine", "openai_api_key"], "")
-    ollama_endpoint_val = _get(["personality_engine", "ollama_endpoint"], "http://localhost:11434")
-    _ollama_default = "http://localhost:11434"
-
-    if openrouter_key_val:
-        radio_openrouter.setChecked(True)
-        stacked.setCurrentIndex(1)
-    elif ollama_endpoint_val != _ollama_default and not openai_key_val:
-        radio_ollama.setChecked(True)
-        stacked.setCurrentIndex(2)
-    else:
-        radio_openai.setChecked(True)
-        stacked.setCurrentIndex(0)
-
-    # Connect radio buttons to stacked widget
-    radio_openai.toggled.connect(lambda checked: stacked.setCurrentIndex(0) if checked else None)
-    radio_openrouter.toggled.connect(
-        lambda checked: stacked.setCurrentIndex(1) if checked else None
-    )
-    radio_ollama.toggled.connect(lambda checked: stacked.setCurrentIndex(2) if checked else None)
+    # Explicitly call _on_provider_changed to set correct initial visibility
+    # (needed when the saved provider is index 0 and currentIndexChanged isn't emitted)
+    _on_provider_changed(provider_combo.currentIndex())
 
     layout.addWidget(provider_section)
     layout.addStretch()

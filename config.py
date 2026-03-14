@@ -75,12 +75,10 @@ DEFAULT_SETTINGS = {
     },
     "personality_engine": {
         "enabled": False,
-        "openai_api_key": "",
-        "openai_model": "gpt-4o-mini",
-        "openrouter_api_key": "",
-        "openrouter_model": "meta-llama/llama-3-8b-instruct",
-        "ollama_endpoint": "http://localhost:11434",
-        "ollama_model": "llama3",
+        "provider": "openai",
+        "model": "gpt-4o-mini",
+        "api_key": "",
+        "endpoint": "",
     },
     "integrations": {
         "pomodoro": {

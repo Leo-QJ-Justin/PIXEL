@@ -1,12 +1,17 @@
-"""Decorator that enriches bubble text via LLM fallback chain."""
+"""Personality engine — enriches bubble text via LiteLLM."""
 
 from __future__ import annotations
 
 import logging
+import os
 
-from src.services.llm_client import LLMClient
+import litellm
 
 logger = logging.getLogger(__name__)
+
+# Suppress litellm's noisy default logging
+if hasattr(litellm, "suppress_debug_info"):
+    litellm.suppress_debug_info = True
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are Haro, a cute robot companion that sits on the user's desktop. "
@@ -16,81 +21,128 @@ DEFAULT_SYSTEM_PROMPT = (
     "Only output the rewritten message, nothing else."
 )
 
+PROVIDER_CONFIG: dict[str, dict] = {
+    "openai": {
+        "prefix": "",
+        "default_model": "gpt-4o-mini",
+        "needs_api_key": True,
+        "needs_endpoint": False,
+    },
+    "anthropic": {
+        "prefix": "anthropic/",
+        "default_model": "claude-haiku-4-5-20251001",
+        "needs_api_key": True,
+        "needs_endpoint": False,
+    },
+    "openrouter": {
+        "prefix": "openrouter/",
+        "default_model": "meta-llama/llama-3-8b-instruct",
+        "needs_api_key": True,
+        "needs_endpoint": False,
+    },
+    "groq": {
+        "prefix": "groq/",
+        "default_model": "llama3-8b-8192",
+        "needs_api_key": True,
+        "needs_endpoint": False,
+    },
+    "mistral": {
+        "prefix": "mistral/",
+        "default_model": "mistral-small-latest",
+        "needs_api_key": True,
+        "needs_endpoint": False,
+    },
+    "google_gemini": {
+        "prefix": "gemini/",
+        "default_model": "gemini-2.0-flash",
+        "needs_api_key": True,
+        "needs_endpoint": False,
+    },
+    "together_ai": {
+        "prefix": "together_ai/",
+        "default_model": "meta-llama/Meta-Llama-3-8B-Instruct-Turbo",
+        "needs_api_key": True,
+        "needs_endpoint": False,
+    },
+    "deepseek": {
+        "prefix": "deepseek/",
+        "default_model": "deepseek-chat",
+        "needs_api_key": True,
+        "needs_endpoint": False,
+    },
+    "ollama": {
+        "prefix": "ollama/",
+        "default_model": "llama3",
+        "needs_api_key": False,
+        "needs_endpoint": True,
+    },
+    "custom": {
+        "prefix": "",
+        "default_model": "",
+        "needs_api_key": True,
+        "needs_endpoint": True,
+    },
+}
+
 
 class PersonalityEngine:
-    """Decorator that enriches bubble text via LLM fallback chain.
+    """Enriches bubble text via LiteLLM."""
 
-    The engine is disabled by default and makes zero LLM calls unless
-    the user explicitly enables it in settings. When OpenClaw is
-    connected, enrichment is bypassed entirely.
-    """
-
-    def __init__(self, settings: dict):
-        pe = settings.get("personality_engine", {})
-        self._enabled: bool = pe.get("enabled", False)
-        self._openai_key: str = pe.get("openai_api_key", "")
-        self._openai_model: str = pe.get("openai_model", "gpt-4o-mini")
-        self._openrouter_key: str = pe.get("openrouter_api_key", "")
-        self._openrouter_model: str = pe.get("openrouter_model", "meta-llama/llama-3-8b-instruct")
-        self._ollama_endpoint: str = pe.get("ollama_endpoint", "http://localhost:11434")
-        self._ollama_model: str = pe.get("ollama_model", "llama3")
+    def __init__(self, settings: dict) -> None:
         self._character_prompt: str = ""
         self._openclaw_connected: bool = False
+        self._load_settings(settings)
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+    def _load_settings(self, settings: dict) -> None:
+        pe = settings.get("personality_engine", {})
+        self._enabled: bool = pe.get("enabled", False)
+        self._provider: str = pe.get("provider", "openai")
+        self._model: str = pe.get("model", "gpt-4o-mini")
+        self._api_key: str = os.environ.get("LLM_API_KEY") or pe.get("api_key", "")
+        self._endpoint: str = os.environ.get("LLM_ENDPOINT") or pe.get("endpoint", "")
+
+    def _build_model_string(self) -> str:
+        cfg = PROVIDER_CONFIG.get(self._provider, PROVIDER_CONFIG["custom"])
+        return f"{cfg['prefix']}{self._model}"
 
     async def enrich(self, text: str) -> str:
-        """Enrich text via LLM fallback chain.
-
-        Returns the original text when the engine is disabled, OpenClaw
-        is connected, or both LLM sources fail.
-        """
+        """Enrich text via LLM. Returns original on failure or when disabled."""
         if not self._enabled or self._openclaw_connected:
             return text
 
         prompt = self._character_prompt or DEFAULT_SYSTEM_PROMPT
 
-        # Try OpenAI first (cloud)
-        if self._openai_key:
-            result = await LLMClient.call_openai(
-                api_key=self._openai_key,
-                system_prompt=prompt,
-                user_text=text,
-                model=self._openai_model,
-            )
-            if result:
-                return result
+        try:
+            kwargs: dict = {
+                "model": self._build_model_string(),
+                "messages": [
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": text},
+                ],
+                "max_tokens": 150,
+                "temperature": 0.7,
+                "timeout": 8,
+            }
 
-        # Fallback to OpenRouter (cloud)
-        if self._openrouter_key:
-            result = await LLMClient.call_openrouter(
-                api_key=self._openrouter_key,
-                system_prompt=prompt,
-                user_text=text,
-                model=self._openrouter_model,
-            )
-            if result:
-                return result
+            cfg = PROVIDER_CONFIG.get(self._provider, {})
+            if cfg.get("needs_api_key") and self._api_key:
+                kwargs["api_key"] = self._api_key
+            if cfg.get("needs_endpoint") and self._endpoint:
+                kwargs["api_base"] = self._endpoint
 
-        # Fallback to Ollama (local)
-        result = await LLMClient.call_ollama(
-            endpoint=self._ollama_endpoint,
-            system_prompt=prompt,
-            user_text=text,
-            model=self._ollama_model,
-        )
-        if result:
-            return result
+            response = await litellm.acompletion(**kwargs)
+            content = response.choices[0].message.content
+            return content.strip() if content else text
+        except Exception:
+            logger.debug("LLM enrichment failed", exc_info=True)
+            return text
 
-        # Pass-through fallback
-        return text
+    def update_settings(self, settings: dict) -> None:
+        """Reload settings (called when user saves Settings dialog)."""
+        self._load_settings(settings)
 
     def set_character_prompt(self, prompt: str) -> None:
-        """Update the character system prompt."""
         self._character_prompt = prompt
 
     def set_openclaw_connected(self, connected: bool) -> None:
-        """Update OpenClaw connection status."""
         self._openclaw_connected = connected
