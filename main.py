@@ -100,6 +100,16 @@ def main():
 
         wire_journal_events(bridge, journal_integration)
 
+    from src.ui.bridge_settings import wire_settings_events
+
+    wire_settings_events(bridge, on_settings_changed=lambda s: tray.settings_changed.emit(s))
+
+    pomodoro_integration = integration_manager.get_integration("pomodoro")
+    if pomodoro_integration:
+        from src.ui.bridge_pomodoro import wire_pomodoro_events
+
+        wire_pomodoro_events(bridge, pomodoro_integration)
+
     # Let integrations wire their own UI via setup_ui hook
     integration_manager.setup_all_ui(pet)
 

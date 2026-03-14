@@ -29,33 +29,76 @@ export interface Settings {
   user_name: string
   birthday: string
   general: {
-    launch_on_startup: boolean
-    language: string
+    always_on_top: boolean
+    start_minimized: boolean
+    start_on_boot: boolean
+    sprite_default_facing: string
+    speech_bubble: {
+      enabled: boolean
+      duration_ms: number
+    }
   }
   behaviors: {
-    idle_roam: boolean
-    sound_effects: boolean
-    notifications: boolean
+    wander: {
+      wander_chance: number
+      wander_interval_min_ms: number
+      wander_interval_max_ms: number
+    }
+    wave: {
+      greeting: string
+    }
+    idle_variety: {
+      enabled: boolean
+      interval_min_ms: number
+      interval_max_ms: number
+      chance: number
+      behaviors: string[]
+    }
+    sleep: {
+      inactivity_timeout_ms: number
+      schedule_enabled: boolean
+      schedule_start: string
+      schedule_end: string
+    }
+    time_periods: {
+      enabled: boolean
+      check_interval_ms: number
+      periods: Record<string, string>
+      greetings: Record<string, string>
+    }
   }
   personality_engine: {
+    enabled: boolean
     provider: string
     model: string
     api_key: string
+    endpoint: string
   }
-  integrations: Record<string, Record<string, string | boolean>>
+  integrations: {
+    pomodoro: {
+      enabled: boolean
+      work_duration_minutes: number
+      short_break_minutes: number
+      long_break_minutes: number
+      auto_start: boolean
+      sound_enabled: boolean
+      sessions_per_cycle: number
+    }
+    [key: string]: Record<string, unknown>
+  }
 }
 
 /* ── JS → Python Events ─────────────────────────────────────────── */
 
 export interface JsToPyEvents {
   'settings.load': void
-  'settings.save': Settings
+  'settings.save': { settings: Settings }
   'settings.integrationSchema': void
 
-  'timer.start': { duration: number }
+  'timer.start': void
   'timer.pause': void
   'timer.skip': void
-  'timer.startBreak': { duration: number }
+  'timer.startBreak': void
   'timer.skipBreak': void
 
   'pomodoro.getState': void
@@ -76,16 +119,24 @@ export interface JsToPyEvents {
 /* ── Python → JS Events ─────────────────────────────────────────── */
 
 export interface PyToJsEvents {
-  'settings.loaded': Settings
+  'settings.data': Settings
   'settings.saved': { success: boolean }
   'settings.integrationSchemaLoaded': IntegrationSettingsSchema[]
 
-  'timer.tick': { remaining: number; total: number }
+  'timer.tick': { remaining: number }
+  'timer.state': { state: string; context: Record<string, unknown> }
   'timer.finished': void
   'timer.paused': { remaining: number }
   'timer.breakTick': { remaining: number; total: number }
   'timer.breakFinished': void
 
+  'pomodoro.session': { completed: number }
+  'pomodoro.stats': {
+    daily: Record<string, number>
+    streak: number
+    total: number
+    longest_streak: number
+  }
   'pomodoro.state': {
     phase: 'idle' | 'focus' | 'break'
     remaining: number
