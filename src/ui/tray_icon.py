@@ -20,12 +20,14 @@ class TrayIcon(QSystemTrayIcon):
         integration_manager: IntegrationManager,
         behavior_registry: BehaviorRegistry | None = None,
         pomodoro_widget=None,
+        panel_host=None,
     ):
         super().__init__()
         self._pet_widget = pet_widget
         self._integration_manager = integration_manager
         self._behavior_registry = behavior_registry
         self._pomodoro_widget = pomodoro_widget
+        self._panel_host = panel_host
         self._integration_actions: dict[str, QAction] = {}
 
         self._setup_icon()
@@ -60,6 +62,19 @@ class TrayIcon(QSystemTrayIcon):
         menu.addAction(settings_action)
 
         menu.addSeparator()
+
+        # React panel entries
+        if self._panel_host is not None:
+            for panel_name, label in [
+                ("journal", "Journal"),
+                ("pomodoro", "Focus Timer (React)"),
+            ]:
+                action = QAction(label, menu)
+                action.triggered.connect(
+                    lambda checked, p=panel_name: self._panel_host.open_panel(p)
+                )
+                menu.addAction(action)
+            menu.addSeparator()
 
         # Dashboard entries for integrations that provide one
         dashboards = self._integration_manager.get_dashboards()

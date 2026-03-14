@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import sys
 from logging.handlers import RotatingFileHandler
 
@@ -10,6 +11,8 @@ from config import BASE_DIR, BEHAVIORS_DIR, INTEGRATIONS_DIR, load_settings
 from src.core.behavior_registry import BehaviorRegistry
 from src.core.integration_manager import IntegrationManager
 from src.services.personality_engine import PersonalityEngine
+from src.ui.bridge import BridgeHost
+from src.ui.panel_host import PanelHost
 from src.ui.pet_window import PetWidget
 from src.ui.tray_icon import TrayIcon
 
@@ -81,7 +84,15 @@ def main():
         pomodoro_widget = PomodoroWidget(pomodoro)
         logger.info("Pomodoro widget created")
 
-    tray = TrayIcon(pet, integration_manager, behavior_registry, pomodoro_widget=pomodoro_widget)
+    # React panel host
+    bridge = BridgeHost()
+    dev_mode = os.environ.get("PIXEL_DEV_UI") == "1"
+    panel_host = PanelHost(bridge, dev_mode=dev_mode)
+
+    tray = TrayIcon(
+        pet, integration_manager, behavior_registry,
+        pomodoro_widget=pomodoro_widget, panel_host=panel_host,
+    )
 
     # Let integrations wire their own UI via setup_ui hook
     integration_manager.setup_all_ui(pet)
