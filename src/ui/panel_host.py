@@ -3,8 +3,9 @@
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import QUrl
+from PyQt6.QtCore import QFile, QUrl
 from PyQt6.QtWebChannel import QWebChannel
+from PyQt6.QtWebEngineCore import QWebEngineScript
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import QMainWindow
 
@@ -50,9 +51,25 @@ class PanelHost(QMainWindow):
 
     def _setup_channel(self) -> None:
         """Wire up QWebChannel so the JS side can talk to BridgeHost."""
+        self._inject_qwebchannel_script()
         self._channel = QWebChannel(self._view.page())
         self._channel.registerObject("bridge", self._bridge)
         self._view.page().setWebChannel(self._channel)
+
+    def _inject_qwebchannel_script(self) -> None:
+        """Inject qwebchannel.js from Qt resources so the JS side can use QWebChannel."""
+        f = QFile(":/qtwebchannel/qwebchannel.js")
+        f.open(QFile.OpenModeFlag.ReadOnly)
+        source = f.readAll().data().decode()
+        f.close()
+
+        script = QWebEngineScript()
+        script.setName("qwebchannel")
+        script.setSourceCode(source)
+        script.setInjectionPoint(QWebEngineScript.InjectionPoint.DocumentCreation)
+        script.setWorldId(QWebEngineScript.ScriptWorldId.MainWorld)
+        script.setRunsOnSubFrames(False)
+        self._view.page().scripts().insert(script)
 
     def _load_content(self) -> None:
         """Load either the Vite dev server or the production bundle."""
@@ -70,11 +87,14 @@ class PanelHost(QMainWindow):
     # ------------------------------------------------------------------
 
     def open_panel(self, panel: str) -> None:
-        """Show the window, raise it, and emit a ``panel.open`` event."""
+        """Show the window, raise it, and navigate to the requested panel."""
         self.show()
         self.raise_()
         self._center_on_screen()
-        self._bridge.emit("panel.open", {"panel": panel})
+        # Navigate the HashRouter to the requested panel
+        self._view.page().runJavaScript(
+            f"window.location.hash = '#/{panel}';"
+        )
 
     # ------------------------------------------------------------------
     # Internal helpers

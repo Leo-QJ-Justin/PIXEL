@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    echo "Tip: run this script directly (./setup.sh) instead of sourcing it."
+fi
 set -euo pipefail
 
 # PIXEL setup script — works on Linux, macOS, and WSL
@@ -12,7 +15,7 @@ info()  { echo -e "${GREEN}[✓]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[!]${NC} $1"; }
 fail()  { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 
-cd "$(dirname "$0")"
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
 echo ""
 echo "  ╔══════════════════════════════╗"

@@ -8,7 +8,7 @@ interface QWebChannelTransport {
 }
 
 interface QWebChannelObject {
-  signalEmitted: {
+  eventDispatched: {
     connect(cb: (name: string, payload: string) => void): void
     disconnect(cb: (name: string, payload: string) => void): void
   }
@@ -72,9 +72,15 @@ export class Bridge implements BridgeAPI {
       }
 
       new WC(qt.webChannelTransport, (channel) => {
-        this.channel = channel.objects.bridge
+        const bridge = channel.objects.bridge
+        this.channel = bridge
 
-        this.channel.signalEmitted.connect((name: string, payload: string) => {
+        // Debug: log what QWebChannel exposes
+        console.log('[Bridge] QWebChannel object keys:', Object.keys(bridge))
+        console.log('[Bridge] eventDispatched:', bridge.eventDispatched)
+        console.log('[Bridge] eventDispatched type:', typeof bridge.eventDispatched)
+
+        this.channel.eventDispatched.connect((name: string, payload: string) => {
           const handlers = this.listeners.get(name)
           if (handlers) {
             const parsed = payload ? JSON.parse(payload) : undefined
