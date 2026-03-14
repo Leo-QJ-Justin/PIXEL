@@ -63,31 +63,48 @@ class TrayIcon(QSystemTrayIcon):
 
         menu.addSeparator()
 
-        # React panel entries
+        # Panel entries (React UI)
         if self._panel_host is not None:
-            for panel_name, label in [
-                ("journal", "Journal"),
-                ("pomodoro", "Focus Timer (React)"),
-            ]:
-                action = QAction(label, menu)
-                action.triggered.connect(
-                    lambda checked, p=panel_name: self._panel_host.open_panel(p)
-                )
-                menu.addAction(action)
-            menu.addSeparator()
+            journal_action = QAction("Journal", menu)
+            journal_action.triggered.connect(
+                lambda: self._panel_host.open_panel("journal")
+            )
+            menu.addAction(journal_action)
 
-        # Dashboard entries for integrations that provide one
+        # Dashboard entries for integrations that provide one (legacy, non-React)
         dashboards = self._integration_manager.get_dashboards()
         if dashboards:
             for name, dashboard in dashboards.items():
+                # Skip journal dashboard — now handled by React panel
+                if name == "journal":
+                    continue
                 integration = self._integration_manager.get_integration(name)
                 label = f"{integration.display_name} Dashboard" if integration else name
                 dash_action = QAction(label, menu)
                 dash_action.triggered.connect(lambda checked, d=dashboard: self._show_dashboard(d))
                 menu.addAction(dash_action)
-            menu.addSeparator()
 
-        if self._pomodoro_widget:
+        menu.addSeparator()
+
+        # Pomodoro: route through React panel if available, else old widget
+        if self._panel_host is not None:
+            pomodoro_menu = QMenu("Pomodoro", menu)
+            show_action = QAction("Show Timer", pomodoro_menu)
+            show_action.triggered.connect(
+                lambda: self._panel_host.open_panel("pomodoro")
+            )
+            pomodoro_menu.addAction(show_action)
+            # Keep start/skip actions wired to the integration directly
+            pomodoro_integration = self._integration_manager.get_integration("pomodoro")
+            if pomodoro_integration:
+                start_action = QAction("Start Session", pomodoro_menu)
+                start_action.triggered.connect(pomodoro_integration.start_session)
+                pomodoro_menu.addAction(start_action)
+                skip_action = QAction("Skip", pomodoro_menu)
+                skip_action.triggered.connect(pomodoro_integration.skip)
+                pomodoro_menu.addAction(skip_action)
+            menu.addMenu(pomodoro_menu)
+        elif self._pomodoro_widget:
             pomodoro_menu = QMenu("Pomodoro", menu)
             self._build_pomodoro_menu(pomodoro_menu)
             menu.addMenu(pomodoro_menu)
@@ -243,11 +260,14 @@ class TrayIcon(QSystemTrayIcon):
             self._toggle_visibility()
 
     def _open_settings(self):
-        from src.ui.settings import SettingsDialog
+        if self._panel_host is not None:
+            self._panel_host.open_panel("settings")
+        else:
+            from src.ui.settings import SettingsDialog
 
-        dialog = SettingsDialog(integration_manager=self._integration_manager)
-        dialog.settings_changed.connect(self.settings_changed)
-        dialog.exec()
+            dialog = SettingsDialog(integration_manager=self._integration_manager)
+            dialog.settings_changed.connect(self.settings_changed)
+            dialog.exec()
 
     def _quit_app(self):
         from PyQt6.QtWidgets import QApplication
