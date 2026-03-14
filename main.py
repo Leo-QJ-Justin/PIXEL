@@ -75,15 +75,6 @@ def main():
 
     pet = PetWidget(behavior_registry, personality_engine=personality_engine)
 
-    # Create Pomodoro widget if integration is loaded
-    pomodoro_widget = None
-    pomodoro = integration_manager.get_integration("pomodoro")
-    if pomodoro:
-        from src.ui.pomodoro_widget import PomodoroWidget
-
-        pomodoro_widget = PomodoroWidget(pomodoro)
-        logger.info("Pomodoro widget created")
-
     # React panel host
     bridge = BridgeHost()
     dev_mode = os.environ.get("PIXEL_DEV_UI") == "1"
@@ -91,7 +82,7 @@ def main():
 
     tray = TrayIcon(
         pet, integration_manager, behavior_registry,
-        pomodoro_widget=pomodoro_widget, panel_host=panel_host,
+        panel_host=panel_host,
     )
 
     journal_integration = integration_manager.get_integration("journal")
