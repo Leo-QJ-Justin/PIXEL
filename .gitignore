@@ -65,6 +65,8 @@ logs/
 
 #Local Development
 plans/
+docs/
 _bmad/
 _bmad-output/
 .claude/
+.superpowers/
