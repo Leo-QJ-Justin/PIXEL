@@ -94,3 +94,10 @@ class BaseIntegration(QObject, metaclass=QObjectABCMeta):
         Override this to connect integration-specific signals to the pet widget.
         """
         pass
+
+    def build_dashboard(self):
+        """Return a DashboardHost window, or None if no dashboard.
+
+        Override in subclasses that provide a dashboard UI.
+        """
+        return None
