@@ -32,7 +32,7 @@ class TestSaveAndGetEntry:
     def test_save_new_entry(self, tmp_path):
         store = _make_store(tmp_path)
         entry_id = store.save_entry(
-            date="2026-03-14",
+            entry_date="2026-03-14",
             mode="freeform",
             mood="\U0001f60a",
             raw_text="had a great day",

@@ -117,25 +117,58 @@ DEFAULT_SETTINGS = {
 }
 
 
+_settings_cache: dict | None = None
+_settings_mtime: float = 0.0
+
+
 def load_settings() -> dict:
-    """Load settings from JSON file, merging with defaults."""
+    """Load settings from JSON file, merging with defaults. Cached by mtime."""
     import copy
+
+    global _settings_cache, _settings_mtime
+
+    current_mtime = SETTINGS_FILE.stat().st_mtime if SETTINGS_FILE.exists() else 0.0
+
+    if _settings_cache is not None and current_mtime == _settings_mtime:
+        return copy.deepcopy(_settings_cache)
 
     settings = copy.deepcopy(DEFAULT_SETTINGS)
 
     if SETTINGS_FILE.exists():
         with open(SETTINGS_FILE) as f:
             file_settings = json.load(f)
-            # Deep merge file settings into defaults
             _deep_merge(settings, file_settings)
 
-    return settings
+    _settings_cache = settings
+    _settings_mtime = current_mtime
+    return copy.deepcopy(settings)
+
+
+def invalidate_settings_cache() -> None:
+    """Force settings to be re-read on next load_settings() call."""
+    global _settings_cache
+    _settings_cache = None
 
 
 def save_settings(settings: dict) -> None:
-    """Save settings to JSON file."""
-    with open(SETTINGS_FILE, "w") as f:
-        json.dump(settings, f, indent=2)
+    """Save settings to JSON file atomically."""
+    import tempfile
+
+    tmp_fd, tmp_path = tempfile.mkstemp(
+        dir=SETTINGS_FILE.parent, suffix=".tmp", prefix=".settings_"
+    )
+    try:
+        with os.fdopen(tmp_fd, "w") as f:
+            json.dump(settings, f, indent=2)
+        os.replace(tmp_path, SETTINGS_FILE)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+    finally:
+        invalidate_settings_cache()
 
 
 def _deep_merge(base: dict, override: dict) -> None:

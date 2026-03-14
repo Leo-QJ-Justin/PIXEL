@@ -90,17 +90,23 @@ class SpeechBubble(QWidget):
         font = QFont()
         font.setPointSize(FONT_SIZE)
         metrics = QFontMetrics(font)
-        text_rect = metrics.boundingRect(self._text)
 
-        width = text_rect.width() + BUBBLE_PADDING * 2 + TAIL_WIDTH
-        height = text_rect.height() + BUBBLE_PADDING * 2
+        max_width = 250
+        bounding = metrics.boundingRect(
+            0, 0, max_width, 0,
+            Qt.TextFlag.TextWordWrap,
+            self._text,
+        )
+
+        width = bounding.width() + BUBBLE_PADDING * 2 + TAIL_WIDTH
+        height = bounding.height() + BUBBLE_PADDING * 2
         self.setFixedSize(max(width, 60), max(height, 30))
 
     def _reposition(self):
         if self._pet_size.isEmpty():
             return
 
-        screen = QApplication.primaryScreen()
+        screen = self.screen() or QApplication.primaryScreen()
         if not screen:
             return
         screen_geo = screen.availableGeometry()
@@ -165,7 +171,7 @@ class SpeechBubble(QWidget):
         painter.setPen(TEXT_COLOR)
         painter.drawText(
             bubble_rect.adjusted(BUBBLE_PADDING, 0, -BUBBLE_PADDING, 0),
-            Qt.AlignmentFlag.AlignCenter,
+            Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap,
             self._text,
         )
 

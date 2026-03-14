@@ -92,6 +92,10 @@ class GoogleCalendarIntegration(BaseIntegration):
         self._events.clear()
         logger.info("Google Calendar integration stopped")
 
+    def refresh(self) -> None:
+        """Public method to trigger an immediate calendar refresh."""
+        self._on_timer_tick()
+
     def _on_timer_tick(self) -> None:
         """Timer callback — schedule async event check."""
         if not self._running:

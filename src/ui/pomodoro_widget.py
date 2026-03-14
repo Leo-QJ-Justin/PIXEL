@@ -179,6 +179,10 @@ class PomodoroWidget(QWidget):
     def __init__(self, integration, parent=None):
         super().__init__(parent)
         self._integration = integration
+
+    @property
+    def integration(self):
+        return self._integration
         self._drag_position: QPoint | None = None
         self._total_seconds = 0
         self._font_family = self._load_font()
@@ -283,7 +287,7 @@ class PomodoroWidget(QWidget):
         layout.addWidget(self._phase_label)
 
         # Diamonds
-        sessions_per_cycle = self._integration._settings.get("sessions_per_cycle", 4)
+        sessions_per_cycle = self._integration.settings.get("sessions_per_cycle", 4)
         self._diamonds = DiamondStreak(sessions_per_cycle)
         layout.addWidget(self._diamonds, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -377,7 +381,7 @@ class PomodoroWidget(QWidget):
         layout.addWidget(title)
 
         # Duration sliders
-        s = self._integration._settings
+        s = self._integration.settings
         self._work_slider, work_row = self._make_slider(
             "Work", s.get("work_duration_minutes", 25), 5, 60, "m"
         )
@@ -450,7 +454,7 @@ class PomodoroWidget(QWidget):
 
     def _save_settings(self) -> None:
         """Save settings from the settings view."""
-        s = self._integration._settings
+        s = self._integration.settings
         s["work_duration_minutes"] = self._work_slider.value()
         s["short_break_minutes"] = self._short_slider.value()
         s["long_break_minutes"] = self._long_slider.value()
@@ -544,7 +548,7 @@ class PomodoroWidget(QWidget):
         self._update_button_visibility(state_name)
 
         if state_name == "FOCUS":
-            work_min = self._integration._settings.get("work_duration_minutes", 25)
+            work_min = self._integration.settings.get("work_duration_minutes", 25)
             self._total_seconds = work_min * 60
             self._ring.set_color(QColor(theme.COLORS["ring_focus"]))
             self._ring.set_progress(1.0)
@@ -564,9 +568,9 @@ class PomodoroWidget(QWidget):
             )
         elif state_name in ("SHORT_BREAK", "LONG_BREAK"):
             if state_name == "SHORT_BREAK":
-                break_min = self._integration._settings.get("short_break_minutes", 5)
+                break_min = self._integration.settings.get("short_break_minutes", 5)
             else:
-                break_min = self._integration._settings.get("long_break_minutes", 15)
+                break_min = self._integration.settings.get("long_break_minutes", 15)
             self._total_seconds = break_min * 60
             self._ring.set_color(QColor(theme.COLORS["ring_break"]))
             self._ring.set_progress(1.0)
@@ -608,7 +612,7 @@ class PomodoroWidget(QWidget):
 
     def _on_pause_clicked(self) -> None:
         self._integration.pause()
-        if self._integration._paused:
+        if self._integration.paused:
             self._pause_btn.setText("RESUME")
         else:
             self._pause_btn.setText("PAUSE")

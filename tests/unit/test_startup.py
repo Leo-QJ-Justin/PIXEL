@@ -72,7 +72,7 @@ class TestWindows:
         mock_winreg.SetValueEx.assert_called_once()
         args = mock_winreg.SetValueEx.call_args
         assert args[0][0] == mock_key
-        assert args[0][1] == "HaroDesktopPet"
+        assert args[0][1] == "PixelDesktopPet"
         mock_winreg.CloseKey.assert_called_once_with(mock_key)
 
     def test_disable_deletes_registry_value(self, monkeypatch):
@@ -92,7 +92,7 @@ class TestWindows:
             importlib.reload(startup)
             startup.set_startup_enabled(False)
 
-        mock_winreg.DeleteValue.assert_called_once_with(mock_key, "HaroDesktopPet")
+        mock_winreg.DeleteValue.assert_called_once_with(mock_key, "PixelDesktopPet")
         mock_winreg.CloseKey.assert_called_once_with(mock_key)
 
     def test_check_returns_true_when_key_exists(self, monkeypatch):
@@ -139,7 +139,7 @@ class TestMacOS:
     def test_enable_creates_plist(self, monkeypatch, tmp_path):
         monkeypatch.setattr("sys.platform", "darwin")
 
-        plist_path = tmp_path / "com.haro.desktop-pet.plist"
+        plist_path = tmp_path / "com.pixel.desktop-pet.plist"
         monkeypatch.setattr("src.utils.startup._MACOS_PLIST_PATH", plist_path)
 
         import importlib
@@ -155,14 +155,14 @@ class TestMacOS:
 
         with open(plist_path, "rb") as f:
             data = plistlib.load(f)
-        assert data["Label"] == "com.haro.desktop-pet"
+        assert data["Label"] == "com.pixel.desktop-pet"
         assert data["RunAtLoad"] is True
         assert len(data["ProgramArguments"]) == 2
 
     def test_disable_removes_plist(self, monkeypatch, tmp_path):
         monkeypatch.setattr("sys.platform", "darwin")
 
-        plist_path = tmp_path / "com.haro.desktop-pet.plist"
+        plist_path = tmp_path / "com.pixel.desktop-pet.plist"
         plist_path.touch()
 
         import importlib
@@ -178,7 +178,7 @@ class TestMacOS:
     def test_check_returns_true_when_plist_exists(self, monkeypatch, tmp_path):
         monkeypatch.setattr("sys.platform", "darwin")
 
-        plist_path = tmp_path / "com.haro.desktop-pet.plist"
+        plist_path = tmp_path / "com.pixel.desktop-pet.plist"
         plist_path.touch()
 
         import importlib
@@ -193,7 +193,7 @@ class TestMacOS:
     def test_check_returns_false_when_no_plist(self, monkeypatch, tmp_path):
         monkeypatch.setattr("sys.platform", "darwin")
 
-        plist_path = tmp_path / "com.haro.desktop-pet.plist"
+        plist_path = tmp_path / "com.pixel.desktop-pet.plist"
 
         import importlib
 
@@ -228,7 +228,7 @@ class TestLinux:
         assert "[Desktop Entry]" in content
         assert "Type=Application" in content
         assert "X-GNOME-Autostart-enabled=true" in content
-        assert "HaroDesktopPet" in content
+        assert "PixelDesktopPet" in content
 
     def test_disable_removes_desktop_file(self, monkeypatch, tmp_path):
         monkeypatch.setattr("sys.platform", "linux")

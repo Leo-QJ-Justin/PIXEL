@@ -13,14 +13,14 @@ from src.services.personality_engine import PersonalityEngine
 from src.ui.pet_window import PetWidget
 from src.ui.tray_icon import TrayIcon
 
-LOGS_DIR = BASE_DIR / "logs"
-LOGS_DIR.mkdir(exist_ok=True)
-
 LOG_FORMAT = "%(asctime)s [%(name)s] %(levelname)s: %(message)s"
 LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 def setup_logging():
+    logs_dir = BASE_DIR / "logs"
+    logs_dir.mkdir(exist_ok=True)
+
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
 
@@ -30,7 +30,7 @@ def setup_logging():
     root_logger.addHandler(console_handler)
 
     file_handler = RotatingFileHandler(
-        LOGS_DIR / "pet.log",
+        logs_dir / "pet.log",
         maxBytes=5 * 1024 * 1024,
         backupCount=3,
         encoding="utf-8",
@@ -40,11 +40,11 @@ def setup_logging():
     root_logger.addHandler(file_handler)
 
 
-setup_logging()
 logger = logging.getLogger(__name__)
 
 
 def main():
+    setup_logging()
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     loop = QEventLoop(app)
@@ -99,12 +99,15 @@ def main():
 
         general = new_settings.get("general", {})
         set_startup_enabled(general.get("start_on_boot", False))
-        if general.get("always_on_top", True):
-            pet.setWindowFlags(pet.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
-        else:
-            pet.setWindowFlags(pet.windowFlags() & ~Qt.WindowType.WindowStaysOnTopHint)
+        want_on_top = general.get("always_on_top", True)
+        has_on_top = bool(pet.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+        if want_on_top != has_on_top:
+            if want_on_top:
+                pet.setWindowFlags(pet.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+            else:
+                pet.setWindowFlags(pet.windowFlags() & ~Qt.WindowType.WindowStaysOnTopHint)
+            pet.show()
         personality_engine.update_settings(new_settings)
-        pet.show()
 
     tray.settings_changed.connect(_on_settings_changed)
 

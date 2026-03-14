@@ -120,11 +120,11 @@ class TrayIcon(QSystemTrayIcon):
 
     def _pomodoro_start(self):
         if self._pomodoro_widget:
-            self._pomodoro_widget._integration.start_session()
+            self._pomodoro_widget.integration.start_session()
 
     def _pomodoro_skip(self):
         if self._pomodoro_widget:
-            self._pomodoro_widget._integration.skip()
+            self._pomodoro_widget.integration.skip()
 
     def _build_calendar_menu(self, menu: QMenu):
         calendar = self._integration_manager.get_integration("google_calendar")
@@ -152,7 +152,7 @@ class TrayIcon(QSystemTrayIcon):
     def _calendar_refresh(self):
         calendar = self._integration_manager.get_integration("google_calendar")
         if calendar:
-            calendar._on_timer_tick()
+            calendar.refresh()
 
     def _build_integrations_menu(self, menu: QMenu):
         integrations = self._integration_manager.list_integrations()
@@ -237,10 +237,12 @@ class TrayIcon(QSystemTrayIcon):
     def _quit_app(self):
         from PyQt6.QtWidgets import QApplication
 
+        async def _shutdown():
+            await self._integration_manager.stop_all()
+            QApplication.quit()
+
         try:
             loop = asyncio.get_event_loop()
-            loop.create_task(self._integration_manager.stop_all())
+            loop.create_task(_shutdown())
         except RuntimeError:
-            pass
-
-        QApplication.quit()
+            QApplication.quit()

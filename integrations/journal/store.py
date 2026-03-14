@@ -36,7 +36,7 @@ class JournalStore:
 
     def save_entry(
         self,
-        date: str,
+        entry_date: str,
         mode: str,
         mood: str | None,
         raw_text: str,
@@ -56,14 +56,14 @@ class JournalStore:
                 prompt_used = excluded.prompt_used,
                 updated_at = CURRENT_TIMESTAMP
             """,
-            (date, mode, mood, raw_text, clean_text, prompt_used),
+            (entry_date, mode, mood, raw_text, clean_text, prompt_used),
         )
         self._conn.commit()
         return cursor.lastrowid
 
-    def get_entry(self, date: str) -> dict | None:
+    def get_entry(self, entry_date: str) -> dict | None:
         """Get a single entry by date."""
-        cursor = self._conn.execute("SELECT * FROM entries WHERE date = ?", (date,))
+        cursor = self._conn.execute("SELECT * FROM entries WHERE date = ?", (entry_date,))
         row = cursor.fetchone()
         return dict(row) if row else None
 
@@ -124,9 +124,9 @@ class JournalStore:
         cursor = self._conn.execute("SELECT COUNT(*) FROM entries")
         return cursor.fetchone()[0]
 
-    def delete_entry(self, date: str) -> None:
+    def delete_entry(self, entry_date: str) -> None:
         """Delete an entry by date."""
-        self._conn.execute("DELETE FROM entries WHERE date = ?", (date,))
+        self._conn.execute("DELETE FROM entries WHERE date = ?", (entry_date,))
         self._conn.commit()
 
     def close(self) -> None:

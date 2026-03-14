@@ -193,7 +193,7 @@ class StatsSurface(QWidget):
         layout.addWidget(pet_icon)
 
         text_col = QVBoxLayout()
-        label = QLabel("Haro says...")
+        label = QLabel("PIXEL says...")
         label.setStyleSheet("color: #6ab; font-size: 12px; border: none; background: transparent;")
         text_col.addWidget(label)
 

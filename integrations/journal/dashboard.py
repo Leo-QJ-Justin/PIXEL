@@ -62,6 +62,12 @@ class JournalDashboard(DashboardHost):
         self._editor.open_existing_entry(date_str)
         self.push_page("editor")
 
+    def pop_page(self) -> None:
+        """Override to emit entry_saved when leaving editor."""
+        if self._stack and self._stack[-1] == "editor":
+            self._editor.emit_save()
+        super().pop_page()
+
     def _on_entry_saved(self, date_str: str, mood: str) -> None:
         # Trigger pet reactions on save
         self._integration.on_entry_saved(mood if mood else None)

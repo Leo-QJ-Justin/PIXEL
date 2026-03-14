@@ -14,8 +14,8 @@ if hasattr(litellm, "suppress_debug_info"):
     litellm.suppress_debug_info = True
 
 DEFAULT_SYSTEM_PROMPT = (
-    "You are Haro, a cute robot companion that sits on the user's desktop. "
-    "Rewrite the following message in Haro's voice -- cheerful, curious, "
+    "You are PIXEL, a cute robot companion that sits on the user's desktop. "
+    "Rewrite the following message in PIXEL's voice -- cheerful, curious, "
     "and a bit childlike. "
     "Keep it to 1-2 short sentences. Don't add advice or instructions. "
     "Only output the rewritten message, nothing else."
@@ -104,6 +104,10 @@ class PersonalityEngine:
     def _build_model_string(self) -> str:
         cfg = PROVIDER_CONFIG.get(self._provider, PROVIDER_CONFIG["custom"])
         return f"{cfg['prefix']}{self._model}"
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
 
     async def enrich(self, text: str) -> str:
         """Enrich text via LLM. Returns original on failure or when disabled."""

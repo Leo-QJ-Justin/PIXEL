@@ -52,29 +52,45 @@ def build_settings_sections(
 
     def _on_connect():
         import asyncio
+        from threading import Thread
 
         from integrations.google_calendar.auth import run_auth_flow
 
-        creds = run_auth_flow(BASE_DIR)
-        if creds is None:
-            status_label.setText("Connection failed")
+        connect_btn.setEnabled(False)
+        status_label.setText("Connecting...")
+
+        def _run_flow():
+            return run_auth_flow(BASE_DIR)
+
+        def _on_done(creds):
+            connect_btn.setEnabled(True)
+            if creds is None:
+                status_label.setText("Connection failed")
+                status_label.setStyleSheet(
+                    f"color: {theme.COLORS['destructive']}; font-family: '{font}'; font-size: 13px;"
+                )
+                return
+            status_label.setText("Connected")
             status_label.setStyleSheet(
-                f"color: {theme.COLORS['destructive']}; font-family: '{font}'; font-size: 13px;"
+                f"color: {theme.COLORS['success']}; font-family: '{font}'; font-size: 13px;"
             )
-            return
-        status_label.setText("Connected")
-        status_label.setStyleSheet(
-            f"color: {theme.COLORS['success']}; font-family: '{font}'; font-size: 13px;"
-        )
-        connect_btn.setVisible(False)
-        disconnect_btn.setVisible(True)
-        _set(["integrations", "google_calendar", "enabled"], True)
-        if integration_manager:
-            try:
-                loop = asyncio.get_event_loop()
-                loop.create_task(integration_manager.start("google_calendar"))
-            except RuntimeError:
-                pass
+            connect_btn.setVisible(False)
+            disconnect_btn.setVisible(True)
+            _set(["integrations", "google_calendar", "enabled"], True)
+            if integration_manager:
+                try:
+                    loop = asyncio.get_event_loop()
+                    loop.create_task(integration_manager.start("google_calendar"))
+                except RuntimeError:
+                    pass
+
+        def _thread_target():
+            creds = _run_flow()
+            from PyQt6.QtCore import QTimer
+
+            QTimer.singleShot(0, lambda: _on_done(creds))
+
+        Thread(target=_thread_target, daemon=True).start()
 
     def _on_disconnect():
         import asyncio

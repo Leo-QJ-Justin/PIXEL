@@ -57,10 +57,11 @@ class LinedTextEdit(QTextEdit):
         doc_margin = int(self.document().documentMargin())
         scroll_offset = self.verticalScrollBar().value()
 
-        y = doc_margin - scroll_offset + line_height
         viewport_height = self.viewport().height()
 
-        while y < viewport_height + scroll_offset:
+        # Start at first visible line
+        y = doc_margin - (scroll_offset % line_height) + line_height
+        while y < viewport_height:
             painter.drawLine(0, int(y), self.viewport().width(), int(y))
             y += line_height
 
@@ -188,7 +189,7 @@ class EntryEditor(QWidget):
 
         modes = [
             ("✏️ Free Write", "freeform", "Write whatever comes to mind"),
-            ("💭 Guided Reflection", "guided", "Start with a prompt from Haro"),
+            ("💭 Guided Reflection", "guided", "Start with a prompt from PIXEL"),
             ("😊 Quick Mood", "mood", "Log how you're feeling"),
         ]
 
@@ -272,6 +273,11 @@ class EntryEditor(QWidget):
 
         self._text_edit.setFocus()
 
+    def emit_save(self) -> None:
+        """Emit entry_saved signal (called when navigating away from editor)."""
+        if self._current_date and self._text_edit.toPlainText().strip():
+            self.entry_saved.emit(self._current_date, self._mood_picker.selected_mood or "")
+
     def _on_text_changed(self) -> None:
         self._autosave_timer.start()
 
@@ -285,7 +291,7 @@ class EntryEditor(QWidget):
         existing_clean = existing["clean_text"] if existing else None
         prompt = self._prompt_label.text().strip('"') if self._prompt_label.isVisible() else None
         self._store.save_entry(
-            date=self._current_date,
+            entry_date=self._current_date,
             mode=self._current_mode,
             mood=self._mood_picker.selected_mood,
             raw_text=text,
@@ -293,7 +299,6 @@ class EntryEditor(QWidget):
             prompt_used=prompt,
         )
         self._status_label.setText("Saved")
-        self.entry_saved.emit(self._current_date, self._mood_picker.selected_mood or "")
 
     def _on_cleanup(self) -> None:
         """Send raw text to LLM for restructuring."""
@@ -358,7 +363,7 @@ class EntryEditor(QWidget):
                 clean = clean.strip()
                 # Save clean text
                 self._store.save_entry(
-                    date=self._current_date,
+                    entry_date=self._current_date,
                     mode=self._current_mode,
                     mood=self._mood_picker.selected_mood,
                     raw_text=raw_text,

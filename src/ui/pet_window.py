@@ -374,7 +374,7 @@ class PetWidget(QWidget):
         if duration_ms is None:
             duration_ms = self._speech_bubble_settings.get("duration_ms", 3000)
 
-        if self._personality_engine and self._personality_engine._enabled:
+        if self._personality_engine and self._personality_engine.enabled:
             import asyncio
 
             async def _enrich_and_show():
@@ -382,8 +382,13 @@ class PetWidget(QWidget):
                 self._speech_bubble.update_position(self.pos(), self.size())
                 self._speech_bubble.show_message(enriched, duration_ms)
 
-            loop = asyncio.get_running_loop()
-            loop.create_task(_enrich_and_show())
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(_enrich_and_show())
+            except RuntimeError:
+                logger.debug("No running event loop for personality enrichment")
+                self._speech_bubble.update_position(self.pos(), self.size())
+                self._speech_bubble.show_message(text, duration_ms)
         else:
             self._speech_bubble.update_position(self.pos(), self.size())
             self._speech_bubble.show_message(text, duration_ms)

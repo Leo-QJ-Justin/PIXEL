@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import date
+from datetime import date, timedelta
 from enum import Enum, auto
 from pathlib import Path
 from typing import Any
@@ -50,6 +50,10 @@ class PomodoroIntegration(BaseIntegration):
     @property
     def state(self) -> PomodoroState:
         return self._state
+
+    @property
+    def paused(self) -> bool:
+        return self._paused
 
     def get_default_settings(self) -> dict[str, Any]:
         return {
@@ -152,7 +156,7 @@ class PomodoroIntegration(BaseIntegration):
         if self._paused:
             return
         self._remaining_seconds -= 1
-        self.timer_tick.emit(self._remaining_seconds)
+        self.timer_tick.emit(max(self._remaining_seconds, 0))
 
         if self._remaining_seconds <= 0:
             self._tick_timer.stop()
@@ -239,12 +243,18 @@ class PomodoroIntegration(BaseIntegration):
             self._stats["longest_streak_days"] = streak
 
     def _load_stats(self) -> dict:
-        """Load stats from JSON file, or return defaults."""
+        """Load stats from JSON file, or return defaults. Prunes entries older than 1 year."""
         stats_file = self._path / "stats.json"
         if stats_file.exists():
             try:
                 with open(stats_file) as f:
-                    return json.load(f)
+                    stats = json.load(f)
+                # Prune daily entries older than 365 days
+                daily = stats.get("daily", {})
+                if daily:
+                    cutoff = (date.today() - timedelta(days=365)).isoformat()
+                    stats["daily"] = {k: v for k, v in daily.items() if k >= cutoff}
+                return stats
             except (json.JSONDecodeError, OSError):
                 logger.warning("Failed to load pomodoro stats, using defaults")
         return {

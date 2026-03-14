@@ -26,6 +26,7 @@ class WeatherIntegration(BaseIntegration):
         self._timer: QTimer | None = None
         self._last_condition: object = _UNSET
         self._running = False
+        self._session: aiohttp.ClientSession | None = None
 
     @property
     def name(self) -> str:
@@ -70,6 +71,9 @@ class WeatherIntegration(BaseIntegration):
         if self._timer is not None:
             self._timer.stop()
             self._timer = None
+        if self._session and not self._session.closed:
+            await self._session.close()
+            self._session = None
         logger.info("Weather integration stopped")
 
     def _on_timer_tick(self) -> None:
@@ -98,12 +102,13 @@ class WeatherIntegration(BaseIntegration):
         }
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(API_URL, params=params) as resp:
-                    if resp.status != 200:
-                        logger.error(f"Weather API returned status {resp.status}")
-                        return
-                    data = await resp.json()
+            if self._session is None or self._session.closed:
+                self._session = aiohttp.ClientSession()
+            async with self._session.get(API_URL, params=params) as resp:
+                if resp.status != 200:
+                    logger.error(f"Weather API returned status {resp.status}")
+                    return
+                data = await resp.json()
         except aiohttp.ClientError as e:
             logger.error(f"Weather API request failed: {e}")
             return

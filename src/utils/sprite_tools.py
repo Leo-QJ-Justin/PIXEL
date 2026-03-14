@@ -9,7 +9,12 @@ def pngs_to_gif(
     """Convert a sequence of PNG files to an animated GIF with transparency."""
     from PIL import Image
 
-    frames = [Image.open(p).convert("RGBA") for p in png_paths]
+    images = [Image.open(p) for p in png_paths]
+    try:
+        frames = [img.convert("RGBA") for img in images]
+    finally:
+        for img in images:
+            img.close()
 
     gif_frames = []
     for frame in frames:

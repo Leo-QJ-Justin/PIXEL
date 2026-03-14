@@ -143,16 +143,13 @@ class IntegrationManager(QObject):
             logger.exception(f"Failed to load integration {name}: {e}")
             return None
 
-    def unload(self, name: str) -> bool:
-        """Unload an integration."""
+    async def unload(self, name: str) -> bool:
+        """Unload an integration, stopping it first if running."""
         if name not in self._integrations:
             return False
 
-        # Stop if running
         if name in self._running:
-            # Note: This should be awaited in async context
-            logger.warning(f"Integration {name} is running, stopping...")
-            self._running.discard(name)
+            await self.stop(name)
 
         self._dashboards.pop(name, None)
         del self._integrations[name]

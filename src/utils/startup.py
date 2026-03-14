@@ -6,7 +6,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-APP_NAME = "HaroDesktopPet"
+APP_NAME = "PixelDesktopPet"
 _MAIN_PY = Path(__file__).resolve().parent.parent.parent / "main.py"
 
 
@@ -94,7 +94,7 @@ def _check_windows() -> bool:
 # macOS — LaunchAgent plist
 # ---------------------------------------------------------------------------
 
-_MACOS_PLIST_PATH = Path.home() / "Library" / "LaunchAgents" / "com.haro.desktop-pet.plist"
+_MACOS_PLIST_PATH = Path.home() / "Library" / "LaunchAgents" / "com.pixel.desktop-pet.plist"
 
 
 def _set_macos(enabled: bool) -> None:
@@ -103,7 +103,7 @@ def _set_macos(enabled: bool) -> None:
 
         cmd = _get_launch_command()
         plist = {
-            "Label": "com.haro.desktop-pet",
+            "Label": "com.pixel.desktop-pet",
             "ProgramArguments": cmd,
             "RunAtLoad": True,
         }
@@ -122,7 +122,7 @@ def _check_macos() -> bool:
 # Linux — XDG autostart .desktop file
 # ---------------------------------------------------------------------------
 
-_LINUX_DESKTOP_PATH = Path.home() / ".config" / "autostart" / "haro-desktop-pet.desktop"
+_LINUX_DESKTOP_PATH = Path.home() / ".config" / "autostart" / "pixel-desktop-pet.desktop"
 
 
 def _set_linux(enabled: bool) -> None:
