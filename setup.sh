@@ -22,9 +22,13 @@ echo ""
 
 # ── 1. Check Python ──────────────────────────────────────────────
 
-if command -v python3 &>/dev/null; then
+if command -v uv &>/dev/null && uv run python --version &>/dev/null; then
+    PY="uv run python"
+elif command -v python3 &>/dev/null && python3 --version &>/dev/null; then
     PY=python3
-elif command -v python &>/dev/null; then
+elif command -v py &>/dev/null; then
+    PY=py
+elif command -v python &>/dev/null && python --version &>/dev/null; then
     PY=python
 else
     fail "Python not found. Install Python 3.10+ first."
