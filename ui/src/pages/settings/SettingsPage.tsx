@@ -89,47 +89,51 @@ export function SettingsPage() {
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className="flex flex-col min-h-screen bg-background"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <h1 className="text-lg font-heading font-bold text-text">Settings</h1>
-        {dirty && (
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="cursor-pointer gap-1.5"
-            size="sm"
-          >
-            <Save size={14} />
-            {saving ? 'Saving...' : 'Save'}
-          </Button>
-        )}
-      </div>
+      {/* Tabs (contains header) */}
+      <Tabs defaultValue="general" className="flex-1 flex flex-col">
+        {/* Sticky header bar */}
+        <div className="bg-white px-5 pt-5 pb-0 shadow-[0_2px_8px_rgb(44_24_16/0.06)]">
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-xl font-heading font-bold text-text">Settings</h1>
+            {dirty && (
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className="cursor-pointer gap-1.5"
+                size="sm"
+              >
+                <Save size={14} />
+                {saving ? 'Saving...' : 'Save'}
+              </Button>
+            )}
+          </div>
+          <TabsList variant="line" className="w-full">
+            <TabsTrigger value="general" className="cursor-pointer">General</TabsTrigger>
+            <TabsTrigger value="behaviors" className="cursor-pointer">Behaviors</TabsTrigger>
+            <TabsTrigger value="integrations" className="cursor-pointer">Integrations</TabsTrigger>
+            <TabsTrigger value="personality" className="cursor-pointer">AI</TabsTrigger>
+          </TabsList>
+        </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="general" className="flex-1 px-4 pb-4">
-        <TabsList className="w-full">
-          <TabsTrigger value="general" className="cursor-pointer">General</TabsTrigger>
-          <TabsTrigger value="behaviors" className="cursor-pointer">Behaviors</TabsTrigger>
-          <TabsTrigger value="integrations" className="cursor-pointer">Integrations</TabsTrigger>
-          <TabsTrigger value="personality" className="cursor-pointer">AI</TabsTrigger>
-        </TabsList>
+        {/* Scrollable content */}
+        <ScrollArea className="flex-1" style={{ height: 'calc(100vh - 110px)' }}>
+          <div className="p-4">
+            <TabsContent value="general">
+              <GeneralTab settings={settings} onChange={handleChange} />
+            </TabsContent>
 
-        <ScrollArea className="flex-1 mt-3" style={{ height: 'calc(100vh - 120px)' }}>
-          <TabsContent value="general">
-            <GeneralTab settings={settings} onChange={handleChange} />
-          </TabsContent>
+            <TabsContent value="behaviors">
+              <BehaviorsTab settings={settings} onChange={handleChange} />
+            </TabsContent>
 
-          <TabsContent value="behaviors">
-            <BehaviorsTab settings={settings} onChange={handleChange} />
-          </TabsContent>
+            <TabsContent value="integrations">
+              <IntegrationsTab settings={settings} onChange={handleChange} />
+            </TabsContent>
 
-          <TabsContent value="integrations">
-            <IntegrationsTab settings={settings} onChange={handleChange} />
-          </TabsContent>
-
-          <TabsContent value="personality">
-            <PersonalityTab settings={settings} onChange={handleChange} />
-          </TabsContent>
+            <TabsContent value="personality">
+              <PersonalityTab settings={settings} onChange={handleChange} />
+            </TabsContent>
+          </div>
         </ScrollArea>
       </Tabs>
     </motion.div>

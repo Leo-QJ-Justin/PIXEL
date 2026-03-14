@@ -22,13 +22,13 @@ export function PersonalityTab({ settings, onChange }: PersonalityTabProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="space-y-3">
-        <h3 className="text-sm font-heading font-semibold text-text-muted uppercase tracking-wide">
+    <div className="space-y-4">
+      <section className="bg-surface border border-border rounded-default p-4 space-y-3">
+        <h3 className="text-xs font-heading font-semibold text-text-muted uppercase tracking-wide">
           AI & Personality
         </h3>
 
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex items-center gap-2.5 cursor-pointer py-0.5">
           <Checkbox
             checked={pe.enabled ?? false}
             onCheckedChange={(checked: boolean) => updatePE({ enabled: checked })}
@@ -42,7 +42,7 @@ export function PersonalityTab({ settings, onChange }: PersonalityTabProps) {
             id="pe_provider"
             value={pe.provider ?? 'openai'}
             onChange={(e) => updatePE({ provider: e.target.value })}
-            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm cursor-pointer"
+            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm cursor-pointer focus:border-ring focus:ring-3 focus:ring-ring/50 outline-none transition-colors"
           >
             <option value="openai">OpenAI</option>
             <option value="anthropic">Anthropic</option>

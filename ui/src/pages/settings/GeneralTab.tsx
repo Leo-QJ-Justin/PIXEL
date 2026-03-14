@@ -18,10 +18,10 @@ export function GeneralTab({ settings, onChange }: GeneralTabProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Profile */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-heading font-semibold text-text-muted uppercase tracking-wide">
+      <section className="bg-surface border border-border rounded-default p-4 space-y-3">
+        <h3 className="text-xs font-heading font-semibold text-text-muted uppercase tracking-wide">
           Profile
         </h3>
         <div className="space-y-2">
@@ -45,32 +45,51 @@ export function GeneralTab({ settings, onChange }: GeneralTabProps) {
       </section>
 
       {/* Window */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-heading font-semibold text-text-muted uppercase tracking-wide">
+      <section className="bg-surface border border-border rounded-default p-4 space-y-3">
+        <h3 className="text-xs font-heading font-semibold text-text-muted uppercase tracking-wide">
           Window
         </h3>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex items-center gap-2.5 cursor-pointer py-0.5">
           <Checkbox
             checked={general.always_on_top ?? true}
             onCheckedChange={(checked: boolean) => updateGeneral({ always_on_top: checked })}
           />
           <span className="text-sm">Always on top</span>
         </label>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex items-center gap-2.5 cursor-pointer py-0.5">
           <Checkbox
             checked={general.start_minimized ?? false}
             onCheckedChange={(checked: boolean) => updateGeneral({ start_minimized: checked })}
           />
           <span className="text-sm">Start minimized</span>
         </label>
+        <label className="flex items-center gap-2.5 cursor-pointer py-0.5">
+          <Checkbox
+            checked={general.start_on_boot ?? false}
+            onCheckedChange={(checked: boolean) => updateGeneral({ start_on_boot: checked })}
+          />
+          <span className="text-sm">Start on boot</span>
+        </label>
+        <div className="space-y-2">
+          <Label htmlFor="facing">Default facing</Label>
+          <select
+            id="facing"
+            value={general.sprite_default_facing ?? 'right'}
+            onChange={(e) => updateGeneral({ sprite_default_facing: e.target.value })}
+            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm cursor-pointer focus:border-ring focus:ring-3 focus:ring-ring/50 outline-none transition-colors"
+          >
+            <option value="right">Right</option>
+            <option value="left">Left</option>
+          </select>
+        </div>
       </section>
 
       {/* Speech Bubble */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-heading font-semibold text-text-muted uppercase tracking-wide">
+      <section className="bg-surface border border-border rounded-default p-4 space-y-3">
+        <h3 className="text-xs font-heading font-semibold text-text-muted uppercase tracking-wide">
           Speech Bubble
         </h3>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex items-center gap-2.5 cursor-pointer py-0.5">
           <Checkbox
             checked={bubble.enabled}
             onCheckedChange={(checked: boolean) =>

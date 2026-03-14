@@ -29,13 +29,13 @@ export function IntegrationsTab({ settings, onChange }: IntegrationsTabProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Pomodoro */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-heading font-semibold text-text-muted uppercase tracking-wide">
+      <section className="bg-surface border border-border rounded-default p-4 space-y-3">
+        <h3 className="text-xs font-heading font-semibold text-text-muted uppercase tracking-wide">
           Pomodoro
         </h3>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex items-center gap-2.5 cursor-pointer py-0.5">
           <Checkbox
             checked={pomodoro.enabled ?? true}
             onCheckedChange={(checked: boolean) => updateIntegration('pomodoro', { enabled: checked })}
@@ -72,14 +72,14 @@ export function IntegrationsTab({ settings, onChange }: IntegrationsTabProps) {
             onValueChange={(val) => updateIntegration('pomodoro', { long_break_minutes: first(val) })}
           />
         </div>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex items-center gap-2.5 cursor-pointer py-0.5">
           <Checkbox
             checked={pomodoro.auto_start ?? false}
             onCheckedChange={(checked: boolean) => updateIntegration('pomodoro', { auto_start: checked })}
           />
           <span className="text-sm">Auto-start next session</span>
         </label>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex items-center gap-2.5 cursor-pointer py-0.5">
           <Checkbox
             checked={pomodoro.sound_enabled ?? true}
             onCheckedChange={(checked: boolean) => updateIntegration('pomodoro', { sound_enabled: checked })}
@@ -89,18 +89,18 @@ export function IntegrationsTab({ settings, onChange }: IntegrationsTabProps) {
       </section>
 
       {/* Journal */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-heading font-semibold text-text-muted uppercase tracking-wide">
+      <section className="bg-surface border border-border rounded-default p-4 space-y-3">
+        <h3 className="text-xs font-heading font-semibold text-text-muted uppercase tracking-wide">
           Journal
         </h3>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex items-center gap-2.5 cursor-pointer py-0.5">
           <Checkbox
             checked={(journal.enabled as boolean) ?? true}
             onCheckedChange={(checked: boolean) => updateIntegration('journal', { enabled: checked })}
           />
           <span className="text-sm">Enabled</span>
         </label>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex items-center gap-2.5 cursor-pointer py-0.5">
           <Checkbox
             checked={(journal.blur_content as boolean) ?? false}
             onCheckedChange={(checked: boolean) => updateIntegration('journal', { blur_content: checked })}
@@ -110,8 +110,8 @@ export function IntegrationsTab({ settings, onChange }: IntegrationsTabProps) {
       </section>
 
       {/* Weather */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-heading font-semibold text-text-muted uppercase tracking-wide">
+      <section className="bg-surface border border-border rounded-default p-4 space-y-3">
+        <h3 className="text-xs font-heading font-semibold text-text-muted uppercase tracking-wide">
           Weather
         </h3>
         <div className="space-y-2">

@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 
 from PyQt6.QtCore import QFile, QUrl
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWebChannel import QWebChannel
 from PyQt6.QtWebEngineCore import QWebEngineScript
 from PyQt6.QtWebEngineWidgets import QWebEngineView
@@ -43,6 +44,12 @@ class PanelHost(QMainWindow):
         self.setWindowTitle("PIXEL")
         self.resize(600, 750)
         self.setMinimumSize(450, 500)
+        # Use idle behavior sprite as window icon
+        idle_media = _PROJECT_ROOT / "behaviors" / "idle" / "media"
+        if idle_media.exists():
+            icons = sorted(idle_media.glob("*.png")) or sorted(idle_media.glob("*.gif"))
+            if icons:
+                self.setWindowIcon(QIcon(str(icons[0])))
 
     def _setup_web_view(self) -> None:
         """Create the QWebEngineView and set it as central widget."""

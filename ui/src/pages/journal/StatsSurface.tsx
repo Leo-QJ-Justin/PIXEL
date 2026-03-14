@@ -89,7 +89,7 @@ export function StatsSurface({ onOpenVault, onWritePrompt, onDateClick }: StatsS
       className="flex flex-col gap-4 p-4 min-h-full"
     >
       {/* Heading */}
-      <h1 className="font-heading text-2xl text-primary">Journal</h1>
+      <h1 className="font-heading text-xl font-bold text-text">Journal</h1>
 
       {/* Calendar heatmap */}
       <div className="bg-surface border border-border rounded-default p-3">

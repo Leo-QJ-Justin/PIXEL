@@ -30,10 +30,10 @@ export function BehaviorsTab({ settings, onChange }: BehaviorsTabProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Wander */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-heading font-semibold text-text-muted uppercase tracking-wide">
+      <section className="bg-surface border border-border rounded-default p-4 space-y-3">
+        <h3 className="text-xs font-heading font-semibold text-text-muted uppercase tracking-wide">
           Wander
         </h3>
         <div className="space-y-2">
@@ -51,8 +51,8 @@ export function BehaviorsTab({ settings, onChange }: BehaviorsTabProps) {
       </section>
 
       {/* Wave */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-heading font-semibold text-text-muted uppercase tracking-wide">
+      <section className="bg-surface border border-border rounded-default p-4 space-y-3">
+        <h3 className="text-xs font-heading font-semibold text-text-muted uppercase tracking-wide">
           Wave
         </h3>
         <div className="space-y-2">
@@ -69,11 +69,11 @@ export function BehaviorsTab({ settings, onChange }: BehaviorsTabProps) {
       </section>
 
       {/* Idle Variety */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-heading font-semibold text-text-muted uppercase tracking-wide">
+      <section className="bg-surface border border-border rounded-default p-4 space-y-3">
+        <h3 className="text-xs font-heading font-semibold text-text-muted uppercase tracking-wide">
           Idle Variety
         </h3>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex items-center gap-2.5 cursor-pointer py-0.5">
           <Checkbox
             checked={idle.enabled ?? true}
             onCheckedChange={(checked: boolean) =>
@@ -97,8 +97,8 @@ export function BehaviorsTab({ settings, onChange }: BehaviorsTabProps) {
       </section>
 
       {/* Sleep */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-heading font-semibold text-text-muted uppercase tracking-wide">
+      <section className="bg-surface border border-border rounded-default p-4 space-y-3">
+        <h3 className="text-xs font-heading font-semibold text-text-muted uppercase tracking-wide">
           Sleep
         </h3>
         <div className="space-y-2">
@@ -115,7 +115,7 @@ export function BehaviorsTab({ settings, onChange }: BehaviorsTabProps) {
             }
           />
         </div>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className="flex items-center gap-2.5 cursor-pointer py-0.5">
           <Checkbox
             checked={sleep.schedule_enabled ?? false}
             onCheckedChange={(checked: boolean) =>
