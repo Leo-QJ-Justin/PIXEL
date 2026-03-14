@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { BridgeProvider } from '@/bridge/context'
+import { JournalPage } from '@/pages/journal/JournalPage'
 
 function Placeholder({ name }: { name: string }) {
   return (
@@ -14,7 +15,7 @@ function App() {
     <BridgeProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/journal" element={<Placeholder name="Journal" />} />
+          <Route path="/journal" element={<JournalPage />} />
           <Route path="/settings" element={<Placeholder name="Settings" />} />
           <Route path="/pomodoro" element={<Placeholder name="Pomodoro" />} />
           <Route path="*" element={<Navigate to="/journal" replace />} />
