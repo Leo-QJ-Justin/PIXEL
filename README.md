@@ -28,6 +28,16 @@
 
 ## Installation
 
+### Quick Setup
+
+```bash
+./setup.sh
+```
+
+This checks prerequisites, installs all dependencies, builds the React UI, and creates your `.env` file. Works on Linux, macOS, and WSL.
+
+### Manual Setup
+
 1. Clone the repository and navigate to the project folder
 
 2. Install Python dependencies:
@@ -43,14 +53,19 @@
    cd ..
    ```
 
-4. Add your sprites to the `behaviors/*/media/` directories (sprites are gitignored - each developer uses their own)
+4. (Linux/WSL) Install system libraries for WebEngine:
+   ```bash
+   sudo apt install libnss3 libasound2
+   ```
 
-5. Configure your `.env` file (copy from `.env.example`):
+5. Add your sprites to the `behaviors/*/media/` directories (sprites are gitignored - each developer uses their own)
+
+6. Configure your `.env` file (copy from `.env.example`):
    ```bash
    cp .env.example .env
    ```
 
-6. Fill in the credentials for the integrations you want to use (see [Environment Variables](#environment-variables-env) below)
+7. Fill in the credentials for the integrations you want to use (see [Environment Variables](#environment-variables-env) below)
 
 ## Setup
 
