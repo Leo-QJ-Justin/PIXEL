@@ -1,7 +1,7 @@
 [project]
-name = "haro-desktop-pet"
+name = "pixel"
 version = "0.1.0"
-description = "A Haro desktop pet that integrates with Telegram"
+description = "Personal Interactive eXtensible Everyday Life companion - a modular desktop pet"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
 dependencies = [

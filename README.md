@@ -1,6 +1,6 @@
-# Desktop Pet
+# PIXEL
 
-A modular desktop companion app. Supports pluggable **behaviors** (visual animations) and **integrations** (external service connections). Bring your own sprites!
+**P**ersonal **I**nteractive e**X**tensible **E**veryday **L**ife companion — a modular desktop pet with pluggable **behaviors** (visual animations) and **integrations** (external service connections). Bring your own sprites!
 
 ## Features
 
@@ -10,6 +10,7 @@ A modular desktop companion app. Supports pluggable **behaviors** (visual animat
 - **Weather integration** - pet reacts to local weather (umbrella in rain, sunglasses in sun)
 - **Google Calendar integration** - configurable event reminders with day preview
 - **Pomodoro timer** - focus sessions with floating widget and pet reactions
+- **Journal integration** - privacy-first daily journaling with mood tracking, calendar heat map, and LLM text cleanup
 - **Birthday celebration** - set your birthday and the pet celebrates on the day (SGT)
 - **MapleStory-style UI** - 9-slice sprite-based dialog boxes and speech bubbles
 - Animated sprites with idle, wander, rainy, and time-of-day states
@@ -149,6 +150,12 @@ The pet will randomly wander around your screen. It reacts to:
       "auto_start": false,
       "sound_enabled": true,
       "sessions_per_cycle": 4
+    },
+    "journal": {
+      "enabled": true,
+      "nudge_frequency": "smart",
+      "nudge_time": "20:00",
+      "blur_on_focus_loss": true
     }
   }
 }
@@ -198,6 +205,11 @@ The pet will randomly wander around your screen. It reacts to:
 │   ├── weather/
 │   ├── pomodoro/
 │   │   └── integration.py            # Focus timer logic
+│   ├── journal/
+│   │   ├── integration.py            # Nudge timer & mood reactions
+│   │   ├── store.py                  # SQLite journal storage
+│   │   ├── dashboard.py              # Multi-page journal dashboard
+│   │   └── widgets/                  # Stats, vault, editor, mood picker
 │   └── google_calendar/
 │       ├── integration.py            # Reminder + day preview logic
 │       ├── calendar_event.py         # Event model
@@ -207,6 +219,7 @@ The pet will randomly wander around your screen. It reacts to:
     ├── core/
     │   ├── base_integration.py       # Abstract integration class
     │   ├── behavior_registry.py      # Behavior discovery & management
+    │   ├── dashboard_host.py         # Base class for integration dashboards
     │   ├── integration_manager.py    # Integration lifecycle
     │   └── pet_state.py              # Pet state machine
     └── ui/
@@ -272,6 +285,7 @@ uv run ruff format .
 - **PyQt6** - GUI framework
 - **qasync** - Qt-asyncio integration
 - **aiohttp** - Async HTTP client (API calls)
+- **litellm** - Multi-provider LLM gateway (personality engine, journal cleanup)
 - **python-dotenv** - Environment variable management
 - **google-api-python-client** - Google Calendar API
 - **google-auth-oauthlib** - Google OAuth flow
