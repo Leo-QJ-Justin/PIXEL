@@ -63,6 +63,10 @@ coverage.xml
 logs/
 
 
+# React UI
+ui/node_modules/
+ui/dist/
+
 #Local Development
 plans/
 docs/
