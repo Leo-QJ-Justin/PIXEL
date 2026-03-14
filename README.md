@@ -23,24 +23,34 @@
 
 - Python 3.10+
 - uv (Python package manager)
+- Node.js 18+ and npm (for the React UI)
+- System libraries for WebEngine (Linux/WSL): `sudo apt install libnss3 libasound2`
 
 ## Installation
 
 1. Clone the repository and navigate to the project folder
 
-2. Install dependencies with UV:
+2. Install Python dependencies:
    ```bash
    uv sync
    ```
 
-3. Add your sprites to the `behaviors/*/sprites/` directories (sprites are gitignored - each developer uses their own)
+3. Install and build the React UI:
+   ```bash
+   cd ui
+   npm install
+   npm run build
+   cd ..
+   ```
 
-4. Configure your `.env` file (copy from `.env.example`):
+4. Add your sprites to the `behaviors/*/media/` directories (sprites are gitignored - each developer uses their own)
+
+5. Configure your `.env` file (copy from `.env.example`):
    ```bash
    cp .env.example .env
    ```
 
-5. Fill in the credentials for the integrations you want to use (see [Environment Variables](#environment-variables-env) below)
+6. Fill in the credentials for the integrations you want to use (see [Environment Variables](#environment-variables-env) below)
 
 ## Setup
 
@@ -66,6 +76,17 @@ Each integration requires its own one-time setup. Only set up the ones you plan 
 Run the application:
 ```bash
 uv run python main.py
+```
+
+### React UI Development Mode
+
+To develop the React UI with hot-reload:
+```bash
+# Terminal 1: Start Vite dev server
+cd ui && npm run dev
+
+# Terminal 2: Start app in dev mode (loads UI from Vite instead of built files)
+PIXEL_DEV_UI=1 uv run python main.py
 ```
 
 ### Running in Background (Windows)
@@ -191,14 +212,6 @@ The pet will randomly wander around your screen. It reacts to:
 │   ├── wander/
 │   ├── wave/
 │   ├── sleep/
-│   ├── crochet/
-│   ├── celebrate_birthday/
-│   ├── chill/
-│   ├── flinch/
-│   ├── look_around/
-│   ├── play_ball/
-│   ├── rainy/
-│   ├── yawn/
 │   └── ...
 │
 ├── integrations/                     # External service connections
@@ -207,36 +220,41 @@ The pet will randomly wander around your screen. It reacts to:
 │   │   └── integration.py            # Focus timer logic
 │   ├── journal/
 │   │   ├── integration.py            # Nudge timer & mood reactions
-│   │   ├── store.py                  # SQLite journal storage
-│   │   ├── dashboard.py              # Multi-page journal dashboard
-│   │   └── widgets/                  # Stats, vault, editor, mood picker
+│   │   └── store.py                  # SQLite journal storage
 │   └── google_calendar/
 │       ├── integration.py            # Reminder + day preview logic
 │       ├── calendar_event.py         # Event model
 │       └── auth.py                   # OAuth2 helpers
 │
+├── ui/                               # React panel app (Vite + TypeScript)
+│   ├── src/
+│   │   ├── bridge/                   # Typed event bus (QWebChannel + mock)
+│   │   ├── pages/
+│   │   │   ├── journal/              # Stats, vault, editor, calendar map
+│   │   │   ├── settings/             # 4-tab settings (General, Behaviors, etc.)
+│   │   │   └── pomodoro/             # Timer, progress ring, stats
+│   │   ├── components/ui/            # shadcn/ui components
+│   │   └── App.tsx                   # Router + BridgeProvider
+│   ├── package.json
+│   └── vite.config.ts
+│
 └── src/
     ├── core/
     │   ├── base_integration.py       # Abstract integration class
     │   ├── behavior_registry.py      # Behavior discovery & management
-    │   ├── dashboard_host.py         # Base class for integration dashboards
     │   ├── integration_manager.py    # Integration lifecycle
     │   └── pet_state.py              # Pet state machine
     └── ui/
-        ├── pet_window.py             # Desktop pet widget
+        ├── pet_window.py             # Desktop pet widget (native PyQt6)
         ├── dialog_box.py             # MapleStory-styled dialog boxes
         ├── speech_bubble.py          # 9-slice speech bubble overlay
-        ├── pomodoro_widget.py        # Floating Pomodoro timer
-        ├── pomodoro_theme.py         # Pomodoro widget theming
         ├── tray_icon.py              # System tray icon
-        └── settings/                 # Settings GUI
-            ├── dialog.py             # Main settings dialog
-            ├── tab_general.py        # General settings tab
-            ├── tab_behaviors.py      # Behavior configuration tab
-            ├── tab_integrations.py   # Integration settings (dynamic discovery)
-            ├── tab_personality.py    # AI & Personality tab
-            ├── theme.py              # Settings UI theming
-            └── widgets.py            # Reusable settings widgets
+        ├── panel_host.py             # QWebEngineView wrapper for React app
+        ├── bridge.py                 # Python-side event bus
+        ├── bridge_journal.py         # Journal event wiring
+        ├── bridge_settings.py        # Settings event wiring
+        ├── bridge_pomodoro.py        # Pomodoro event wiring
+        └── settings/                 # Legacy settings GUI (fallback)
 ```
 
 ## Adding Custom Behaviors
@@ -282,13 +300,24 @@ uv run ruff format .
 
 ## Dependencies
 
-- **PyQt6** - GUI framework
+### Python
+- **PyQt6** - GUI framework (pet widget, speech bubble, tray icon)
+- **PyQt6-WebEngine** - QWebEngineView for hosting React UI
 - **qasync** - Qt-asyncio integration
 - **aiohttp** - Async HTTP client (API calls)
 - **litellm** - Multi-provider LLM gateway (personality engine, journal cleanup)
 - **python-dotenv** - Environment variable management
 - **google-api-python-client** - Google Calendar API
 - **google-auth-oauthlib** - Google OAuth flow
+
+### React UI (ui/)
+- **React 18** + **TypeScript** - Panel UI framework
+- **Vite** - Build tool with hot-reload
+- **Tailwind CSS 4** - Utility-first styling with design tokens
+- **shadcn/ui** - Accessible component primitives
+- **Framer Motion** - Page transitions and micro-interactions
+- **Recharts** - Charts (weekly pomodoro stats)
+- **Lucide React** - Icon set
 
 ## License
 
