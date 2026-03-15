@@ -54,7 +54,7 @@ class JournalIntegration(BaseIntegration):
 
     def get_default_settings(self) -> dict[str, Any]:
         return {
-            "enabled": False,
+            "enabled": True,
             "nudge_frequency": "smart",
             "nudge_time": "20:00",
             "blur_on_focus_loss": True,

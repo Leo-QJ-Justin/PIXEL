@@ -116,7 +116,7 @@ export function SettingsPage() {
         </div>
 
         {/* Scrollable content */}
-        <ScrollArea className="flex-1" style={{ height: 'calc(100vh - 110px)' }}>
+        <ScrollArea className="flex-1 min-h-0">
           <div className="p-4">
             <TabsContent value="general">
               <GeneralTab settings={settings} onChange={handleChange} />

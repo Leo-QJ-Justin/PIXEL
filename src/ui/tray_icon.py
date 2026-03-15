@@ -65,7 +65,7 @@ class TrayIcon(QSystemTrayIcon):
 
         # Panel entries (React UI)
         if self._panel_host is not None:
-            journal_action = QAction("Dashboard", menu)
+            journal_action = QAction("Journal", menu)
             journal_action.triggered.connect(
                 lambda: self._panel_host.open_panel("journal")
             )

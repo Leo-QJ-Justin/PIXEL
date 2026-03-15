@@ -3,7 +3,7 @@
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import QFile, QUrl
+from PyQt6.QtCore import QFile, QTimer, QUrl
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWebChannel import QWebChannel
 from PyQt6.QtWebEngineCore import QWebEngineScript
@@ -54,7 +54,15 @@ class PanelHost(QMainWindow):
     def _setup_web_view(self) -> None:
         """Create the QWebEngineView and set it as central widget."""
         self._view = QWebEngineView(self)
+        self._view.setUpdatesEnabled(True)
         self.setCentralWidget(self._view)
+
+        # Debounce resize: hide the web view during rapid resizing to avoid
+        # expensive re-layouts on every pixel, then show it once settled.
+        self._resize_timer = QTimer(self)
+        self._resize_timer.setSingleShot(True)
+        self._resize_timer.setInterval(80)
+        self._resize_timer.timeout.connect(self._on_resize_done)
 
     def _setup_channel(self) -> None:
         """Wire up QWebChannel so the JS side can talk to BridgeHost."""
@@ -106,6 +114,18 @@ class PanelHost(QMainWindow):
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def resizeEvent(self, event) -> None:
+        """Debounce resize to reduce QWebEngineView re-layout thrashing."""
+        if not self._resize_timer.isActive():
+            self._view.setUpdatesEnabled(False)
+        self._resize_timer.start()
+        super().resizeEvent(event)
+
+    def _on_resize_done(self) -> None:
+        """Re-enable web view updates after resize settles."""
+        self._view.setUpdatesEnabled(True)
+        self._view.update()
 
     def _center_on_screen(self) -> None:
         """Center the window on the current screen."""
