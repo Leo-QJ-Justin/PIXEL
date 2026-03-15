@@ -270,7 +270,17 @@ class TrayIcon(QSystemTrayIcon):
             dialog.exec()
 
     def _quit_app(self):
-        from PyQt6.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication, QMessageBox
+
+        reply = QMessageBox.question(
+            None,
+            "Quit PIXEL",
+            "Are you sure you want to quit?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
 
         async def _shutdown():
             await self._integration_manager.stop_all()
