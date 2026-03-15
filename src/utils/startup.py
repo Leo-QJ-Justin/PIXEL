@@ -7,22 +7,54 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 APP_NAME = "PixelDesktopPet"
-_MAIN_PY = Path(__file__).resolve().parent.parent.parent / "main.py"
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_MAIN_PY = _PROJECT_ROOT / "main.py"
+
+
+def _get_venv_python() -> Path | None:
+    """Find the project's own venv Python, preferring pythonw on Windows."""
+    if sys.platform == "win32":
+        for name in ("pythonw.exe", "python.exe"):
+            p = _PROJECT_ROOT / ".venv" / "Scripts" / name
+            if p.exists():
+                return p
+    else:
+        p = _PROJECT_ROOT / ".venv" / "bin" / "python"
+        if p.exists():
+            return p
+    return None
 
 
 def _get_launch_command() -> list[str]:
-    """Return the command list to launch the app."""
-    python = sys.executable
-    # On Windows, prefer pythonw.exe to suppress the console window
-    if sys.platform == "win32":
-        pythonw = Path(python).with_name("pythonw.exe")
-        if pythonw.exists():
-            python = str(pythonw)
+    """Return the command list to launch the app.
+
+    Uses the project-local venv Python to avoid registering a different
+    project's interpreter (e.g. if sys.executable belongs to another venv).
+    """
+    venv_python = _get_venv_python()
+    if venv_python is not None:
+        python = str(venv_python)
+    else:
+        python = sys.executable
+        if sys.platform == "win32":
+            pythonw = Path(python).with_name("pythonw.exe")
+            if pythonw.exists():
+                python = str(pythonw)
     return [python, str(_MAIN_PY)]
 
 
 def set_startup_enabled(enabled: bool) -> None:
     """Enable or disable auto-start on login for the current platform."""
+    if enabled and not _MAIN_PY.exists():
+        logger.error(
+            "Refusing to register startup — main.py not found at %s", _MAIN_PY
+        )
+        return
+
+    cmd = _get_launch_command() if enabled else None
+    if enabled:
+        logger.info("Registering startup command: %s", cmd)
+
     try:
         if sys.platform == "win32":
             _set_windows(enabled)

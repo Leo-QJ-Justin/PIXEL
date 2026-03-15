@@ -13,10 +13,15 @@ class TestGetLaunchCommand:
         monkeypatch.setattr("sys.executable", "/usr/bin/python3")
         monkeypatch.setattr("sys.platform", "linux")
 
-        from src.utils.startup import _get_launch_command
+        from src.utils.startup import _PROJECT_ROOT, _get_launch_command
 
         cmd = _get_launch_command()
-        assert cmd[0] == "/usr/bin/python3"
+        # Prefers project venv Python when it exists, falls back to sys.executable
+        venv_python = _PROJECT_ROOT / ".venv" / "bin" / "python"
+        if venv_python.exists():
+            assert cmd[0] == str(venv_python)
+        else:
+            assert cmd[0] == "/usr/bin/python3"
         assert cmd[1].endswith("main.py")
 
     def test_windows_prefers_pythonw(self, monkeypatch, tmp_path):
