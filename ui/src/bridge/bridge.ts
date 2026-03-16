@@ -89,8 +89,12 @@ export class Bridge implements BridgeAPI {
   }
 
   send: SendFn = (async (event: string, payload?: unknown) => {
-    await this.ready
-    this.channel!.receiveFromJs(event, JSON.stringify(payload ?? null))
+    try {
+      await this.ready
+      this.channel!.receiveFromJs(event, JSON.stringify(payload ?? null))
+    } catch (err) {
+      console.error(`[Bridge] Failed to send '${event}':`, err)
+    }
   }) as SendFn
 
   subscribe: SubscribeFn = ((event: string, handler: (payload: unknown) => void) => {

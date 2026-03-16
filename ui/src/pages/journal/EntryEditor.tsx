@@ -85,9 +85,9 @@ export function EntryEditor({ date, mode: initialMode, prompt: initialPrompt, on
 
   useBridgeEvent('journal.cleanedUp', (payload) => {
     setIsCleaning(false)
-    if (payload.success) {
-      // Re-load to get clean_text (mock doesn't return it directly)
-      send('journal.loadEntry', { date: targetDate })
+    if (payload.success && payload.cleanText) {
+      setCleanText(payload.cleanText)
+      setShowClean(true)
     }
   })
 
@@ -135,7 +135,7 @@ export function EntryEditor({ date, mode: initialMode, prompt: initialPrompt, on
 
   function handleCleanup() {
     setIsCleaning(true)
-    send('journal.cleanup', { date: targetDate })
+    send('journal.cleanup', { text: rawText })
   }
 
   function handleSave() {

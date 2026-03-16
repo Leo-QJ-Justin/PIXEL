@@ -141,7 +141,7 @@ class JournalIntegration(BaseIntegration):
             self.notify(
                 {
                     "bubble_text": f'Want to write about your day?\n\n"{prompt}"',
-                    "duration": 8000,
+                    "bubble_duration_ms": 8000,
                 }
             )
 
@@ -159,7 +159,7 @@ class JournalIntegration(BaseIntegration):
 
     def on_entry_saved(self) -> None:
         """Called when a journal entry is saved."""
-        self.notify({"bubble_text": "Entry saved!", "duration": 3000})
+        self.notify({"bubble_text": "Entry saved!", "bubble_duration_ms": 3000})
 
         # Check for streak milestones
         store = self._get_store()
@@ -168,7 +168,7 @@ class JournalIntegration(BaseIntegration):
             self.notify(
                 {
                     "bubble_text": f"That's {current} days in a row! Keep it up!",
-                    "duration": 5000,
+                    "bubble_duration_ms": 5000,
                 }
             )
 

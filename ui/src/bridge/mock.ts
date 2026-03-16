@@ -187,14 +187,11 @@ export class MockBridge implements BridgeAPI {
         }
 
         case 'journal.loadMonth': {
-          const monthPayload = payload as { year: number; month: number }
           const entries: Record<string, JournalEntry> = {}
           SAMPLE_ENTRIES.forEach((entry) => {
             entries[entry.date] = entry
           })
           this.emit('journal.monthLoaded', {
-            year: monthPayload?.year ?? new Date().getFullYear(),
-            month: monthPayload?.month ?? new Date().getMonth() + 1,
             entries,
           })
           break

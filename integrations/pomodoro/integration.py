@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from datetime import date, timedelta
 from enum import Enum, auto
 from pathlib import Path
@@ -265,11 +266,21 @@ class PomodoroIntegration(BaseIntegration):
         }
 
     def _save_stats(self) -> None:
-        """Persist stats to JSON file."""
+        """Persist stats to JSON file atomically."""
+        import tempfile
+
         stats_file = self._path / "stats.json"
         try:
             self._path.mkdir(parents=True, exist_ok=True)
-            with open(stats_file, "w") as f:
+            tmp_fd, tmp_path = tempfile.mkstemp(
+                dir=self._path, suffix=".tmp", prefix=".stats_"
+            )
+            with os.fdopen(tmp_fd, "w") as f:
                 json.dump(self._stats, f, indent=2)
+            os.replace(tmp_path, stats_file)
         except OSError:
             logger.exception("Failed to save pomodoro stats")
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass

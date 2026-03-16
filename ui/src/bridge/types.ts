@@ -106,7 +106,7 @@ export interface JsToPyEvents {
   'journal.loadEntries': { limit?: number; offset?: number }
   'journal.loadStats': void
   'journal.save': { entry: JournalEntry; explicit?: boolean }
-  'journal.cleanup': { date: string }
+  'journal.cleanup': { text: string }
   'journal.loadMonth': { year: number; month: number }
   'journal.loadEntry': { date: string }
   'journal.delete': { date: string }
@@ -152,15 +152,13 @@ export interface PyToJsEvents {
     streak: number
     monthly_counts: Record<string, number>
   }
-  'journal.saved': { success: boolean; date: string }
-  'journal.cleanedUp': { success: boolean }
+  'journal.saved': { success?: boolean; date?: string; id?: number; error?: boolean }
+  'journal.cleanedUp': { success: boolean; cleanText?: string; error?: boolean }
   'journal.monthLoaded': {
-    year: number
-    month: number
     entries: Record<string, JournalEntry>
   }
   'journal.entryLoaded': { entry: JournalEntry | null }
-  'journal.deleted': { success: boolean; date: string }
+  'journal.deleted': { success?: boolean; date?: string; error?: boolean }
 
   'panel.route': { route: string }
 }
