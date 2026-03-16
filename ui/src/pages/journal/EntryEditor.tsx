@@ -219,14 +219,21 @@ export function EntryEditor({ date, mode: initialMode, prompt: initialPrompt, on
             value={showClean ? cleanText : rawText}
             onChange={handleTextChange}
             readOnly={showClean}
-            rows={16}
             placeholder="Start writing…"
             className={cn(
-              'w-full resize-none rounded-default border border-border bg-surface p-3',
-              'text-sm text-text leading-relaxed font-serif placeholder:text-text-muted',
-              'focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors',
+              'w-full min-h-[400px] resize-none rounded-default border border-border p-4',
+              'text-sm text-text font-serif placeholder:text-text-muted',
+              'focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200',
               showClean && 'opacity-80 cursor-default',
             )}
+            style={{
+              lineHeight: '28px',
+              backgroundColor: '#FFFDF8',
+              backgroundImage: 'repeating-linear-gradient(transparent, transparent 27px, #E8D5C0 27px, #E8D5C0 28px)',
+              backgroundAttachment: 'local',
+              backgroundPosition: '0 15px',
+              boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.04)',
+            }}
           />
 
           {/* Toolbar */}
