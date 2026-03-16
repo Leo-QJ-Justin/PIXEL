@@ -24,6 +24,9 @@ class BaseIntegration(QObject, metaclass=QObjectABCMeta):
     # Signal to request a behavior trigger
     request_behavior = pyqtSignal(str, dict)  # (behavior_name, context)
 
+    # Signal to stop the current behavior and return to default
+    request_stop_behavior = pyqtSignal()
+
     # Signal for bubble-only notifications (bypasses behavior system)
     request_notification = pyqtSignal(dict)  # context dict with bubble_text, etc.
 
@@ -82,6 +85,10 @@ class BaseIntegration(QObject, metaclass=QObjectABCMeta):
     def trigger(self, behavior_name: str, context: dict | None = None) -> None:
         """Request a behavior to be triggered."""
         self.request_behavior.emit(behavior_name, context or {})
+
+    def stop_behavior(self) -> None:
+        """Stop the current behavior and return to default."""
+        self.request_stop_behavior.emit()
 
     def notify(self, context: dict) -> None:
         """Send a bubble-only notification (no behavior change)."""

@@ -105,11 +105,13 @@ export interface JsToPyEvents {
 
   'journal.loadEntries': { limit?: number; offset?: number }
   'journal.loadStats': void
-  'journal.save': { entry: JournalEntry }
+  'journal.save': { entry: JournalEntry; explicit?: boolean }
   'journal.cleanup': { date: string }
   'journal.loadMonth': { year: number; month: number }
   'journal.loadEntry': { date: string }
   'journal.delete': { date: string }
+  'journal.editorOpened': void
+  'journal.editorClosed': void
 
   'panel.resize': { width: number; height: number }
   'panel.close': void

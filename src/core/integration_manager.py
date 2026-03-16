@@ -120,6 +120,7 @@ class IntegrationManager(QObject):
 
             # Connect signals
             integration.request_behavior.connect(self._on_behavior_requested)
+            integration.request_stop_behavior.connect(self._on_stop_behavior_requested)
             integration.request_notification.connect(self._on_notification_requested)
 
             # Load integration-specific behaviors if any
@@ -236,6 +237,11 @@ class IntegrationManager(QObject):
         """Handle behavior request from an integration."""
         logger.debug(f"Behavior requested: {behavior_name} with context {context}")
         self._behavior_registry.trigger(behavior_name, context)
+
+    def _on_stop_behavior_requested(self) -> None:
+        """Handle stop-behavior request from an integration."""
+        logger.debug("Stop behavior requested")
+        self._behavior_registry.stop_current()
 
     def _on_notification_requested(self, context: dict) -> None:
         """Forward bubble-only notification from an integration."""

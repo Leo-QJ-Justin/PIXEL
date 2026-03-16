@@ -60,10 +60,14 @@ export function EntryEditor({ date, mode: initialMode, prompt: initialPrompt, on
 
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Load existing entry if date provided
+  // Load existing entry if date provided; notify backend of editor lifecycle
   useEffect(() => {
+    send('journal.editorOpened')
     if (date) {
       send('journal.loadEntry', { date })
+    }
+    return () => {
+      send('journal.editorClosed')
     }
   }, [send, date])
 
@@ -139,7 +143,7 @@ export function EntryEditor({ date, mode: initialMode, prompt: initialPrompt, on
       clearTimeout(autosaveTimer.current)
     }
     setIsSaving(true)
-    send('journal.save', { entry: buildEntry() })
+    send('journal.save', { entry: buildEntry(), explicit: true })
   }
 
   // Mode picker screen

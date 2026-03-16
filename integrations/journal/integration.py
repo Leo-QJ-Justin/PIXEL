@@ -32,6 +32,7 @@ class JournalIntegration(BaseIntegration):
         self._nudged_today: bool = False
         self._last_nudge_date: str = ""
         self._prompts: list[dict] = []
+        self._is_writing: bool = False
         self._load_prompts()
 
         # Lazy imports to avoid circular deps
@@ -85,6 +86,8 @@ class JournalIntegration(BaseIntegration):
 
     async def stop(self) -> None:
         """Stop the journal integration."""
+        if self._is_writing:
+            self.on_writing_stopped()
         if self._nudge_timer:
             self._nudge_timer.stop()
             self._nudge_timer = None
@@ -142,14 +145,21 @@ class JournalIntegration(BaseIntegration):
                 }
             )
 
-    def on_entry_saved(self, mood: str | None) -> None:
-        """Called when a journal entry is saved. Triggers pet reactions."""
-        if mood in ("\U0001f60a", "\U0001f604"):
-            self.trigger("happy", {"bubble_text": "Glad you're feeling good!"})
-        elif mood in ("\U0001f622", "\U0001f61e"):
-            self.trigger("comfort", {"bubble_text": "I'm here for you."})
-        else:
-            self.notify({"bubble_text": "Entry saved!", "duration": 3000})
+    def on_writing_started(self) -> None:
+        """Called when the user opens a journal entry to write."""
+        if not self._is_writing:
+            self._is_writing = True
+            self.trigger("write")
+
+    def on_writing_stopped(self) -> None:
+        """Called when the user finishes writing (save/close)."""
+        if self._is_writing:
+            self._is_writing = False
+            self.stop_behavior()
+
+    def on_entry_saved(self) -> None:
+        """Called when a journal entry is saved."""
+        self.notify({"bubble_text": "Entry saved!", "duration": 3000})
 
         # Check for streak milestones
         store = self._get_store()

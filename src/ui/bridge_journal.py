@@ -45,10 +45,10 @@ def wire_journal_events(bridge: BridgeHost, integration: JournalIntegration) -> 
                     seen.add(entry["date"])
                     unique.append(entry)
             unique.sort(key=lambda e: e["date"])
-            bridge.emit("journal.entries", unique)
+            bridge.emit("journal.entriesLoaded", {"entries": unique})
         except Exception:
             logger.exception("Error loading journal entries")
-            bridge.emit("journal.entries", [])
+            bridge.emit("journal.entriesLoaded", {"entries": []})
 
     bridge.on("journal.loadEntries", _on_load_entries)
 
@@ -61,12 +61,21 @@ def wire_journal_events(bridge: BridgeHost, integration: JournalIntegration) -> 
             date_str = data.get("date", "")
             store = _get_store()
             entry = store.get_entry(date_str)
-            bridge.emit("journal.entry", entry)
+            bridge.emit("journal.entryLoaded", {"entry": entry})
         except Exception:
             logger.exception("Error loading journal entry")
-            bridge.emit("journal.entry", None)
+            bridge.emit("journal.entryLoaded", {"entry": None})
 
     bridge.on("journal.loadEntry", _on_load_entry)
+
+    # ------------------------------------------------------------------
+    # journal.editorOpened — editor mounted
+    # ------------------------------------------------------------------
+
+    def _on_editor_opened(_data: Any) -> None:
+        integration.on_writing_started()
+
+    bridge.on("journal.editorOpened", _on_editor_opened)
 
     # ------------------------------------------------------------------
     # journal.save — save full entry
@@ -74,17 +83,23 @@ def wire_journal_events(bridge: BridgeHost, integration: JournalIntegration) -> 
 
     def _on_save(data: Any) -> None:
         try:
+            entry = data.get("entry", data)
+            explicit = data.get("explicit", False)
             store = _get_store()
             entry_id = store.save_entry(
-                entry_date=data["date"],
-                mode=data["mode"],
-                mood=data.get("mood"),
-                raw_text=data["raw_text"],
-                clean_text=data.get("clean_text"),
-                prompt_used=data.get("prompt_used"),
+                entry_date=entry["date"],
+                mode=entry["mode"],
+                mood=entry.get("mood"),
+                raw_text=entry["raw_text"],
+                clean_text=entry.get("clean_text"),
+                prompt_used=entry.get("prompt_used"),
             )
-            bridge.emit("journal.saved", {"id": entry_id, "date": data["date"]})
-            integration.on_entry_saved(data.get("mood"))
+            result = {"id": entry_id, "date": entry["date"]}
+            if explicit:
+                result["success"] = True
+                integration.on_writing_stopped()
+                integration.on_entry_saved()
+            bridge.emit("journal.saved", result)
         except Exception:
             logger.exception("Error saving journal entry")
             bridge.emit("journal.saved", {"error": True})
@@ -117,12 +132,12 @@ def wire_journal_events(bridge: BridgeHost, integration: JournalIntegration) -> 
             month = data["month"]
             store = _get_store()
             entries = store.get_entries_for_month(year, month)
-            dates = [e["date"] for e in entries]
-            moods = {e["date"]: e["mood"] for e in entries if e.get("mood")}
-            bridge.emit("journal.monthData", {"dates": dates, "moods": moods})
+            # Frontend expects { entries: Record<date, JournalEntry> }
+            entries_by_date = {e["date"]: e for e in entries}
+            bridge.emit("journal.monthLoaded", {"entries": entries_by_date})
         except Exception:
             logger.exception("Error loading month data")
-            bridge.emit("journal.monthData", {"dates": [], "moods": {}})
+            bridge.emit("journal.monthLoaded", {"entries": {}})
 
     bridge.on("journal.loadMonth", _on_load_month)
 
@@ -137,19 +152,20 @@ def wire_journal_events(bridge: BridgeHost, integration: JournalIntegration) -> 
             total = store.get_total_count()
             mood_trend = store.get_mood_trend(30)
             bridge.emit(
-                "journal.stats",
+                "journal.statsLoaded",
                 {
-                    "currentStreak": current_streak,
+                    "total_entries": total,
+                    "streak": current_streak,
                     "bestStreak": best_streak,
-                    "totalCount": total,
                     "moodTrend": mood_trend,
+                    "monthly_counts": {},
                 },
             )
             prompt = integration.get_daily_prompt()
             bridge.emit("journal.dailyPrompt", {"prompt": prompt})
         except Exception:
             logger.exception("Error loading journal stats")
-            bridge.emit("journal.stats", {})
+            bridge.emit("journal.statsLoaded", {})
 
     bridge.on("journal.loadStats", _on_load_stats)
 
@@ -164,7 +180,7 @@ def wire_journal_events(bridge: BridgeHost, integration: JournalIntegration) -> 
             loop.create_task(_async_cleanup(raw_text))
         except Exception:
             logger.exception("Error starting journal cleanup task")
-            bridge.emit("journal.cleanupResult", {"error": True})
+            bridge.emit("journal.cleanedUp", {"success": False, "error": True})
 
     async def _async_cleanup(raw_text: str) -> None:
         try:
@@ -194,11 +210,20 @@ def wire_journal_events(bridge: BridgeHost, integration: JournalIntegration) -> 
                 api_key=api_key,
             )
             clean = response.choices[0].message.content
-            bridge.emit("journal.cleanupResult", {"cleanText": clean})
+            bridge.emit("journal.cleanedUp", {"success": True, "cleanText": clean})
         except Exception:
             logger.exception("Error during async journal cleanup")
-            bridge.emit("journal.cleanupResult", {"error": True})
+            bridge.emit("journal.cleanedUp", {"success": False, "error": True})
 
     bridge.on("journal.cleanup", _on_cleanup)
+
+    # ------------------------------------------------------------------
+    # journal.editorClosed — editor unmounted
+    # ------------------------------------------------------------------
+
+    def _on_editor_closed(_data: Any) -> None:
+        integration.on_writing_stopped()
+
+    bridge.on("journal.editorClosed", _on_editor_closed)
 
     logger.info("Journal bridge events wired")
