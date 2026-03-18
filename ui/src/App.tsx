@@ -5,6 +5,7 @@ import { JournalPage } from '@/pages/journal/JournalPage'
 import { PomodoroPage } from '@/pages/pomodoro/PomodoroPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { PlaceholderPage } from '@/pages/PlaceholderPage'
+import { HabitsPage } from '@/pages/habits/HabitsPage'
 
 export default function App() {
   return (
@@ -15,7 +16,7 @@ export default function App() {
             <Route path="/tasks" element={<PlaceholderPage />} />
             <Route path="/journal" element={<JournalPage />} />
             <Route path="/pomodoro" element={<PomodoroPage />} />
-            <Route path="/habits" element={<PlaceholderPage />} />
+            <Route path="/habits" element={<HabitsPage />} />
             <Route path="/screen-time" element={<PlaceholderPage />} />
             <Route path="/workspaces" element={<PlaceholderPage />} />
             <Route path="/settings" element={<SettingsPage />} />

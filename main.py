@@ -128,6 +128,12 @@ def main():
 
         wire_pomodoro_events(bridge, pomodoro_integration)
 
+    habits_integration = integration_manager.get_integration("habits")
+    if habits_integration:
+        from src.ui.bridge_habits import wire_habits_events
+
+        wire_habits_events(bridge, habits_integration)
+
     # Window control events (always wired)
     def _on_window_minimize(_data):
         panel_host.showMinimized()

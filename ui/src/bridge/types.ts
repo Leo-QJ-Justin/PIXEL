@@ -88,6 +88,25 @@ export interface Settings {
   }
 }
 
+export interface Habit {
+  id: string
+  title: string
+  icon: string
+  frequency: 'daily' | 'weekly' | 'x_per_week'
+  target_count: number
+  reminder_time: string | null
+  sort_order: number
+  created_at: string
+  archived: boolean
+}
+
+export interface HabitWithStatus extends Habit {
+  completed_today: boolean
+  streak: number
+  week_progress: number
+  week_target: number
+}
+
 /* ── JS → Python Events ─────────────────────────────────────────── */
 
 export interface JsToPyEvents {
@@ -116,6 +135,22 @@ export interface JsToPyEvents {
   'panel.resize': { width: number; height: number }
   'panel.close': void
   'panel.navigate': { route: string }
+
+  'habits.list': { include_archived?: boolean }
+  'habits.today': void
+  'habits.complete': { id: string }
+  'habits.uncomplete': { id: string }
+  'habits.create': {
+    title: string
+    icon?: string
+    frequency?: string
+    target_count?: number
+    reminder_time?: string
+  }
+  'habits.update': { id: string; [key: string]: unknown }
+  'habits.delete': { id: string }
+  'habits.stats': { id: string }
+  'habits.week': { week_start: string }
 
   'window.navigate': { route: string }
   'window.minimize': void
@@ -169,6 +204,23 @@ export interface PyToJsEvents {
   'journal.deleted': { success?: boolean; date?: string; error?: boolean }
 
   'panel.route': { route: string }
+
+  'habits.listResult': { habits: Habit[] }
+  'habits.todayResult': { habits: HabitWithStatus[] }
+  'habits.completed': { habit: HabitWithStatus; milestone?: number }
+  'habits.uncompleted': { habit: HabitWithStatus }
+  'habits.created': { habit: Habit }
+  'habits.updated': { habit: Habit }
+  'habits.deleted': { id: string }
+  'habits.statsResult': {
+    id: string
+    streak: number
+    longest_streak: number
+    completion_rate: number
+    total: number
+  }
+  'habits.weekResult': { completions: Record<string, string[]> }
+  'habits.error': { message: string }
 
   'window.navigateTo': { route: string }
 }
