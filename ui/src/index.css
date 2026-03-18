@@ -130,11 +130,41 @@ body {
   background: rgb(44 24 16 / 0.22);
 }
 
-/* ─── Surface cards — subtle depth ────────────────────────────── */
+/* ─── Surface cards — warm claymorphism-inspired depth ────────── */
 .bg-surface {
   box-shadow:
+    0 2px 6px rgb(44 24 16 / 0.06),
     0 1px 2px rgb(44 24 16 / 0.04),
-    0 0 0 1px rgb(44 24 16 / 0.03);
+    inset 0 1px 0 rgb(255 255 255 / 0.6);
+}
+
+/* Interactive card hover — gentle lift */
+.bg-surface:is(button, a, [role="button"]):hover,
+.bg-surface.group:hover {
+  box-shadow:
+    0 4px 12px rgb(44 24 16 / 0.08),
+    0 2px 4px rgb(44 24 16 / 0.05),
+    inset 0 1px 0 rgb(255 255 255 / 0.6);
+  transform: translateY(-1px);
+  transition: all 200ms ease-out;
+}
+
+/* ─── Focus visible — consistent keyboard nav ────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ─── Smooth page transitions ─────────────────────────────────── */
+.page-enter {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
 }
 
 /* ─── Selection color ─────────────────────────────────────────── */

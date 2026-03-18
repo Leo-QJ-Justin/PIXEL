@@ -1,6 +1,7 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { BridgeProvider } from '@/bridge/context'
 import { PanelLayout } from '@/components/PanelLayout'
+import { HomePage } from '@/pages/home/HomePage'
 import { JournalPage } from '@/pages/journal/JournalPage'
 import { PomodoroPage } from '@/pages/pomodoro/PomodoroPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
@@ -15,6 +16,7 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route element={<PanelLayout />}>
+            <Route path="/home" element={<HomePage />} />
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/journal" element={<JournalPage />} />
             <Route path="/pomodoro" element={<PomodoroPage />} />
@@ -22,7 +24,7 @@ export default function App() {
             <Route path="/screen-time" element={<ScreenTimePage />} />
             <Route path="/workspaces" element={<WorkspacesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/journal" replace />} />
+            <Route path="*" element={<Navigate to="/home" replace />} />
           </Route>
         </Routes>
       </HashRouter>

@@ -547,7 +547,7 @@ class PetWidget(QWidget):
         if self._panel_host is not None:
             dashboard_action = QAction("Open Dashboard", self)
             dashboard_action.triggered.connect(
-                lambda: self._panel_host.open_panel("journal")
+                lambda: self._panel_host.open_panel("home")
             )
             menu.addAction(dashboard_action)
             menu.addSeparator()

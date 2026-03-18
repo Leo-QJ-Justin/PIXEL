@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useBridge } from '@/bridge/context'
 import {
+  Home,
   ListTodo,
   BookOpen,
   Timer,
@@ -18,6 +19,7 @@ interface NavItem {
 }
 
 const mainNav: NavItem[] = [
+  { path: '/home', label: 'Home', icon: Home },
   { path: '/tasks', label: 'Tasks', icon: ListTodo },
   { path: '/journal', label: 'Journal', icon: BookOpen },
   { path: '/pomodoro', label: 'Focus', icon: Timer },

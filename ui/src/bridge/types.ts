@@ -148,6 +148,8 @@ export interface DailyTotal {
 /* ── JS → Python Events ─────────────────────────────────────────── */
 
 export interface JsToPyEvents {
+  'dashboard.loadSummary': void
+
   'settings.load': void
   'settings.save': { settings: Settings }
   'settings.integrationSchema': void
@@ -226,6 +228,8 @@ export interface JsToPyEvents {
 /* ── Python → JS Events ─────────────────────────────────────────── */
 
 export interface PyToJsEvents {
+  'dashboard.summaryResult': Record<string, unknown>
+
   'settings.data': Settings
   'settings.saved': { success: boolean }
   'settings.integrationSchemaLoaded': IntegrationSettingsSchema[]

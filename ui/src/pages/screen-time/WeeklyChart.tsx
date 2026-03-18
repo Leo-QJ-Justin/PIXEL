@@ -4,7 +4,7 @@ interface WeeklyChartProps {
   dailyTotals: Array<{
     date: string
     total_s: number
-    breakdown: Record<string, number>
+    breakdown?: Record<string, number>
   }>
 }
 

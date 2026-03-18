@@ -119,6 +119,10 @@ def main():
 
         wire_journal_events(bridge, journal_integration)
 
+    from src.ui.bridge_dashboard import wire_dashboard_events
+
+    wire_dashboard_events(bridge, integration_manager)
+
     from src.ui.bridge_settings import wire_settings_events
 
     wire_settings_events(bridge, on_settings_changed=lambda s: tray.settings_changed.emit(s))
