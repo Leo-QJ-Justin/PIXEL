@@ -88,6 +88,25 @@ export interface Settings {
   }
 }
 
+export interface Habit {
+  id: string
+  title: string
+  icon: string
+  frequency: 'daily' | 'weekly' | 'x_per_week'
+  target_count: number
+  reminder_time: string | null
+  sort_order: number
+  created_at: string
+  archived: boolean
+}
+
+export interface HabitWithStatus extends Habit {
+  completed_today: boolean
+  streak: number
+  week_progress: number
+  week_target: number
+}
+
 /* ── JS → Python Events ─────────────────────────────────────────── */
 
 export interface JsToPyEvents {
@@ -116,6 +135,28 @@ export interface JsToPyEvents {
   'panel.resize': { width: number; height: number }
   'panel.close': void
   'panel.navigate': { route: string }
+
+  'habits.list': { include_archived?: boolean }
+  'habits.today': void
+  'habits.complete': { id: string }
+  'habits.uncomplete': { id: string }
+  'habits.create': {
+    title: string
+    icon?: string
+    frequency?: string
+    target_count?: number
+    reminder_time?: string
+  }
+  'habits.update': { id: string; [key: string]: unknown }
+  'habits.delete': { id: string }
+  'habits.stats': { id: string }
+  'habits.week': { week_start: string }
+
+  'screentime.today': { date?: string }
+  'screentime.week': { week_start?: string }
+  'screentime.categories': void
+  'screentime.updateCategory': { exe_name: string; category: string; display_name?: string }
+  'screentime.clear': void
 
   'window.navigate': { route: string }
   'window.minimize': void
@@ -169,6 +210,13 @@ export interface PyToJsEvents {
   'journal.deleted': { success?: boolean; date?: string; error?: boolean }
 
   'panel.route': { route: string }
+
+  'screentime.todayResult': { total_s: number; comparison_s: number; category_breakdown: Record<string, number>; top_apps: Record<string, unknown>[]; timeline: Record<string, unknown>[] }
+  'screentime.weekResult': { daily_totals: Record<string, unknown>[]; avg_s: number; total_s: number; trend_s: number; top_apps: Record<string, unknown>[] }
+  'screentime.categoriesResult': { categories: Record<string, unknown>[] }
+  'screentime.categoryUpdated': { category: Record<string, unknown> }
+  'screentime.cleared': Record<string, never>
+  'screentime.error': { message: string }
 
   'window.navigateTo': { route: string }
 }
