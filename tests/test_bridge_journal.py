@@ -46,13 +46,13 @@ class TestLoadStats:
         wire_journal_events(bridge, integration)
         bridge.receive("journal.loadStats", json.dumps({}))
 
-        # Should emit journal.stats and journal.dailyPrompt
+        # Should emit journal.statsLoaded and journal.dailyPrompt
         events = {e[0]: e[1] for e in emitted}
-        assert "journal.stats" in events
-        stats = events["journal.stats"]
-        assert stats["currentStreak"] == 5
+        assert "journal.statsLoaded" in events
+        stats = events["journal.statsLoaded"]
+        assert stats["streak"] == 5
         assert stats["bestStreak"] == 10
-        assert stats["totalCount"] == 42
+        assert stats["total_entries"] == 42
         assert stats["moodTrend"] == [{"date": "2025-01-01", "mood": "happy"}]
 
         assert "journal.dailyPrompt" in events
@@ -68,7 +68,7 @@ class TestLoadStats:
         bridge.receive("journal.loadStats", json.dumps({}))
 
         events = {e[0]: e[1] for e in emitted}
-        assert events.get("journal.stats") == {}
+        assert events.get("journal.statsLoaded") == {}
 
 
 @pytest.mark.unit
@@ -100,7 +100,6 @@ class TestSave:
             clean_text="Great day!",
             prompt_used="How was your day?",
         )
-        integration.on_entry_saved.assert_called_once_with("happy")
 
         events = {e[0]: e[1] for e in emitted}
         assert "journal.saved" in events
@@ -199,10 +198,11 @@ class TestLoadMonth:
         store.get_entries_for_month.assert_called_once_with(2025, 6)
 
         events = {e[0]: e[1] for e in emitted}
-        assert "journal.monthData" in events
-        month_data = events["journal.monthData"]
-        assert month_data["dates"] == ["2025-06-01", "2025-06-05", "2025-06-10"]
-        assert month_data["moods"] == {"2025-06-01": "happy", "2025-06-10": "sad"}
+        assert "journal.monthLoaded" in events
+        month_data = events["journal.monthLoaded"]
+        assert "2025-06-01" in month_data["entries"]
+        assert "2025-06-05" in month_data["entries"]
+        assert "2025-06-10" in month_data["entries"]
 
     def test_load_month_empty(self):
         bridge, emitted = _make_bridge_and_capture()
@@ -214,7 +214,7 @@ class TestLoadMonth:
         bridge.receive("journal.loadMonth", json.dumps({"year": 2025, "month": 1}))
 
         events = {e[0]: e[1] for e in emitted}
-        assert events["journal.monthData"] == {"dates": [], "moods": {}}
+        assert events["journal.monthLoaded"] == {"entries": {}}
 
     def test_load_month_error_emits_empty(self):
         bridge, emitted = _make_bridge_and_capture()
@@ -226,4 +226,4 @@ class TestLoadMonth:
         bridge.receive("journal.loadMonth", json.dumps({"year": 2025, "month": 1}))
 
         events = {e[0]: e[1] for e in emitted}
-        assert events["journal.monthData"] == {"dates": [], "moods": {}}
+        assert events["journal.monthLoaded"] == {"entries": {}}

@@ -24,6 +24,7 @@ class BridgeHost(QObject):
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._handlers: defaultdict[str, list[Callable]] = defaultdict(list)
+        self._js_callback: Callable[[str, str], None] | None = None
 
     # ------------------------------------------------------------------
     # JS -> Python
@@ -69,3 +70,16 @@ class BridgeHost(QObject):
         """Push an event from Python to the JS side via the signalEmitted signal."""
         payload_json = json.dumps(data)
         self.eventDispatched.emit(event, payload_json)
+        if self._js_callback is not None:
+            try:
+                self._js_callback(event, payload_json)
+            except Exception:
+                logger.exception("Exception in JS callback for event '%s'", event)
+
+    def register_js_callback(self, callback: Callable[[str, str], None]) -> None:
+        """Register a callback that receives all emitted events.
+
+        Replaces any previously registered callback. Primarily used for
+        testing to capture emitted events without a real QWebChannel.
+        """
+        self._js_callback = callback

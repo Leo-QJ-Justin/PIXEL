@@ -117,11 +117,15 @@ class TestGetBehaviorSettings:
         original_file = config.SETTINGS_FILE
         try:
             config.SETTINGS_FILE = temp_settings_with_users
+            config._settings_cache = None
+            config._settings_mtime = 0.0
             result = config.get_behavior_settings("wander")
 
             assert result["wander_chance"] == 0.5
         finally:
             config.SETTINGS_FILE = original_file
+            config._settings_cache = None
+            config._settings_mtime = 0.0
 
     def test_get_behavior_settings_nonexistent(self, temp_settings_file):
         """Returns empty dict for nonexistent behavior."""
