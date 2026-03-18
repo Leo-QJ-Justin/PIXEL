@@ -53,9 +53,10 @@ def wire_tasks_events(bridge: BridgeHost, integration: TasksIntegration) -> None
     # tasks.update
     def _on_update(data: Any) -> None:
         try:
-            task_id = data.pop("id")
+            task_id = data["id"]
+            fields = {k: v for k, v in data.items() if k != "id"}
             store = _get_store()
-            task = store.update_task(task_id, **data)
+            task = store.update_task(task_id, **fields)
             bridge.emit("tasks.updated", {"task": task})
         except Exception:
             logger.exception("Error updating task")
@@ -76,6 +77,19 @@ def wire_tasks_events(bridge: BridgeHost, integration: TasksIntegration) -> None
             bridge.emit("tasks.error", {"message": "Failed to complete task"})
 
     bridge.on("tasks.complete", _on_complete)
+
+    # tasks.uncomplete
+    def _on_uncomplete(data: Any) -> None:
+        try:
+            store = _get_store()
+            store.uncomplete_task(data["id"])
+            task = store.get_task(data["id"])
+            bridge.emit("tasks.completed", {"task": task})
+        except Exception:
+            logger.exception("Error uncompleting task")
+            bridge.emit("tasks.error", {"message": "Failed to uncomplete task"})
+
+    bridge.on("tasks.uncomplete", _on_uncomplete)
 
     # tasks.delete
     def _on_delete(data: Any) -> None:

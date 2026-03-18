@@ -66,7 +66,8 @@ def wire_screen_time_events(bridge: BridgeHost, integration: ScreenTimeIntegrati
             prev_total = sum(d["total_s"] for d in prev_totals)
             trend = total - prev_total
 
-            top_apps = store.get_top_apps(ws, limit=10)
+            week_end = (date.fromisoformat(ws) + timedelta(days=7)).isoformat()
+            top_apps = store.get_top_apps_range(ws, week_end, limit=10)
 
             bridge.emit("screentime.weekResult", {
                 "daily_totals": daily_totals,

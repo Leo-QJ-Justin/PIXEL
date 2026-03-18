@@ -1,30 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useBridge, useBridgeEvent } from '@/bridge/context'
+import type { HabitWithStatus } from '@/bridge/types'
 import { HabitRow } from './HabitRow'
 import { HabitForm } from './HabitForm'
 import { WeekGrid } from './WeekGrid'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export interface HabitWithStatus {
-  id: string
-  title: string
-  icon: string
-  frequency: string
-  target_count: number
-  reminder_time: string | null
-  completed_today: boolean
-  streak: number
-  week_progress: number
-  week_target: number
-}
-
 export function HabitsPage() {
   const { send } = useBridge()
   const [habits, setHabits] = useState<HabitWithStatus[]>([])
   const [view, setView] = useState<'today' | 'stats'>('today')
   const [showForm, setShowForm] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     send('habits.today')
@@ -53,6 +42,11 @@ export function HabitsPage() {
 
   useBridgeEvent('habits.deleted', useCallback((data: { id: string }) => {
     setHabits(prev => prev.filter(h => h.id !== data.id))
+  }, []))
+
+  useBridgeEvent('habits.error', useCallback((data: { message: string }) => {
+    setError(data.message)
+    setTimeout(() => setError(null), 5000)
   }, []))
 
   const incomplete = habits.filter(h => !h.completed_today)
@@ -86,6 +80,10 @@ export function HabitsPage() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</div>
+      )}
 
       {view === 'today' ? (
         <div className="flex-1 overflow-y-auto space-y-2">

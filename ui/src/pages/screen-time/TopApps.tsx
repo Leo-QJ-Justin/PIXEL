@@ -1,10 +1,7 @@
+import type { AppUsage } from '@/bridge/types'
+
 interface TopAppsProps {
-  apps: Array<{
-    exe_name: string
-    display_name: string
-    total: number
-    category: string
-  }>
+  apps: AppUsage[]
 }
 
 const CATEGORY_BADGE: Record<string, string> = {

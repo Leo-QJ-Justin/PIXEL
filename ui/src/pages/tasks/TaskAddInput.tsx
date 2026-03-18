@@ -1,18 +1,21 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Plus } from 'lucide-react'
-import { useBridge } from '@/bridge/context'
+import { useBridge, useBridgeEvent } from '@/bridge/context'
 import { Input } from '@/components/ui/input'
 
 export function TaskAddInput() {
   const { send } = useBridge()
   const [title, setTitle] = useState('')
 
+  useBridgeEvent('tasks.created', useCallback(() => {
+    setTitle('')
+  }, []))
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = title.trim()
     if (!trimmed) return
     send('tasks.create', { title: trimmed })
-    setTitle('')
   }
 
   return (

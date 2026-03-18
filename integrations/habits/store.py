@@ -115,8 +115,11 @@ class HabitStore:
                 (comp_id, habit_id, today),
             )
             self._conn.commit()
-        except sqlite3.IntegrityError:
-            pass  # Already completed today
+        except sqlite3.IntegrityError as e:
+            if "UNIQUE constraint failed" in str(e):
+                pass  # Already completed today
+            else:
+                raise
 
     def uncomplete_today(self, habit_id: str) -> None:
         today = date.today().isoformat()
@@ -191,6 +194,9 @@ class HabitStore:
 
         streak = 0
         current_week = week_start(date.today())
+        # If current week hasn't ended and hasn't met target, skip it (same as daily streak logic)
+        if current_week in weeks and weeks[current_week] < target and date.today().weekday() < 6:
+            current_week -= timedelta(weeks=1)
         while current_week in weeks:
             if weeks[current_week] >= target:
                 streak += 1
@@ -254,6 +260,16 @@ class HabitStore:
                 "week_target": h["target_count"],
             })
         return result
+
+    def get_habit(self, habit_id: str) -> dict | None:
+        row = self._conn.execute("SELECT * FROM habits WHERE id = ?", (habit_id,)).fetchone()
+        return self._row_to_dict(row) if row else None
+
+    def get_total_completions(self, habit_id: str) -> int:
+        cursor = self._conn.execute(
+            "SELECT COUNT(*) FROM habit_completions WHERE habit_id = ?", (habit_id,)
+        )
+        return cursor.fetchone()[0]
 
     def close(self) -> None:
         self._conn.close()

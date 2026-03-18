@@ -144,7 +144,7 @@ class ScreenTimeIntegration(BaseIntegration):
             self._session_start = now
 
         except Exception:
-            logger.debug("Error during screen time poll", exc_info=True)
+            logger.warning("Error during screen time poll", exc_info=True)
 
     def _finalize_session(self) -> None:
         if self._current_exe and self._session_start:
@@ -166,11 +166,20 @@ class ScreenTimeIntegration(BaseIntegration):
             return
         try:
             store = self._get_store()
-            for app_name, exe_name, title, start, end in self._pending_sessions:
-                store.save_session(app_name, exe_name, title, start, end)
-            self._pending_sessions.clear()
         except Exception:
-            logger.exception("Error flushing screen time sessions")
+            logger.exception("Cannot access screen time store — %d sessions pending", len(self._pending_sessions))
+            if len(self._pending_sessions) > 1000:
+                logger.error("Dropping %d pending sessions to prevent memory growth", len(self._pending_sessions))
+                self._pending_sessions.clear()
+            return
+        failed = []
+        for session in self._pending_sessions:
+            try:
+                store.save_session(*session)
+            except Exception:
+                logger.exception("Failed to save screen time session")
+                failed.append(session)
+        self._pending_sessions = failed
 
     def _on_break_check(self) -> None:
         threshold_hours = self._settings.get("break_reminder_hours", 2)

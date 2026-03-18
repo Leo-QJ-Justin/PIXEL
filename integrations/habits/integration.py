@@ -106,7 +106,7 @@ class HabitsIntegration(BaseIntegration):
         try:
             store = self._get_store()
             streak = store.get_streak(habit_id)
-            habit = store._conn.execute("SELECT * FROM habits WHERE id = ?", (habit_id,)).fetchone()
+            habit = store.get_habit(habit_id)
             if not habit:
                 return None
 

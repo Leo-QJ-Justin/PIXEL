@@ -11,6 +11,7 @@ export function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [activeTag, setActiveTag] = useState<string | null>(null)
   const [showCompleted, setShowCompleted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     send('tasks.list', { include_completed: true })
@@ -34,6 +35,11 @@ export function TasksPage() {
 
   useBridgeEvent('tasks.deleted', useCallback((data: { id: string }) => {
     setTasks(prev => prev.filter(t => t.id !== data.id))
+  }, []))
+
+  useBridgeEvent('tasks.error', useCallback((data: { message: string }) => {
+    setError(data.message)
+    setTimeout(() => setError(null), 5000)
   }, []))
 
   // Derive tags from tasks
@@ -63,6 +69,10 @@ export function TasksPage() {
       className="flex flex-col h-full p-4 gap-4"
     >
       <h1 className="text-xl font-heading font-bold text-text">Tasks</h1>
+
+      {error && (
+        <div className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</div>
+      )}
 
       <TaskAddInput />
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useBridge, useBridgeEvent } from '@/bridge/context'
+import type { AppUsage, TimelineEntry, DailyTotal } from '@/bridge/types'
 import { CategoryBar } from './CategoryBar'
 import { TopApps } from './TopApps'
 import { ActivityTimeline } from './ActivityTimeline'
@@ -8,8 +9,9 @@ import { WeeklyChart } from './WeeklyChart'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 function formatDuration(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600)
-  const m = Math.floor((totalSeconds % 3600) / 60)
+  const abs = Math.abs(totalSeconds)
+  const h = Math.floor(abs / 3600)
+  const m = Math.floor((abs % 3600) / 60)
   if (h > 0) return `${h}h ${m}m`
   return `${m}m`
 }
@@ -18,16 +20,16 @@ interface DayData {
   total_s: number
   comparison_s: number
   category_breakdown: Record<string, number>
-  top_apps: Array<{ exe_name: string; display_name: string; total: number; category: string }>
-  timeline: Array<Record<string, unknown>>
+  top_apps: AppUsage[]
+  timeline: TimelineEntry[]
 }
 
 interface WeekData {
-  daily_totals: Array<{ date: string; total_s: number; breakdown: Record<string, number> }>
+  daily_totals: DailyTotal[]
   avg_s: number
   total_s: number
   trend_s: number
-  top_apps: Array<{ exe_name: string; display_name: string; total: number; category: string }>
+  top_apps: AppUsage[]
 }
 
 export function ScreenTimePage() {
@@ -36,6 +38,7 @@ export function ScreenTimePage() {
   const [dayOffset, setDayOffset] = useState(0)
   const [dayData, setDayData] = useState<DayData | null>(null)
   const [weekData, setWeekData] = useState<WeekData | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const currentDate = new Date()
   currentDate.setDate(currentDate.getDate() + dayOffset)
@@ -50,14 +53,17 @@ export function ScreenTimePage() {
     }
   }, [send, view, dateStr])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  useBridgeEvent('screentime.todayResult', useCallback((data: any) => {
-    setDayData(data as DayData)
+  useBridgeEvent('screentime.todayResult', useCallback((data: DayData) => {
+    setDayData(data)
   }, []))
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  useBridgeEvent('screentime.weekResult', useCallback((data: any) => {
-    setWeekData(data as WeekData)
+  useBridgeEvent('screentime.weekResult', useCallback((data: WeekData) => {
+    setWeekData(data)
+  }, []))
+
+  useBridgeEvent('screentime.error', useCallback((data: { message: string }) => {
+    setError(data.message)
+    setTimeout(() => setError(null), 5000)
   }, []))
 
   return (
@@ -88,6 +94,10 @@ export function ScreenTimePage() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</div>
+      )}
 
       <div className="flex-1 overflow-y-auto space-y-4">
         {view === 'day' ? (

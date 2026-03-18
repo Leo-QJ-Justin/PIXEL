@@ -18,9 +18,7 @@ export function TaskCard({ task, subtasks }: TaskCardProps) {
 
   function handleToggle() {
     if (task.completed) {
-      send('tasks.update', { id: task.id, title: task.title })
-      // Uncomplete isn't in the bridge events, so we re-list
-      send('tasks.list', { include_completed: true })
+      send('tasks.uncomplete', { id: task.id })
     } else {
       send('tasks.complete', { id: task.id })
     }

@@ -183,6 +183,21 @@ class ScreenTimeStore:
             result.append({"date": d, "total_s": total, "breakdown": breakdown})
         return result
 
+    def get_top_apps_range(self, start_date: str, end_date: str, limit: int = 10) -> list[dict]:
+        cursor = self._conn.execute(
+            """
+            SELECT s.exe_name, s.app_name, SUM(s.duration_s) as total,
+                   COALESCE(c.category, 'Neutral') as category,
+                   COALESCE(c.display_name, s.app_name) as display_name
+            FROM app_sessions s
+            LEFT JOIN app_categories c ON s.exe_name = c.exe_name
+            WHERE s.started_at >= ? AND s.started_at < ?
+            GROUP BY s.exe_name ORDER BY total DESC LIMIT ?
+            """,
+            (start_date, end_date, limit),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
     def get_all_categories(self) -> list[dict]:
         cursor = self._conn.execute("SELECT * FROM app_categories ORDER BY exe_name")
         return [dict(row) for row in cursor.fetchall()]

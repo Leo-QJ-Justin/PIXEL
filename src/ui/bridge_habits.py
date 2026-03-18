@@ -96,9 +96,10 @@ def wire_habits_events(bridge: BridgeHost, integration: HabitsIntegration) -> No
     # habits.update
     def _on_update(data: Any) -> None:
         try:
-            habit_id = data.pop("id")
+            habit_id = data["id"]
+            fields = {k: v for k, v in data.items() if k != "id"}
             store = _get_store()
-            habit = store.update_habit(habit_id, **data)
+            habit = store.update_habit(habit_id, **fields)
             bridge.emit("habits.updated", {"habit": habit})
         except Exception:
             logger.exception("Error updating habit")
@@ -124,12 +125,11 @@ def wire_habits_events(bridge: BridgeHost, integration: HabitsIntegration) -> No
             store = _get_store()
             habit_id = data["id"]
             bridge.emit("habits.statsResult", {
+                "id": habit_id,
                 "streak": store.get_streak(habit_id),
                 "longest_streak": store.get_longest_streak(habit_id),
                 "completion_rate": store.get_completion_rate(habit_id),
-                "total": store._conn.execute(
-                    "SELECT COUNT(*) FROM habit_completions WHERE habit_id = ?", (habit_id,)
-                ).fetchone()[0],
+                "total": store.get_total_completions(habit_id),
             })
         except Exception:
             logger.exception("Error loading habit stats")

@@ -2,18 +2,10 @@ import { motion } from 'framer-motion'
 import { Check, Trash2 } from 'lucide-react'
 import { useBridge } from '@/bridge/context'
 import { cn } from '@/lib/utils'
+import type { HabitWithStatus } from '@/bridge/types'
 
 interface HabitRowProps {
-  habit: {
-    id: string
-    title: string
-    icon: string
-    frequency: string
-    completed_today: boolean
-    streak: number
-    week_progress: number
-    week_target: number
-  }
+  habit: HabitWithStatus
 }
 
 export function HabitRow({ habit }: HabitRowProps) {

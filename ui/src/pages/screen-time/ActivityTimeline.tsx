@@ -1,24 +1,17 @@
+import type { TimelineEntry } from '@/bridge/types'
+
 const CATEGORY_DOT: Record<string, string> = {
   Productive: 'bg-success',
   Neutral: 'bg-border-hover',
   Distracting: 'bg-primary',
 }
 
-interface TimelineEntry {
-  started_at: string
-  display_name: string
-  duration_s: number
-  category: string
-}
-
 interface ActivityTimelineProps {
-  timeline: Array<Record<string, unknown>>
+  timeline: TimelineEntry[]
 }
 
 export function ActivityTimeline({ timeline }: ActivityTimelineProps) {
   if (timeline.length === 0) return null
-
-  const entries = timeline as unknown as TimelineEntry[]
 
   return (
     <div>
@@ -26,7 +19,7 @@ export function ActivityTimeline({ timeline }: ActivityTimelineProps) {
         Activity
       </h3>
       <div className="space-y-1">
-        {entries.slice(0, 50).map((entry, i) => {
+        {timeline.slice(0, 50).map((entry, i) => {
           const time = entry.started_at.split('T')[1]?.slice(0, 5) || ''
           const m = Math.floor(entry.duration_s / 60)
           const label = m > 0 ? `${m}m` : '<1m'

@@ -65,6 +65,7 @@ class LinuxTracker(BaseTracker):
             ).decode().strip()
             return int(output) / 1000.0
         except FileNotFoundError:
+            logger.warning("xprintidle not found — idle detection disabled (install xprintidle for accurate tracking)")
             return 0.0
         except Exception:
             return 0.0

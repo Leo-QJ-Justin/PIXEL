@@ -95,7 +95,7 @@ export interface Task {
   completed: boolean
   due_date: string | null
   tag: string | null
-  priority: number  // 0=none, 1=low, 2=medium, 3=high
+  priority: 0 | 1 | 2 | 3  // 0=none, 1=low, 2=medium, 3=high
   parent_id: string | null
   sort_order: number
   created_at: string
@@ -119,6 +119,30 @@ export interface HabitWithStatus extends Habit {
   streak: number
   week_progress: number
   week_target: number
+}
+
+/* ── Screen Time Types ─────────────────────────────────────────── */
+
+export type ScreenTimeCategory = 'Productive' | 'Neutral' | 'Distracting'
+
+export interface AppUsage {
+  exe_name: string
+  display_name: string
+  total: number
+  category: ScreenTimeCategory
+}
+
+export interface TimelineEntry {
+  started_at: string
+  ended_at: string
+  display_name: string
+  duration_s: number
+  category: ScreenTimeCategory
+}
+
+export interface DailyTotal {
+  date: string
+  total_s: number
 }
 
 /* ── JS → Python Events ─────────────────────────────────────────── */
@@ -154,6 +178,7 @@ export interface JsToPyEvents {
   'tasks.create': { title: string; due_date?: string; tag?: string; priority?: number; parent_id?: string; notes?: string }
   'tasks.update': { id: string; title?: string; notes?: string; due_date?: string | null; tag?: string | null; priority?: number }
   'tasks.complete': { id: string }
+  'tasks.uncomplete': { id: string }
   'tasks.delete': { id: string }
   'tasks.reorder': { task_ids: string[] }
 
@@ -164,7 +189,7 @@ export interface JsToPyEvents {
   'habits.create': {
     title: string
     icon?: string
-    frequency?: string
+    frequency?: 'daily' | 'weekly' | 'x_per_week'
     target_count?: number
     reminder_time?: string
   }
@@ -278,10 +303,10 @@ export interface PyToJsEvents {
   'workspaces.browseFolderResult': { path: string | null }
   'workspaces.error': { message: string }
 
-  'screentime.todayResult': { total_s: number; comparison_s: number; category_breakdown: Record<string, number>; top_apps: Record<string, unknown>[]; timeline: Record<string, unknown>[] }
-  'screentime.weekResult': { daily_totals: Record<string, unknown>[]; avg_s: number; total_s: number; trend_s: number; top_apps: Record<string, unknown>[] }
-  'screentime.categoriesResult': { categories: Record<string, unknown>[] }
-  'screentime.categoryUpdated': { category: Record<string, unknown> }
+  'screentime.todayResult': { total_s: number; comparison_s: number; category_breakdown: Record<string, number>; top_apps: AppUsage[]; timeline: TimelineEntry[] }
+  'screentime.weekResult': { daily_totals: DailyTotal[]; avg_s: number; total_s: number; trend_s: number; top_apps: AppUsage[] }
+  'screentime.categoriesResult': { categories: AppUsage[] }
+  'screentime.categoryUpdated': { category: AppUsage }
   'screentime.cleared': Record<string, never>
   'screentime.error': { message: string }
 
