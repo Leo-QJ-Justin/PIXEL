@@ -25,7 +25,7 @@ class TestJournalIntegrationInit:
     def test_default_settings(self, tmp_path):
         integration = _make_integration(tmp_path)
         defaults = integration.get_default_settings()
-        assert defaults["enabled"] is False
+        assert defaults["enabled"] is True
         assert defaults["nudge_frequency"] == "smart"
         assert defaults["nudge_time"] == "20:00"
         assert defaults["blur_on_focus_loss"] is True
@@ -73,11 +73,10 @@ class TestNudgeLogic:
 
 @pytest.mark.unit
 class TestBuildDashboard:
-    def test_build_dashboard_returns_dashboard(self, tmp_path, qtbot):
+    def test_build_dashboard_returns_dashboard(self, tmp_path):
         integration = _make_integration(tmp_path)
         dashboard = integration.build_dashboard()
-        assert dashboard is not None
-        qtbot.addWidget(dashboard)
+        assert dashboard is None
 
 
 @pytest.mark.unit

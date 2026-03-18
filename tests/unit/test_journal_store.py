@@ -102,10 +102,13 @@ class TestQueries:
         assert best == 0
 
     def test_get_streak_consecutive_days(self, tmp_path):
+        from datetime import date, timedelta
+
         store = _make_store(tmp_path)
-        store.save_entry("2026-03-12", "freeform", None, "a", None, None)
-        store.save_entry("2026-03-13", "freeform", None, "b", None, None)
-        store.save_entry("2026-03-14", "freeform", None, "c", None, None)
+        today = date.today()
+        for i in range(2, -1, -1):
+            d = (today - timedelta(days=i)).isoformat()
+            store.save_entry(d, "freeform", None, f"day-{i}", None, None)
         current, best = store.get_streak()
         assert current >= 3
         assert best >= 3

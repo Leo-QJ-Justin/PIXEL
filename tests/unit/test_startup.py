@@ -32,6 +32,7 @@ class TestGetLaunchCommand:
 
         monkeypatch.setattr("sys.executable", str(python))
         monkeypatch.setattr("sys.platform", "win32")
+        monkeypatch.setattr("src.utils.startup._get_venv_python", lambda: None)
 
         from src.utils.startup import _get_launch_command
 
@@ -45,6 +46,7 @@ class TestGetLaunchCommand:
 
         monkeypatch.setattr("sys.executable", str(python))
         monkeypatch.setattr("sys.platform", "win32")
+        monkeypatch.setattr("src.utils.startup._get_venv_python", lambda: None)
 
         from src.utils.startup import _get_launch_command
 
