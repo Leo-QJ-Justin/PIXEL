@@ -67,6 +67,12 @@ coverage.xml
 logs/
 
 
+# Sprite assets (user-provided, not distributed)
+behaviors/*/media/*.gif
+behaviors/*/media/*.png
+integrations/*/behaviors/*/media/*.gif
+integrations/*/behaviors/*/media/*.png
+
 # React UI
 ui/node_modules/
 !ui/src/lib/
