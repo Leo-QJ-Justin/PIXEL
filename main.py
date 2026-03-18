@@ -5,6 +5,7 @@ import socket
 import sys
 from logging.handlers import RotatingFileHandler
 
+from PyQt6.QtCore import QPoint
 from PyQt6.QtWidgets import QApplication
 from qasync import QEventLoop
 
@@ -126,6 +127,41 @@ def main():
         from src.ui.bridge_pomodoro import wire_pomodoro_events
 
         wire_pomodoro_events(bridge, pomodoro_integration)
+
+    # Window control events (always wired)
+    def _on_window_minimize(_data):
+        panel_host.showMinimized()
+
+    def _on_window_maximize(_data):
+        if panel_host.isMaximized():
+            panel_host.showNormal()
+        else:
+            panel_host.showMaximized()
+
+    def _on_window_close(_data):
+        panel_host.hide()
+
+    def _on_window_drag_start(data):
+        panel_host._drag_active = True
+        panel_host._drag_start_pos = QPoint(int(data.get("x", 0)), int(data.get("y", 0)))
+
+    def _on_window_drag_move(data):
+        if not panel_host._drag_active:
+            return
+        current = QPoint(int(data.get("x", 0)), int(data.get("y", 0)))
+        delta = current - panel_host._drag_start_pos
+        panel_host.move(panel_host.pos() + delta)
+        panel_host._drag_start_pos = current
+
+    def _on_window_drag_end(_data):
+        panel_host._drag_active = False
+
+    bridge.on("window.minimize", _on_window_minimize)
+    bridge.on("window.maximize", _on_window_maximize)
+    bridge.on("window.close", _on_window_close)
+    bridge.on("window.dragStart", _on_window_drag_start)
+    bridge.on("window.dragMove", _on_window_drag_move)
+    bridge.on("window.dragEnd", _on_window_drag_end)
 
     # Let integrations wire their own UI via setup_ui hook
     integration_manager.setup_all_ui(pet)

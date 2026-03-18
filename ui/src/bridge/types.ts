@@ -116,6 +116,14 @@ export interface JsToPyEvents {
   'panel.resize': { width: number; height: number }
   'panel.close': void
   'panel.navigate': { route: string }
+
+  'window.navigate': { route: string }
+  'window.minimize': void
+  'window.maximize': void
+  'window.close': void
+  'window.dragStart': { x: number; y: number }
+  'window.dragMove': { x: number; y: number }
+  'window.dragEnd': void
 }
 
 /* ── Python → JS Events ─────────────────────────────────────────── */
@@ -161,4 +169,6 @@ export interface PyToJsEvents {
   'journal.deleted': { success?: boolean; date?: string; error?: boolean }
 
   'panel.route': { route: string }
+
+  'window.navigateTo': { route: string }
 }

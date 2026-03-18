@@ -102,7 +102,7 @@ export function PomodoroPage() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="flex flex-col items-center justify-center min-h-screen bg-background px-4 gap-5"
+      className="flex flex-col items-center justify-center h-full px-4 gap-5"
     >
       {/* Timer ring + countdown */}
       <div className="relative">

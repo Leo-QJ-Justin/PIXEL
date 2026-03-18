@@ -75,7 +75,7 @@ export function JournalPage() {
   const showBack = view !== 'stats'
 
   return (
-    <div className="flex flex-col min-h-screen bg-background overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Back button */}
       <AnimatePresence>
         {showBack && (

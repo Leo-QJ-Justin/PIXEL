@@ -3,7 +3,7 @@
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import QFile, QTimer, QUrl
+from PyQt6.QtCore import QFile, QPoint, Qt, QTimer, QUrl
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWebChannel import QWebChannel
 from PyQt6.QtWebEngineCore import QWebEngineScript
@@ -42,8 +42,15 @@ class PanelHost(QMainWindow):
     def _setup_window(self) -> None:
         """Configure window title, size, and constraints."""
         self.setWindowTitle("PIXEL")
+        self.setWindowFlags(
+            self.windowFlags() | Qt.WindowType.FramelessWindowHint
+        )
         self.resize(600, 750)
         self.setMinimumSize(450, 500)
+
+        # Drag state for custom title bar
+        self._drag_active = False
+        self._drag_start_pos = QPoint()
         # Use idle behavior sprite as window icon
         idle_media = _PROJECT_ROOT / "behaviors" / "idle" / "media"
         if idle_media.exists():
@@ -105,11 +112,14 @@ class PanelHost(QMainWindow):
         """Show the window, raise it, and navigate to the requested panel."""
         self.show()
         self.raise_()
+        self.activateWindow()
         self._center_on_screen()
-        # Navigate the HashRouter to the requested panel
+        # Dual navigation: set hash directly (works before React mounts)
+        # AND emit bridge event (works when React is already running)
         self._view.page().runJavaScript(
             f"window.location.hash = '#/{panel}';"
         )
+        self._bridge.emit("window.navigateTo", {"route": f"/{panel}"})
 
     # ------------------------------------------------------------------
     # Internal helpers

@@ -76,7 +76,7 @@ export function SettingsPage() {
 
   if (!settings) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center h-full">
         <p className="text-text-muted text-sm">Loading settings...</p>
       </div>
     )
@@ -87,7 +87,7 @@ export function SettingsPage() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="flex flex-col min-h-screen bg-background"
+      className="flex flex-col h-full"
     >
       {/* Tabs (contains header) */}
       <Tabs defaultValue="general" className="flex-1 flex flex-col">
