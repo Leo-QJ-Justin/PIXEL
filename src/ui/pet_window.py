@@ -49,6 +49,7 @@ class PetWidget(QWidget):
         super().__init__()
         self._behavior_registry = behavior_registry
         self._personality_engine = personality_engine
+        self._panel_host = None  # Set via set_panel_host() after construction
         self._state_machine = PetStateMachine()
         self._current_sprite = QPixmap()
 
@@ -532,12 +533,24 @@ class PetWidget(QWidget):
                 self._tap_origin = None
         super().mouseReleaseEvent(event)
 
+    def set_panel_host(self, panel_host) -> None:
+        """Set the panel host reference for dashboard access."""
+        self._panel_host = panel_host
+
     def contextMenuEvent(self, event):
         self._last_activity_time = datetime.now()
         if self._state_machine.state == PetState.SLEEPING:
             self._wake_up()
 
         menu = QMenu(self)
+
+        if self._panel_host is not None:
+            dashboard_action = QAction("Open Dashboard", self)
+            dashboard_action.triggered.connect(
+                lambda: self._panel_host.open_panel("journal")
+            )
+            menu.addAction(dashboard_action)
+            menu.addSeparator()
 
         reset_action = QAction("Reset Position", self)
         reset_action.triggered.connect(self._move_to_default_position)

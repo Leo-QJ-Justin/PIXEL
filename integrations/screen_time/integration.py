@@ -64,7 +64,7 @@ class ScreenTimeIntegration(BaseIntegration):
 
     def get_default_settings(self) -> dict[str, Any]:
         return {
-            "enabled": False,  # Opt-in
+            "enabled": True,
             "break_reminder_hours": 2,
             "distraction_alert_minutes": 30,
             "track_window_titles": False,

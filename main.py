@@ -106,6 +106,7 @@ def main():
     bridge = BridgeHost()
     dev_mode = os.environ.get("PIXEL_DEV_UI") == "1"
     panel_host = PanelHost(bridge, dev_mode=dev_mode)
+    pet.set_panel_host(panel_host)
 
     tray = TrayIcon(
         pet, integration_manager, behavior_registry,
