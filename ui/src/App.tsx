@@ -4,10 +4,10 @@ import { PanelLayout } from '@/components/PanelLayout'
 import { JournalPage } from '@/pages/journal/JournalPage'
 import { PomodoroPage } from '@/pages/pomodoro/PomodoroPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
-import { PlaceholderPage } from '@/pages/PlaceholderPage'
 import { HabitsPage } from '@/pages/habits/HabitsPage'
 import { TasksPage } from '@/pages/tasks/TasksPage'
 import { WorkspacesPage } from '@/pages/workspaces/WorkspacesPage'
+import { ScreenTimePage } from '@/pages/screen-time/ScreenTimePage'
 
 export default function App() {
   return (
@@ -19,7 +19,7 @@ export default function App() {
             <Route path="/journal" element={<JournalPage />} />
             <Route path="/pomodoro" element={<PomodoroPage />} />
             <Route path="/habits" element={<HabitsPage />} />
-            <Route path="/screen-time" element={<PlaceholderPage />} />
+            <Route path="/screen-time" element={<ScreenTimePage />} />
             <Route path="/workspaces" element={<WorkspacesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/journal" replace />} />
