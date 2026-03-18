@@ -74,6 +74,7 @@ ui/node_modules/
 #Local Development
 plans/
 docs/
+notebooks/
 _bmad/
 _bmad-output/
 .claude/
