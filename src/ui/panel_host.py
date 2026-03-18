@@ -45,8 +45,17 @@ class PanelHost(QMainWindow):
         self.setWindowFlags(
             self.windowFlags() | Qt.WindowType.FramelessWindowHint
         )
-        self.resize(600, 750)
-        self.setMinimumSize(450, 500)
+        # Size to 50% of screen width, 75% of screen height for a comfortable dashboard feel
+        from PyQt6.QtWidgets import QApplication
+        screen = QApplication.primaryScreen()
+        if screen:
+            geo = screen.availableGeometry()
+            w = max(700, int(geo.width() * 0.5))
+            h = max(600, int(geo.height() * 0.75))
+            self.resize(w, h)
+        else:
+            self.resize(800, 850)
+        self.setMinimumSize(550, 600)
 
         # Drag state for custom title bar
         self._drag_active = False
