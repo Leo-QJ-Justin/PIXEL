@@ -1,12 +1,24 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useBridge, useBridgeEvent } from '@/bridge/context'
-import type { HabitWithStatus } from '@/bridge/types'
 import { HabitRow } from './HabitRow'
 import { HabitForm } from './HabitForm'
 import { WeekGrid } from './WeekGrid'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+
+export interface HabitWithStatus {
+  id: string
+  title: string
+  icon: string
+  frequency: string
+  target_count: number
+  reminder_time: string | null
+  completed_today: boolean
+  streak: number
+  week_progress: number
+  week_target: number
+}
 
 export function HabitsPage() {
   const { send } = useBridge()
@@ -22,22 +34,26 @@ export function HabitsPage() {
     setHabits(data.habits)
   }, []))
 
-  useBridgeEvent('habits.completed', useCallback(() => {
-    send('habits.today')
-  }, [send]))
+  useBridgeEvent('habits.completed', useCallback((data: { habit: HabitWithStatus }) => {
+    if (data.habit) {
+      setHabits(prev => prev.map(h => h.id === data.habit.id ? data.habit : h))
+    }
+  }, []))
 
-  useBridgeEvent('habits.uncompleted', useCallback(() => {
-    send('habits.today')
-  }, [send]))
+  useBridgeEvent('habits.uncompleted', useCallback((data: { habit: HabitWithStatus }) => {
+    if (data.habit) {
+      setHabits(prev => prev.map(h => h.id === data.habit.id ? data.habit : h))
+    }
+  }, []))
 
   useBridgeEvent('habits.created', useCallback(() => {
     send('habits.today')
     setShowForm(false)
   }, [send]))
 
-  useBridgeEvent('habits.deleted', useCallback(() => {
-    send('habits.today')
-  }, [send]))
+  useBridgeEvent('habits.deleted', useCallback((data: { id: string }) => {
+    setHabits(prev => prev.filter(h => h.id !== data.id))
+  }, []))
 
   const incomplete = habits.filter(h => !h.completed_today)
   const completed = habits.filter(h => h.completed_today)
