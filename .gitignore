@@ -69,7 +69,6 @@ logs/
 
 # React UI
 ui/node_modules/
-ui/dist/
 !ui/src/lib/
 
 #Local Development
