@@ -88,6 +88,20 @@ export interface Settings {
   }
 }
 
+export interface Task {
+  id: string
+  title: string
+  notes: string | null
+  completed: boolean
+  due_date: string | null
+  tag: string | null
+  priority: number
+  parent_id: string | null
+  sort_order: number
+  created_at: string
+  completed_at: string | null
+}
+
 /* ── JS → Python Events ─────────────────────────────────────────── */
 
 export interface JsToPyEvents {
@@ -116,6 +130,13 @@ export interface JsToPyEvents {
   'panel.resize': { width: number; height: number }
   'panel.close': void
   'panel.navigate': { route: string }
+
+  'tasks.list': { include_completed?: boolean }
+  'tasks.create': { title: string; due_date?: string; tag?: string; priority?: number; parent_id?: string; notes?: string }
+  'tasks.update': { id: string; title?: string; notes?: string; due_date?: string; tag?: string; priority?: number }
+  'tasks.complete': { id: string }
+  'tasks.delete': { id: string }
+  'tasks.reorder': { task_ids: string[] }
 
   'window.navigate': { route: string }
   'window.minimize': void
@@ -169,6 +190,14 @@ export interface PyToJsEvents {
   'journal.deleted': { success?: boolean; date?: string; error?: boolean }
 
   'panel.route': { route: string }
+
+  'tasks.listResult': { tasks: Task[] }
+  'tasks.created': { task: Task }
+  'tasks.updated': { task: Task }
+  'tasks.completed': { task: Task }
+  'tasks.deleted': { id: string }
+  'tasks.reordered': Record<string, never>
+  'tasks.error': { message: string }
 
   'window.navigateTo': { route: string }
 }

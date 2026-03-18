@@ -5,6 +5,7 @@ import { JournalPage } from '@/pages/journal/JournalPage'
 import { PomodoroPage } from '@/pages/pomodoro/PomodoroPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { PlaceholderPage } from '@/pages/PlaceholderPage'
+import { TasksPage } from '@/pages/tasks/TasksPage'
 
 export default function App() {
   return (
@@ -12,7 +13,7 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route element={<PanelLayout />}>
-            <Route path="/tasks" element={<PlaceholderPage />} />
+            <Route path="/tasks" element={<TasksPage />} />
             <Route path="/journal" element={<JournalPage />} />
             <Route path="/pomodoro" element={<PomodoroPage />} />
             <Route path="/habits" element={<PlaceholderPage />} />
