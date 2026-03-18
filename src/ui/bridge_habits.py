@@ -124,13 +124,16 @@ def wire_habits_events(bridge: BridgeHost, integration: HabitsIntegration) -> No
         try:
             store = _get_store()
             habit_id = data["id"]
-            bridge.emit("habits.statsResult", {
-                "id": habit_id,
-                "streak": store.get_streak(habit_id),
-                "longest_streak": store.get_longest_streak(habit_id),
-                "completion_rate": store.get_completion_rate(habit_id),
-                "total": store.get_total_completions(habit_id),
-            })
+            bridge.emit(
+                "habits.statsResult",
+                {
+                    "id": habit_id,
+                    "streak": store.get_streak(habit_id),
+                    "longest_streak": store.get_longest_streak(habit_id),
+                    "completion_rate": store.get_completion_rate(habit_id),
+                    "total": store.get_total_completions(habit_id),
+                },
+            )
         except Exception:
             logger.exception("Error loading habit stats")
             bridge.emit("habits.error", {"message": "Failed to load stats"})

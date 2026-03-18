@@ -265,8 +265,7 @@ class GoogleCalendarIntegration(BaseIntegration):
                 bubble_text = f"You have 1 meeting today: {first.summary} at {first_time}."
             else:
                 bubble_text = (
-                    f"You have {count} meetings today. "
-                    f"First is {first.summary} at {first_time}."
+                    f"You have {count} meetings today. First is {first.summary} at {first_time}."
                 )
 
         self.notify({"bubble_text": bubble_text, "bubble_duration_ms": 8000})

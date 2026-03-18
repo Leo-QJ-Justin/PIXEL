@@ -272,9 +272,7 @@ class PomodoroIntegration(BaseIntegration):
         stats_file = self._path / "stats.json"
         try:
             self._path.mkdir(parents=True, exist_ok=True)
-            tmp_fd, tmp_path = tempfile.mkstemp(
-                dir=self._path, suffix=".tmp", prefix=".stats_"
-            )
+            tmp_fd, tmp_path = tempfile.mkstemp(dir=self._path, suffix=".tmp", prefix=".stats_")
             with os.fdopen(tmp_fd, "w") as f:
                 json.dump(self._stats, f, indent=2)
             os.replace(tmp_path, stats_file)

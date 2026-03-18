@@ -17,12 +17,14 @@ class PetState(Enum):
 
 
 # Valid transitions from each state (frozen)
-_TRANSITIONS: MappingProxyType[PetState, frozenset[PetState]] = MappingProxyType({
-    PetState.IDLE: frozenset({PetState.WANDERING, PetState.SLEEPING, PetState.REACTING}),
-    PetState.WANDERING: frozenset({PetState.IDLE, PetState.REACTING}),
-    PetState.SLEEPING: frozenset({PetState.IDLE, PetState.REACTING}),
-    PetState.REACTING: frozenset({PetState.IDLE}),
-})
+_TRANSITIONS: MappingProxyType[PetState, frozenset[PetState]] = MappingProxyType(
+    {
+        PetState.IDLE: frozenset({PetState.WANDERING, PetState.SLEEPING, PetState.REACTING}),
+        PetState.WANDERING: frozenset({PetState.IDLE, PetState.REACTING}),
+        PetState.SLEEPING: frozenset({PetState.IDLE, PetState.REACTING}),
+        PetState.REACTING: frozenset({PetState.IDLE}),
+    }
+)
 
 
 class PetStateMachine(QObject):

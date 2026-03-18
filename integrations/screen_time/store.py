@@ -37,9 +37,7 @@ class ScreenTimeStore:
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_sessions_date ON app_sessions(started_at)"
         )
-        self._conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_sessions_app ON app_sessions(exe_name)"
-        )
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_app ON app_sessions(exe_name)")
         self._conn.execute(
             """
             CREATE TABLE IF NOT EXISTS app_categories (
@@ -106,7 +104,9 @@ class ScreenTimeStore:
         row = cursor.fetchone()
         return row["display_name"] if row and row["display_name"] else exe_name
 
-    def update_category(self, exe_name: str, category: str, display_name: str | None = None) -> None:
+    def update_category(
+        self, exe_name: str, category: str, display_name: str | None = None
+    ) -> None:
         self._conn.execute(
             """
             INSERT INTO app_categories (exe_name, category, display_name)

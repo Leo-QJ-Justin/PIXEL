@@ -51,9 +51,7 @@ class BridgeHost(QObject):
             try:
                 handler(data)
             except Exception:
-                logger.exception(
-                    "Exception in handler %s for event '%s'", handler, event
-                )
+                logger.exception("Exception in handler %s for event '%s'", handler, event)
 
     def on(self, event: str, handler: Callable[[Any], None]) -> None:
         """Register a Python handler for *event*.

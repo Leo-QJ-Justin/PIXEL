@@ -33,6 +33,7 @@ class TasksIntegration(BaseIntegration):
     def _get_store(self):
         if self._store is None:
             from integrations.tasks.store import TaskStore
+
             self._store = TaskStore(self._path / "tasks.db")
         return self._store
 
@@ -70,10 +71,12 @@ class TasksIntegration(BaseIntegration):
                 return  # Don't re-nudge for the same set
             self._last_nudge_overdue_ids = overdue_ids
             n = len(overdue)
-            self.notify({
-                "bubble_text": f"You have {n} overdue task{'s' if n != 1 else ''} — want to check them off?",
-                "bubble_duration_ms": 5000,
-            })
+            self.notify(
+                {
+                    "bubble_text": f"You have {n} overdue task{'s' if n != 1 else ''} — want to check them off?",
+                    "bubble_duration_ms": 5000,
+                }
+            )
         except Exception:
             logger.exception("Error during overdue check")
 

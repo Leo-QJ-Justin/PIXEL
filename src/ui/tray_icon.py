@@ -60,9 +60,7 @@ class TrayIcon(QSystemTrayIcon):
         # Open Dashboard (React panel)
         if self._panel_host is not None:
             dashboard_action = QAction("Open Dashboard", menu)
-            dashboard_action.triggered.connect(
-                lambda: self._panel_host.open_panel("home")
-            )
+            dashboard_action.triggered.connect(lambda: self._panel_host.open_panel("home"))
             menu.addAction(dashboard_action)
 
         menu.addSeparator()

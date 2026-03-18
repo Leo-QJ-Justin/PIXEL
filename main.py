@@ -109,7 +109,9 @@ def main():
     pet.set_panel_host(panel_host)
 
     tray = TrayIcon(
-        pet, integration_manager, behavior_registry,
+        pet,
+        integration_manager,
+        behavior_registry,
         panel_host=panel_host,
     )
 

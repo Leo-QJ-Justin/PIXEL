@@ -36,9 +36,7 @@ class TaskStore:
             )
             """
         )
-        self._conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_id)"
-        )
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_id)")
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_date) WHERE completed = 0"
         )

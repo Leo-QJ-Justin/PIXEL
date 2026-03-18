@@ -83,7 +83,9 @@ class HabitStore:
             (habit_id, title, icon, frequency, target_count, reminder_time, sort_order, now),
         )
         self._conn.commit()
-        return self._row_to_dict(self._conn.execute("SELECT * FROM habits WHERE id = ?", (habit_id,)).fetchone())
+        return self._row_to_dict(
+            self._conn.execute("SELECT * FROM habits WHERE id = ?", (habit_id,)).fetchone()
+        )
 
     def update_habit(self, habit_id: str, **fields) -> dict | None:
         allowed = {"title", "icon", "frequency", "target_count", "reminder_time", "sort_order"}
@@ -147,7 +149,9 @@ class HabitStore:
         if freq == "daily":
             return self._daily_streak(habit_id)
         else:
-            return self._weekly_streak(habit_id, habit["target_count"] if freq == "x_per_week" else 1)
+            return self._weekly_streak(
+                habit_id, habit["target_count"] if freq == "x_per_week" else 1
+            )
 
     def _daily_streak(self, habit_id: str) -> int:
         cursor = self._conn.execute(
@@ -252,13 +256,15 @@ class HabitStore:
         habits = self.list_habits(include_archived=False)
         result = []
         for h in habits:
-            result.append({
-                **h,
-                "completed_today": self.is_completed_today(h["id"]),
-                "streak": self.get_streak(h["id"]),
-                "week_progress": self.get_week_progress(h["id"]),
-                "week_target": h["target_count"],
-            })
+            result.append(
+                {
+                    **h,
+                    "completed_today": self.is_completed_today(h["id"]),
+                    "streak": self.get_streak(h["id"]),
+                    "week_progress": self.get_week_progress(h["id"]),
+                    "week_target": h["target_count"],
+                }
+            )
         return result
 
     def get_habit(self, habit_id: str) -> dict | None:

@@ -1,6 +1,5 @@
 """Tests for PetStateMachine."""
 
-
 from src.core.pet_state import PetState, PetStateMachine
 
 

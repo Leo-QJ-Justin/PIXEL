@@ -46,9 +46,7 @@ def _get_launch_command() -> list[str]:
 def set_startup_enabled(enabled: bool) -> None:
     """Enable or disable auto-start on login for the current platform."""
     if enabled and not _MAIN_PY.exists():
-        logger.error(
-            "Refusing to register startup — main.py not found at %s", _MAIN_PY
-        )
+        logger.error("Refusing to register startup — main.py not found at %s", _MAIN_PY)
         return
 
     cmd = _get_launch_command() if enabled else None

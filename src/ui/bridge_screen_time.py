@@ -34,13 +34,16 @@ def wire_screen_time_events(bridge: BridgeHost, integration: ScreenTimeIntegrati
             top_apps = store.get_top_apps(day)
             timeline = store.get_timeline(day)
 
-            bridge.emit("screentime.todayResult", {
-                "total_s": total,
-                "comparison_s": comparison,
-                "category_breakdown": breakdown,
-                "top_apps": top_apps,
-                "timeline": timeline,
-            })
+            bridge.emit(
+                "screentime.todayResult",
+                {
+                    "total_s": total,
+                    "comparison_s": comparison,
+                    "category_breakdown": breakdown,
+                    "top_apps": top_apps,
+                    "timeline": timeline,
+                },
+            )
         except Exception:
             logger.exception("Error loading today screen time")
             bridge.emit("screentime.error", {"message": "Failed to load screen time data"})
@@ -69,13 +72,16 @@ def wire_screen_time_events(bridge: BridgeHost, integration: ScreenTimeIntegrati
             week_end = (date.fromisoformat(ws) + timedelta(days=7)).isoformat()
             top_apps = store.get_top_apps_range(ws, week_end, limit=10)
 
-            bridge.emit("screentime.weekResult", {
-                "daily_totals": daily_totals,
-                "avg_s": avg,
-                "total_s": total,
-                "trend_s": trend,
-                "top_apps": top_apps,
-            })
+            bridge.emit(
+                "screentime.weekResult",
+                {
+                    "daily_totals": daily_totals,
+                    "avg_s": avg,
+                    "total_s": total,
+                    "trend_s": trend,
+                    "top_apps": top_apps,
+                },
+            )
         except Exception:
             logger.exception("Error loading week screen time")
             bridge.emit("screentime.error", {"message": "Failed to load weekly data"})
@@ -103,7 +109,11 @@ def wire_screen_time_events(bridge: BridgeHost, integration: ScreenTimeIntegrati
                 data["category"],
                 data.get("display_name"),
             )
-            row = {"exe_name": data["exe_name"], "category": data["category"], "display_name": data.get("display_name")}
+            row = {
+                "exe_name": data["exe_name"],
+                "category": data["category"],
+                "display_name": data.get("display_name"),
+            }
             bridge.emit("screentime.categoryUpdated", {"category": row})
         except Exception:
             logger.exception("Error updating category")

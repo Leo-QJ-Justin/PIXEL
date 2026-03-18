@@ -42,11 +42,10 @@ class PanelHost(QMainWindow):
     def _setup_window(self) -> None:
         """Configure window title, size, and constraints."""
         self.setWindowTitle("PIXEL")
-        self.setWindowFlags(
-            self.windowFlags() | Qt.WindowType.FramelessWindowHint
-        )
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         # Size to 50% of screen width, 75% of screen height for a comfortable dashboard feel
         from PyQt6.QtWidgets import QApplication
+
         screen = QApplication.primaryScreen()
         if screen:
             geo = screen.availableGeometry()
@@ -125,9 +124,7 @@ class PanelHost(QMainWindow):
         self._center_on_screen()
         # Dual navigation: set hash directly (works before React mounts)
         # AND emit bridge event (works when React is already running)
-        self._view.page().runJavaScript(
-            f"window.location.hash = '#/{panel}';"
-        )
+        self._view.page().runJavaScript(f"window.location.hash = '#/{panel}';")
         self._bridge.emit("window.navigateTo", {"route": f"/{panel}"})
 
     # ------------------------------------------------------------------

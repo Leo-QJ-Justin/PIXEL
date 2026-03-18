@@ -116,79 +116,79 @@ def content_style(font: str) -> str:
     c = COLORS
     return f"""
         QWidget#content_area {{
-            background-color: {c['background']};
+            background-color: {c["background"]};
             font-family: '{font}';
         }}
         QLabel {{
-            color: {c['text']};
+            color: {c["text"]};
             font-family: '{font}';
             font-size: 14px;
         }}
         QLabel#section_title {{
-            color: {c['foreground']};
+            color: {c["foreground"]};
             font-family: '{font}';
             font-size: 15px;
             font-weight: bold;
         }}
         QLineEdit {{
-            background-color: {c['input_bg']};
-            color: {c['text']};
-            border: 2px solid {c['border_subtle']};
+            background-color: {c["input_bg"]};
+            color: {c["text"]};
+            border: 2px solid {c["border_subtle"]};
             border-radius: 10px;
             padding: 8px 12px;
             font-family: '{font}';
             font-size: 14px;
         }}
         QLineEdit:focus {{
-            border: 2px solid {c['primary']};
+            border: 2px solid {c["primary"]};
         }}
         QLineEdit:hover {{
-            border: 2px solid {c['border']};
+            border: 2px solid {c["border"]};
         }}
         QTextEdit {{
-            background-color: {c['input_bg']};
-            color: {c['text']};
-            border: 2px solid {c['border_subtle']};
+            background-color: {c["input_bg"]};
+            color: {c["text"]};
+            border: 2px solid {c["border_subtle"]};
             border-radius: 10px;
             padding: 8px 12px;
             font-family: '{font}';
             font-size: 14px;
         }}
         QTextEdit:focus {{
-            border: 2px solid {c['primary']};
+            border: 2px solid {c["primary"]};
         }}
         QComboBox {{
-            background-color: {c['input_bg']};
-            color: {c['text']};
-            border: 2px solid {c['border_subtle']};
+            background-color: {c["input_bg"]};
+            color: {c["text"]};
+            border: 2px solid {c["border_subtle"]};
             border-radius: 10px;
             padding: 7px 12px;
             font-family: '{font}';
             font-size: 14px;
         }}
         QComboBox:hover {{
-            border: 2px solid {c['border']};
+            border: 2px solid {c["border"]};
         }}
         QComboBox:focus {{
-            border: 2px solid {c['primary']};
+            border: 2px solid {c["primary"]};
         }}
         QComboBox::drop-down {{
             border: none;
             width: 28px;
         }}
         QComboBox QAbstractItemView {{
-            background-color: {c['card']};
-            color: {c['text']};
-            border: 2px solid {c['border']};
+            background-color: {c["card"]};
+            color: {c["text"]};
+            border: 2px solid {c["border"]};
             border-radius: 10px;
-            selection-background-color: {c['muted']};
-            selection-color: {c['foreground']};
+            selection-background-color: {c["muted"]};
+            selection-color: {c["foreground"]};
             font-family: '{font}';
             font-size: 14px;
             padding: 4px;
         }}
         QCheckBox {{
-            color: {c['text']};
+            color: {c["text"]};
             font-family: '{font}';
             font-size: 14px;
             spacing: 10px;
@@ -196,19 +196,19 @@ def content_style(font: str) -> str:
         QCheckBox::indicator {{
             width: 22px;
             height: 22px;
-            border: 2px solid {c['checkbox_border']};
+            border: 2px solid {c["checkbox_border"]};
             border-radius: 7px;
-            background-color: {c['input_bg']};
+            background-color: {c["input_bg"]};
         }}
         QCheckBox::indicator:checked {{
-            background-color: {c['checkbox_checked']};
-            border: 2px solid {c['primary_pressed']};
+            background-color: {c["checkbox_checked"]};
+            border: 2px solid {c["primary_pressed"]};
         }}
         QCheckBox::indicator:hover {{
-            border: 2px solid {c['primary']};
+            border: 2px solid {c["primary"]};
         }}
         QRadioButton {{
-            color: {c['text']};
+            color: {c["text"]};
             font-family: '{font}';
             font-size: 14px;
             spacing: 10px;
@@ -216,76 +216,76 @@ def content_style(font: str) -> str:
         QRadioButton::indicator {{
             width: 22px;
             height: 22px;
-            border: 2px solid {c['checkbox_border']};
+            border: 2px solid {c["checkbox_border"]};
             border-radius: 11px;
-            background-color: {c['input_bg']};
+            background-color: {c["input_bg"]};
         }}
         QRadioButton::indicator:checked {{
-            background-color: {c['checkbox_checked']};
-            border: 2px solid {c['primary_pressed']};
+            background-color: {c["checkbox_checked"]};
+            border: 2px solid {c["primary_pressed"]};
         }}
         QRadioButton::indicator:hover {{
-            border: 2px solid {c['primary']};
+            border: 2px solid {c["primary"]};
         }}
         QTimeEdit, QDateEdit {{
-            background-color: {c['input_bg']};
-            color: {c['text']};
-            border: 2px solid {c['border_subtle']};
+            background-color: {c["input_bg"]};
+            color: {c["text"]};
+            border: 2px solid {c["border_subtle"]};
             border-radius: 10px;
             padding: 7px 10px;
             font-family: '{font}';
             font-size: 14px;
         }}
         QTimeEdit:focus, QDateEdit:focus {{
-            border: 2px solid {c['primary']};
+            border: 2px solid {c["primary"]};
         }}
         QSpinBox, QDoubleSpinBox {{
-            background-color: {c['input_bg']};
-            color: {c['text']};
-            border: 2px solid {c['border_subtle']};
+            background-color: {c["input_bg"]};
+            color: {c["text"]};
+            border: 2px solid {c["border_subtle"]};
             border-radius: 10px;
             padding: 7px 10px;
             font-family: '{font}';
             font-size: 14px;
         }}
         QSpinBox:focus, QDoubleSpinBox:focus {{
-            border: 2px solid {c['primary']};
+            border: 2px solid {c["primary"]};
         }}
         QSlider::groove:horizontal {{
             height: 8px;
-            background-color: {c['slider_groove']};
+            background-color: {c["slider_groove"]};
             border-radius: 4px;
         }}
         QSlider::sub-page:horizontal {{
-            background-color: {c['slider_track']};
+            background-color: {c["slider_track"]};
             border-radius: 4px;
         }}
         QSlider::handle:horizontal {{
-            background-color: {c['slider_handle']};
-            border: 3px solid {c['primary_pressed']};
+            background-color: {c["slider_handle"]};
+            border: 3px solid {c["primary_pressed"]};
             width: 20px;
             height: 20px;
             margin: -7px 0;
             border-radius: 11px;
         }}
         QSlider::handle:horizontal:hover {{
-            background-color: {c['primary_hover']};
+            background-color: {c["primary_hover"]};
         }}
         QPushButton {{
-            background-color: {c['muted']};
-            color: {c['foreground']};
-            border: 2px solid {c['border_subtle']};
+            background-color: {c["muted"]};
+            color: {c["foreground"]};
+            border: 2px solid {c["border_subtle"]};
             border-radius: 12px;
             padding: 8px 16px;
             font-family: '{font}';
             font-size: 14px;
         }}
         QPushButton:hover {{
-            background-color: {c['border_subtle']};
-            border: 2px solid {c['border']};
+            background-color: {c["border_subtle"]};
+            border: 2px solid {c["border"]};
         }}
         QPushButton:pressed {{
-            background-color: {c['border']};
+            background-color: {c["border"]};
         }}
     """
 
@@ -295,8 +295,8 @@ def sidebar_style(font: str) -> str:
     c = COLORS
     return f"""
         QListWidget {{
-            background-color: {c['sidebar_bg']};
-            color: {c['sidebar_text']};
+            background-color: {c["sidebar_bg"]};
+            color: {c["sidebar_text"]};
             border: none;
             font-family: '{font}';
             font-size: 14px;
@@ -307,17 +307,17 @@ def sidebar_style(font: str) -> str:
             padding: 14px 18px;
             border-radius: 10px;
             margin: 3px 8px;
-            color: {c['sidebar_text']};
+            color: {c["sidebar_text"]};
             border-left: 4px solid transparent;
         }}
         QListWidget::item:hover {{
-            background-color: {c['sidebar_hover']};
-            color: {c['sidebar_text_active']};
+            background-color: {c["sidebar_hover"]};
+            color: {c["sidebar_text_active"]};
         }}
         QListWidget::item:selected {{
-            background-color: {c['sidebar_selected']};
-            color: {c['sidebar_text_active']};
-            border-left: 4px solid {c['primary']};
+            background-color: {c["sidebar_selected"]};
+            color: {c["sidebar_text_active"]};
+            border-left: 4px solid {c["primary"]};
             font-weight: bold;
         }}
     """
@@ -328,7 +328,7 @@ def header_style() -> str:
     c = COLORS
     return f"""
         QWidget#header {{
-            background-color: {c['header_bg']};
+            background-color: {c["header_bg"]};
             border-top-left-radius: {CLAY_RADIUS};
             border-top-right-radius: {CLAY_RADIUS};
         }}
@@ -345,8 +345,8 @@ def footer_style() -> str:
     c = COLORS
     return f"""
         QWidget#footer {{
-            background-color: {c['muted']};
-            border-top: 2px solid {c['border_subtle']};
+            background-color: {c["muted"]};
+            border-top: 2px solid {c["border_subtle"]};
             border-bottom-left-radius: {CLAY_RADIUS};
             border-bottom-right-radius: {CLAY_RADIUS};
         }}
@@ -359,9 +359,9 @@ def ok_button_style(font: str = "") -> str:
     font_rule = f"font-family: '{font}';" if font else ""
     return f"""
         QPushButton {{
-            background-color: {c['ok_bg']};
+            background-color: {c["ok_bg"]};
             color: #FFFFFF;
-            border: {CLAY_BORDER} solid {c['primary_pressed']};
+            border: {CLAY_BORDER} solid {c["primary_pressed"]};
             border-radius: 12px;
             padding: 8px 28px;
             font-size: 14px;
@@ -369,10 +369,10 @@ def ok_button_style(font: str = "") -> str:
             {font_rule}
         }}
         QPushButton:hover {{
-            background-color: {c['ok_hover']};
+            background-color: {c["ok_hover"]};
         }}
         QPushButton:pressed {{
-            background-color: {c['ok_pressed']};
+            background-color: {c["ok_pressed"]};
         }}
     """
 
@@ -383,20 +383,20 @@ def cancel_button_style(font: str = "") -> str:
     font_rule = f"font-family: '{font}';" if font else ""
     return f"""
         QPushButton {{
-            background-color: {c['cancel_bg']};
+            background-color: {c["cancel_bg"]};
             color: #FFFFFF;
-            border: {CLAY_BORDER} solid {c['cancel_pressed']};
+            border: {CLAY_BORDER} solid {c["cancel_pressed"]};
             border-radius: 12px;
             padding: 8px 28px;
             font-size: 14px;
             {font_rule}
         }}
         QPushButton:hover {{
-            background-color: {c['cancel_hover']};
-            color: {c['text']};
+            background-color: {c["cancel_hover"]};
+            color: {c["text"]};
         }}
         QPushButton:pressed {{
-            background-color: {c['cancel_pressed']};
+            background-color: {c["cancel_pressed"]};
         }}
     """
 
@@ -407,18 +407,18 @@ def close_button_style() -> str:
     return f"""
         QPushButton {{
             background-color: transparent;
-            color: {c['sidebar_text']};
+            color: {c["sidebar_text"]};
             border: none;
             border-radius: 8px;
             padding: 4px 8px;
             font-size: 14px;
         }}
         QPushButton:hover {{
-            background-color: {c['sidebar_hover']};
+            background-color: {c["sidebar_hover"]};
             color: #FFFFFF;
         }}
         QPushButton:pressed {{
-            background-color: {c['destructive']};
+            background-color: {c["destructive"]};
             color: #FFFFFF;
         }}
     """
@@ -436,18 +436,18 @@ def scroll_area_style() -> str:
             background-color: transparent;
         }}
         QScrollBar:vertical {{
-            background-color: {c['scrollbar_bg']};
+            background-color: {c["scrollbar_bg"]};
             width: 8px;
             border-radius: 4px;
             margin: 0;
         }}
         QScrollBar::handle:vertical {{
-            background-color: {c['scrollbar_handle']};
+            background-color: {c["scrollbar_handle"]};
             border-radius: 4px;
             min-height: 24px;
         }}
         QScrollBar::handle:vertical:hover {{
-            background-color: {c['border']};
+            background-color: {c["border"]};
         }}
         QScrollBar::add-line:vertical,
         QScrollBar::sub-line:vertical {{
@@ -455,18 +455,18 @@ def scroll_area_style() -> str:
             background: none;
         }}
         QScrollBar:horizontal {{
-            background-color: {c['scrollbar_bg']};
+            background-color: {c["scrollbar_bg"]};
             height: 8px;
             border-radius: 4px;
             margin: 0;
         }}
         QScrollBar::handle:horizontal {{
-            background-color: {c['scrollbar_handle']};
+            background-color: {c["scrollbar_handle"]};
             border-radius: 4px;
             min-width: 24px;
         }}
         QScrollBar::handle:horizontal:hover {{
-            background-color: {c['border']};
+            background-color: {c["border"]};
         }}
         QScrollBar::add-line:horizontal,
         QScrollBar::sub-line:horizontal {{
@@ -481,26 +481,26 @@ def section_style() -> str:
     c = COLORS
     return f"""
         QFrame#section_card {{
-            background-color: {c['card']};
-            border: {CLAY_BORDER} solid {c['border_subtle']};
+            background-color: {c["card"]};
+            border: {CLAY_BORDER} solid {c["border_subtle"]};
             border-radius: {CLAY_RADIUS};
             padding: 14px;
         }}
         QGroupBox {{
-            background-color: {c['card']};
-            border: {CLAY_BORDER} solid {c['border_subtle']};
+            background-color: {c["card"]};
+            border: {CLAY_BORDER} solid {c["border_subtle"]};
             border-radius: {CLAY_RADIUS};
             margin-top: 16px;
             padding: 14px 10px 10px 10px;
             font-size: 14px;
             font-weight: bold;
-            color: {c['foreground']};
+            color: {c["foreground"]};
         }}
         QGroupBox::title {{
             subcontrol-origin: margin;
             subcontrol-position: top left;
             padding: 0 8px;
-            color: {c['foreground']};
-            background-color: {c['card']};
+            color: {c["foreground"]};
+            background-color: {c["card"]};
         }}
     """

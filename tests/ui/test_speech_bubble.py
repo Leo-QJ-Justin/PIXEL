@@ -1,6 +1,5 @@
 """Tests for SpeechBubble widget."""
 
-
 import pytest
 from PyQt6.QtCore import QPoint, QSize, Qt
 

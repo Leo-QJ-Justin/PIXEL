@@ -67,9 +67,9 @@ class TestProviderConfig:
 
     def test_every_provider_has_default_model(self):
         for provider in self.ALL_PROVIDERS:
-            assert (
-                "default_model" in PROVIDER_CONFIG[provider]
-            ), f"Provider {provider} missing default_model"
+            assert "default_model" in PROVIDER_CONFIG[provider], (
+                f"Provider {provider} missing default_model"
+            )
 
 
 class TestPersonalityEngineInit:

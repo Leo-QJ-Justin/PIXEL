@@ -19,22 +19,30 @@ class LinuxTracker(BaseTracker):
     def get_active_window(self) -> ActiveWindow | None:
         try:
             # Get active window ID
-            wid = subprocess.check_output(
-                ["xdotool", "getactivewindow"], stderr=subprocess.DEVNULL
-            ).decode().strip()
+            wid = (
+                subprocess.check_output(["xdotool", "getactivewindow"], stderr=subprocess.DEVNULL)
+                .decode()
+                .strip()
+            )
             if not wid:
                 return None
 
             # Get window PID
-            pid_str = subprocess.check_output(
-                ["xdotool", "getwindowpid", wid], stderr=subprocess.DEVNULL
-            ).decode().strip()
+            pid_str = (
+                subprocess.check_output(["xdotool", "getwindowpid", wid], stderr=subprocess.DEVNULL)
+                .decode()
+                .strip()
+            )
             pid = int(pid_str) if pid_str else 0
 
             # Get window name
-            title = subprocess.check_output(
-                ["xdotool", "getwindowname", wid], stderr=subprocess.DEVNULL
-            ).decode().strip()
+            title = (
+                subprocess.check_output(
+                    ["xdotool", "getwindowname", wid], stderr=subprocess.DEVNULL
+                )
+                .decode()
+                .strip()
+            )
 
             # Get process name from /proc
             exe_name = "Unknown"
@@ -60,12 +68,14 @@ class LinuxTracker(BaseTracker):
 
     def get_idle_seconds(self) -> float:
         try:
-            output = subprocess.check_output(
-                ["xprintidle"], stderr=subprocess.DEVNULL
-            ).decode().strip()
+            output = (
+                subprocess.check_output(["xprintidle"], stderr=subprocess.DEVNULL).decode().strip()
+            )
             return int(output) / 1000.0
         except FileNotFoundError:
-            logger.warning("xprintidle not found — idle detection disabled (install xprintidle for accurate tracking)")
+            logger.warning(
+                "xprintidle not found — idle detection disabled (install xprintidle for accurate tracking)"
+            )
             return 0.0
         except Exception:
             return 0.0

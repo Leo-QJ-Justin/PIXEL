@@ -47,6 +47,7 @@ class WindowsTracker(BaseTracker):
 
     def get_idle_seconds(self) -> float:
         try:
+
             class LASTINPUTINFO(ctypes.Structure):
                 _fields_ = [
                     ("cbSize", ctypes.c_uint),
@@ -65,6 +66,7 @@ class WindowsTracker(BaseTracker):
     def _get_process_name(self, pid: int) -> str:
         try:
             import psutil
+
             proc = psutil.Process(pid)
             return proc.name()
         except Exception:

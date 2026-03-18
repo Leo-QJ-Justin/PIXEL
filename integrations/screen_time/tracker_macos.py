@@ -15,6 +15,7 @@ class MacOSTracker(BaseTracker):
     def get_active_window(self) -> ActiveWindow | None:
         try:
             from AppKit import NSWorkspace
+
             app = NSWorkspace.sharedWorkspace().frontmostApplication()
             if not app:
                 return None
@@ -33,7 +34,12 @@ class MacOSTracker(BaseTracker):
 
     def get_idle_seconds(self) -> float:
         try:
-            from Quartz import CGEventSourceSecondsSinceLastEventType, kCGEventSourceStateCombinedSessionState, kCGAnyInputEventType
+            from Quartz import (
+                CGEventSourceSecondsSinceLastEventType,
+                kCGAnyInputEventType,
+                kCGEventSourceStateCombinedSessionState,
+            )
+
             return CGEventSourceSecondsSinceLastEventType(
                 kCGEventSourceStateCombinedSessionState, kCGAnyInputEventType
             )

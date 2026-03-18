@@ -132,7 +132,12 @@ def wire_dashboard_events(bridge: BridgeHost, integration_manager: IntegrationMa
                     summary["calendar_next"] = {
                         "summary": event.summary,
                         "start_time": event.start_time.strftime("%H:%M"),
-                        "minutes_until": int((event.start_time - __import__('datetime').datetime.now()).total_seconds() / 60),
+                        "minutes_until": int(
+                            (
+                                event.start_time - __import__("datetime").datetime.now()
+                            ).total_seconds()
+                            / 60
+                        ),
                     }
             except Exception:
                 logger.debug("Error getting calendar", exc_info=True)
@@ -145,6 +150,7 @@ def wire_dashboard_events(bridge: BridgeHost, integration_manager: IntegrationMa
 
 def _get_greeting() -> str:
     from datetime import datetime
+
     hour = datetime.now().hour
     if hour < 12:
         return "Good morning"

@@ -35,6 +35,7 @@ class HabitsIntegration(BaseIntegration):
     def _get_store(self):
         if self._store is None:
             from integrations.habits.store import HabitStore
+
             self._store = HabitStore(self._path / "habits.db")
         return self._store
 
@@ -113,16 +114,22 @@ class HabitsIntegration(BaseIntegration):
             # Check milestones
             for m in MILESTONES:
                 if streak == m:
-                    self.trigger("wave", {
-                        "bubble_text": f"🎉 {streak} day streak on {habit['title']}! Amazing!",
-                        "bubble_duration_ms": 5000,
-                    })
+                    self.trigger(
+                        "wave",
+                        {
+                            "bubble_text": f"🎉 {streak} day streak on {habit['title']}! Amazing!",
+                            "bubble_duration_ms": 5000,
+                        },
+                    )
                     return m
             if streak > 100 and streak % 100 == 0:
-                self.trigger("wave", {
-                    "bubble_text": f"🎉 {streak} day streak on {habit['title']}! Incredible!",
-                    "bubble_duration_ms": 5000,
-                })
+                self.trigger(
+                    "wave",
+                    {
+                        "bubble_text": f"🎉 {streak} day streak on {habit['title']}! Incredible!",
+                        "bubble_duration_ms": 5000,
+                    },
+                )
                 return streak
             return None
         except Exception:

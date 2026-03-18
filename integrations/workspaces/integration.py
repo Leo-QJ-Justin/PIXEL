@@ -144,15 +144,20 @@ class WorkspacesIntegration(BaseIntegration):
         # Trigger pet behavior if configured
         behavior = ws.get("behavior")
         if behavior:
-            self.trigger(behavior, {
-                "bubble_text": f"{ws['icon']} {ws['name']} workspace launched!",
-                "bubble_duration_ms": 3000,
-            })
+            self.trigger(
+                behavior,
+                {
+                    "bubble_text": f"{ws['icon']} {ws['name']} workspace launched!",
+                    "bubble_duration_ms": 3000,
+                },
+            )
         else:
-            self.notify({
-                "bubble_text": f"{ws['icon']} {ws['name']} workspace launched!",
-                "bubble_duration_ms": 3000,
-            })
+            self.notify(
+                {
+                    "bubble_text": f"{ws['icon']} {ws['name']} workspace launched!",
+                    "bubble_duration_ms": 3000,
+                }
+            )
 
         return len(errors) == 0, errors
 

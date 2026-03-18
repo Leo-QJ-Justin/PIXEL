@@ -1,6 +1,5 @@
 """Tests for JournalIntegration."""
 
-
 import pytest
 
 

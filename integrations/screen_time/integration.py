@@ -53,12 +53,14 @@ class ScreenTimeIntegration(BaseIntegration):
     def _get_store(self):
         if self._store is None:
             from integrations.screen_time.store import ScreenTimeStore
+
             self._store = ScreenTimeStore(self._path / "screen_time.db")
         return self._store
 
     def _get_tracker(self):
         if self._tracker is None:
             from integrations.screen_time.tracker import create_tracker
+
             self._tracker = create_tracker()
         return self._tracker
 
@@ -149,13 +151,15 @@ class ScreenTimeIntegration(BaseIntegration):
     def _finalize_session(self) -> None:
         if self._current_exe and self._session_start:
             now = datetime.now()
-            self._pending_sessions.append((
-                self._current_app,
-                self._current_exe,
-                self._current_title,
-                self._session_start,
-                now,
-            ))
+            self._pending_sessions.append(
+                (
+                    self._current_app,
+                    self._current_exe,
+                    self._current_title,
+                    self._session_start,
+                    now,
+                )
+            )
             self._current_app = None
             self._current_exe = None
             self._current_title = None
@@ -167,9 +171,14 @@ class ScreenTimeIntegration(BaseIntegration):
         try:
             store = self._get_store()
         except Exception:
-            logger.exception("Cannot access screen time store — %d sessions pending", len(self._pending_sessions))
+            logger.exception(
+                "Cannot access screen time store — %d sessions pending", len(self._pending_sessions)
+            )
             if len(self._pending_sessions) > 1000:
-                logger.error("Dropping %d pending sessions to prevent memory growth", len(self._pending_sessions))
+                logger.error(
+                    "Dropping %d pending sessions to prevent memory growth",
+                    len(self._pending_sessions),
+                )
                 self._pending_sessions.clear()
             return
         failed = []
@@ -187,10 +196,12 @@ class ScreenTimeIntegration(BaseIntegration):
         if self._continuous_active_s >= threshold_s and not self._break_reminded:
             self._break_reminded = True
             hours = int(self._continuous_active_s // 3600)
-            self.notify({
-                "bubble_text": f"You've been at it for {hours}h — time for a break? 🧘",
-                "bubble_duration_ms": 5000,
-            })
+            self.notify(
+                {
+                    "bubble_text": f"You've been at it for {hours}h — time for a break? 🧘",
+                    "bubble_duration_ms": 5000,
+                }
+            )
 
     def build_dashboard(self):
         return None

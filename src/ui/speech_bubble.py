@@ -93,7 +93,10 @@ class SpeechBubble(QWidget):
 
         max_width = 250
         bounding = metrics.boundingRect(
-            0, 0, max_width, 0,
+            0,
+            0,
+            max_width,
+            0,
             Qt.TextFlag.TextWordWrap,
             self._text,
         )
