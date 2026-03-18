@@ -128,6 +128,30 @@ def main():
 
         wire_pomodoro_events(bridge, pomodoro_integration)
 
+    tasks_integration = integration_manager.get_integration("tasks")
+    if tasks_integration:
+        from src.ui.bridge_tasks import wire_tasks_events
+
+        wire_tasks_events(bridge, tasks_integration)
+
+    habits_integration = integration_manager.get_integration("habits")
+    if habits_integration:
+        from src.ui.bridge_habits import wire_habits_events
+
+        wire_habits_events(bridge, habits_integration)
+
+    screen_time_integration = integration_manager.get_integration("screen_time")
+    if screen_time_integration:
+        from src.ui.bridge_screen_time import wire_screen_time_events
+
+        wire_screen_time_events(bridge, screen_time_integration)
+
+    workspaces_integration = integration_manager.get_integration("workspaces")
+    if workspaces_integration:
+        from src.ui.bridge_workspaces import wire_workspaces_events
+
+        wire_workspaces_events(bridge, workspaces_integration)
+
     # Window control events (always wired)
     def _on_window_minimize(_data):
         panel_host.showMinimized()
