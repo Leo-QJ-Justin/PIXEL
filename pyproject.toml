@@ -58,6 +58,7 @@ packages = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+qt_api = "pyqt6"
 markers = [
     "unit: Unit tests (fast, no external dependencies)",
     "ui: UI tests (require Qt)",
