@@ -1,7 +1,8 @@
 [project]
 name = "pixel"
-version = "0.1.0"
+version = "1.0.0"
 description = "Personal Interactive eXtensible Everyday Life companion - a modular desktop pet"
+license = "MIT"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
 dependencies = [
