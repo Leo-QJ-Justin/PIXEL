@@ -128,6 +128,16 @@ Example `config.json`:
 
 Sprites are gitignored — each user provides their own character. The app discovers and loads whatever GIFs are present.
 
+### Creating Your Own Sprites
+
+Two free approaches:
+
+1. **Gemini + sprite sheet** — Use Google's Gemini (nano/flash) to generate a sprite sheet of your character in different poses. Split the sheet into individual frames, then combine into a GIF using any GIF maker.
+
+2. **Ludo.ai** — Use the free tier at [ludo.ai](https://ludo.ai) to generate animated sprites from a single base image. Export as GIF and drop into the behavior's `media/` folder.
+
+Each behavior needs one GIF. Recommended size: 80-120px, transparent background.
+
 ## Configuration
 
 ### Environment Variables (.env)
@@ -145,6 +155,14 @@ Sprites are gitignored — each user provides their own character. The app disco
 Runtime configuration is managed through the Settings page in the dashboard. The file is created automatically on first run.
 
 ## Tech Stack
+
+### Platform-Specific Setup
+
+**Screen time tracking** works cross-platform but needs extra setup on macOS and Linux:
+
+- **macOS**: `uv sync --extra macos` (installs pyobjc for window tracking)
+- **Linux**: `sudo apt install xdotool xprintidle` (X11 only — Wayland not supported)
+- **Windows**: works out of the box (uses ctypes + psutil)
 
 ### Python Backend
 - **PyQt6** — desktop pet widget, system tray, window management
