@@ -27,12 +27,6 @@ export function Select({ value, options, onChange, className, id }: SelectProps)
   React.useEffect(() => {
     if (!open) return
 
-    // Position the dropdown below the trigger
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect()
-      setPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
-    }
-
     function handleClick(e: MouseEvent) {
       const target = e.target as Node
       if (
@@ -41,9 +35,35 @@ export function Select({ value, options, onChange, className, id }: SelectProps)
       ) return
       setOpen(false)
     }
+
+    // NEW: Close the dropdown on scroll or resize to prevent visual detaching
+    function handleLayoutChange() {
+      setOpen(false)
+    }
+
     document.addEventListener("mousedown", handleClick)
-    return () => document.removeEventListener("mousedown", handleClick)
+    // We use the capture phase (true) here so it catches scrolling inside ANY inner div, not just the window
+    window.addEventListener("scroll", handleLayoutChange, true)
+    window.addEventListener("resize", handleLayoutChange)
+
+    return () => {
+      document.removeEventListener("mousedown", handleClick)
+      window.removeEventListener("scroll", handleLayoutChange, true)
+      window.removeEventListener("resize", handleLayoutChange)
+    }
   }, [open])
+
+  function handleOpen() {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setPos({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width
+      })
+    }
+    setOpen((o) => !o)
+  }
 
   return (
     <>
@@ -51,7 +71,7 @@ export function Select({ value, options, onChange, className, id }: SelectProps)
         ref={triggerRef}
         id={id}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={handleOpen}
         className={cn(
           "flex h-8 w-full items-center justify-between rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm cursor-pointer transition-colors outline-none focus:border-ring focus:ring-3 focus:ring-ring/50",
           className
@@ -61,29 +81,51 @@ export function Select({ value, options, onChange, className, id }: SelectProps)
         <ChevronDown className="h-3.5 w-3.5 opacity-50" />
       </button>
       {open && createPortal(
+        // Outer div: positioned anchor — may stretch due to a WebKit bug where
+        // height:auto on position:fixed resolves to (viewport − top) when body
+        // has min-height:100vh.  It carries no visual styles so the stretch is
+        // invisible.  pointer-events:none lets clicks in the blank area fall
+        // through to the document and trigger the close handler.
         <div
-          ref={dropdownRef}
-          className="fixed z-50 rounded-lg border border-border bg-surface shadow-md"
-          style={{ top: pos.top, left: pos.left, width: pos.width }}
+          style={{
+            position: 'fixed',
+            zIndex: 9999,
+            top: pos.top,
+            left: pos.left,
+            width: pos.width,
+            pointerEvents: 'none',
+          }}
         >
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => {
-                onChange(opt.value)
-                setOpen(false)
-              }}
-              className={cn(
-                "flex w-full items-center px-2.5 py-1.5 text-sm cursor-pointer transition-colors first:rounded-t-lg last:rounded-b-lg",
-                opt.value === value
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-text hover:bg-border/50"
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
+          {/* Inner div: normal-flow block — never affected by the WebKit
+              height bug, always sizes to its content. */}
+          <div
+            ref={dropdownRef}
+            className="rounded-lg border border-border bg-surface shadow-md"
+            style={{
+              maxHeight: '250px',
+              overflowY: 'auto',
+              pointerEvents: 'auto',
+            }}
+          >
+            {options.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onChange(opt.value)
+                  setOpen(false)
+                }}
+                className={cn(
+                  "flex w-full items-center px-2.5 py-1.5 text-sm cursor-pointer transition-colors",
+                  opt.value === value
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-text hover:bg-border/50"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>,
         document.body
       )}
