@@ -5,10 +5,14 @@ from __future__ import annotations
 import ctypes
 import ctypes.wintypes
 import logging
+import re
 
 from .tracker import ActiveWindow, BaseTracker
 
 logger = logging.getLogger(__name__)
+
+# Heuristic: exe names that look like GUIDs, hashes, or random strings
+_GARBLED_RE = re.compile(r"[0-9a-f]{8,}|[A-Za-z0-9_]{20,}", re.IGNORECASE)
 
 
 class WindowsTracker(BaseTracker):
@@ -85,4 +89,14 @@ class WindowsTracker(BaseTracker):
             "Slack.exe": "Slack",
             "spotify.exe": "Spotify",
         }
-        return name_map.get(exe_name, exe_name.replace(".exe", ""))
+        if exe_name in name_map:
+            return name_map[exe_name]
+
+        base = exe_name.replace(".exe", "")
+        # If the exe name looks garbled (hash/GUID/random), use the window title
+        if _GARBLED_RE.fullmatch(base) and title:
+            # Use the first meaningful segment of the window title
+            part = title.split(" - ")[0].split(" — ")[0].strip()
+            return part[:40] if part else base
+
+        return base

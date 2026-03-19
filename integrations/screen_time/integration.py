@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,13 @@ logger = logging.getLogger(__name__)
 IDLE_THRESHOLD_S = 300  # 5 minutes
 POLL_INTERVAL_MS = 5000  # 5 seconds
 FLUSH_INTERVAL_MS = 60000  # 1 minute
+
+# Process names belonging to PIXEL itself (should not be tracked)
+_SELF_EXE_NAMES = frozenset({
+    "pythonw.exe", "python.exe", "pythonw", "python",
+    "mc-web-view", "mc-web-view.exe",
+    "QtWebEngineProcess", "QtWebEngineProcess.exe",
+})
 
 
 class ScreenTimeIntegration(BaseIntegration):
@@ -130,6 +138,10 @@ class ScreenTimeIntegration(BaseIntegration):
             if not window:
                 return
 
+            # Skip PIXEL's own processes
+            if window.exe_name in _SELF_EXE_NAMES or window.pid == os.getpid():
+                return
+
             now = datetime.now()
             self._continuous_active_s += POLL_INTERVAL_MS / 1000
 
@@ -166,6 +178,18 @@ class ScreenTimeIntegration(BaseIntegration):
             self._session_start = None
 
     def _flush_pending(self) -> None:
+        # Checkpoint the current active session so it appears in queries
+        if self._current_exe and self._session_start:
+            now = datetime.now()
+            self._pending_sessions.append((
+                self._current_app,
+                self._current_exe,
+                self._current_title,
+                self._session_start,
+                now,
+            ))
+            self._session_start = now  # restart from this point
+
         if not self._pending_sessions:
             return
         try:

@@ -2,19 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useBridge, useBridgeEvent } from '@/bridge/context'
 import type { AppUsage, TimelineEntry, DailyTotal } from '@/bridge/types'
+import { formatDuration } from '@/lib/utils'
 import { CategoryBar } from './CategoryBar'
 import { TopApps } from './TopApps'
 import { ActivityTimeline } from './ActivityTimeline'
 import { WeeklyChart } from './WeeklyChart'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-
-function formatDuration(totalSeconds: number): string {
-  const abs = Math.abs(totalSeconds)
-  const h = Math.floor(abs / 3600)
-  const m = Math.floor((abs % 3600) / 60)
-  if (h > 0) return `${h}h ${m}m`
-  return `${m}m`
-}
 
 interface DayData {
   total_s: number
@@ -42,7 +35,7 @@ export function ScreenTimePage() {
 
   const currentDate = new Date()
   currentDate.setDate(currentDate.getDate() + dayOffset)
-  const dateStr = currentDate.toISOString().split('T')[0]
+  const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
   const isToday = dayOffset === 0
 
   useEffect(() => {

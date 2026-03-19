@@ -1,4 +1,5 @@
 import type { AppUsage } from '@/bridge/types'
+import { formatDuration } from '@/lib/utils'
 
 interface TopAppsProps {
   apps: AppUsage[]
@@ -21,9 +22,7 @@ export function TopApps({ apps }: TopAppsProps) {
       </h3>
       <div className="space-y-2">
         {apps.map(app => {
-          const h = Math.floor(app.total / 3600)
-          const m = Math.floor((app.total % 3600) / 60)
-          const label = h > 0 ? `${h}h ${m}m` : `${m}m`
+          const label = formatDuration(app.total)
           return (
             <div key={app.exe_name} className="flex items-center gap-3">
               <span className="text-sm text-text w-24 truncate">{app.display_name}</span>

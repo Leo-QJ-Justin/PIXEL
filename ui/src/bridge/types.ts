@@ -143,6 +143,7 @@ export interface TimelineEntry {
 export interface DailyTotal {
   date: string
   total_s: number
+  breakdown: Record<string, number>
 }
 
 /* ── JS → Python Events ─────────────────────────────────────────── */
