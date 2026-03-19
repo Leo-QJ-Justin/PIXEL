@@ -222,6 +222,14 @@ class IntegrationManager(QObject):
             except Exception:
                 logger.exception(f"Failed to setup UI for integration {name}")
 
+    def setup_all_managers(self) -> None:
+        """Give each integration a reference to this manager."""
+        for name, integration in self._integrations.items():
+            try:
+                integration.set_manager(self)
+            except Exception:
+                logger.exception(f"Failed to set manager for integration {name}")
+
     async def start_all_enabled(self) -> None:
         """Start all enabled integrations."""
         for name, integration in self._integrations.items():

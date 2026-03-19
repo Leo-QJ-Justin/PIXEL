@@ -194,6 +194,8 @@ def main():
     bridge.on("window.dragMove", _on_window_drag_move)
     bridge.on("window.dragEnd", _on_window_drag_end)
 
+    integration_manager.setup_all_managers()
+
     # Let integrations wire their own UI via setup_ui hook
     integration_manager.setup_all_ui(pet)
 

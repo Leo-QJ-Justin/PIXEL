@@ -58,6 +58,11 @@ class ScreenTimeIntegration(BaseIntegration):
         self._continuous_active_s: float = 0
         self._break_reminded = False
 
+    @property
+    def continuous_active_seconds(self) -> float:
+        """How long the user has been continuously active (resets after idle)."""
+        return self._continuous_active_s
+
     def _get_store(self):
         if self._store is None:
             from integrations.screen_time.store import ScreenTimeStore

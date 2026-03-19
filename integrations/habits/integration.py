@@ -39,6 +39,10 @@ class HabitsIntegration(BaseIntegration):
             self._store = HabitStore(self._path / "habits.db")
         return self._store
 
+    def get_store(self):
+        """Public accessor for the habit store (used by cross-integration queries)."""
+        return self._get_store()
+
     def get_default_settings(self) -> dict[str, Any]:
         return {
             "enabled": True,

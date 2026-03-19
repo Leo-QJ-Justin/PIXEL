@@ -84,6 +84,19 @@ export interface Settings {
       sound_enabled: boolean
       sessions_per_cycle: number
     }
+    encouraging: {
+      enabled: boolean
+      cooldown_min_minutes: number
+      cooldown_max_minutes: number
+      triggers: {
+        restless: { enabled: boolean; threshold_minutes: number }
+        observant: { enabled: boolean }
+        excited: { enabled: boolean; idle_threshold_minutes: number }
+        proud: { enabled: boolean; streak_threshold: number }
+        curious: { enabled: boolean }
+        impressed: { enabled: boolean; milestone_interval: number }
+      }
+    }
     [key: string]: Record<string, unknown>
   }
 }

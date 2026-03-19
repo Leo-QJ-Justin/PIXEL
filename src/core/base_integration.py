@@ -1,10 +1,15 @@
 """Abstract base class for all integrations."""
 
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from PyQt6.QtCore import QObject, pyqtSignal
+
+if TYPE_CHECKING:
+    from src.core.integration_manager import IntegrationManager
 
 
 class QObjectABCMeta(type(QObject), ABCMeta):
@@ -99,6 +104,14 @@ class BaseIntegration(QObject, metaclass=QObjectABCMeta):
 
         Called once after the integration is loaded and the pet widget exists.
         Override this to connect integration-specific signals to the pet widget.
+        """
+        pass
+
+    def set_manager(self, manager: IntegrationManager) -> None:
+        """Optional hook giving integration access to the IntegrationManager.
+
+        Override to query other integrations (e.g., screen_time, habits).
+        Called once after all integrations are loaded.
         """
         pass
 
