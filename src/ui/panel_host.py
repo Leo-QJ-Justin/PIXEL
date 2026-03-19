@@ -59,12 +59,10 @@ class PanelHost(QMainWindow):
         # Drag state for custom title bar
         self._drag_active = False
         self._drag_start_pos = QPoint()
-        # Use idle behavior sprite as window icon
-        idle_media = _PROJECT_ROOT / "behaviors" / "idle" / "media"
-        if idle_media.exists():
-            icons = sorted(idle_media.glob("*.png")) or sorted(idle_media.glob("*.gif"))
-            if icons:
-                self.setWindowIcon(QIcon(str(icons[0])))
+        # Window icon
+        icon_path = _PROJECT_ROOT / "assets" / "icon.png"
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
 
     def _setup_web_view(self) -> None:
         """Create the QWebEngineView and set it as central widget."""

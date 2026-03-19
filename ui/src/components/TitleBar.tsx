@@ -58,7 +58,7 @@ export function TitleBar() {
           onClick={() => send('window.minimize')}
           className="group w-7 h-7 flex items-center justify-center"
         >
-          <span className="w-3 h-3 rounded-full bg-border group-hover:bg-amber-400 transition-colors flex items-center justify-center">
+          <span className="w-3 h-3 rounded-full bg-amber-400 transition-colors flex items-center justify-center">
             <Minus size={8} className="opacity-0 group-hover:opacity-100 transition-opacity text-amber-900" />
           </span>
         </button>
@@ -67,7 +67,7 @@ export function TitleBar() {
           onClick={() => send('window.maximize')}
           className="group w-7 h-7 flex items-center justify-center"
         >
-          <span className="w-3 h-3 rounded-full bg-border group-hover:bg-green-400 transition-colors flex items-center justify-center">
+          <span className="w-3 h-3 rounded-full bg-green-400 transition-colors flex items-center justify-center">
             <Square size={7} className="opacity-0 group-hover:opacity-100 transition-opacity text-green-900" />
           </span>
         </button>
@@ -76,7 +76,7 @@ export function TitleBar() {
           onClick={() => send('window.close')}
           className="group w-7 h-7 flex items-center justify-center"
         >
-          <span className="w-3 h-3 rounded-full bg-destructive/60 group-hover:bg-destructive transition-colors flex items-center justify-center">
+          <span className="w-3 h-3 rounded-full bg-destructive transition-colors flex items-center justify-center">
             <X size={8} className="opacity-0 group-hover:opacity-100 transition-opacity text-white" />
           </span>
         </button>

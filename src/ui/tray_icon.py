@@ -1,12 +1,14 @@
 import asyncio
+from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import QMenu, QSystemTrayIcon
 
-from config import BEHAVIORS_DIR
 from src.core.behavior_registry import BehaviorRegistry
 from src.core.integration_manager import IntegrationManager
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 class TrayIcon(QSystemTrayIcon):
@@ -34,17 +36,10 @@ class TrayIcon(QSystemTrayIcon):
         self._setup_menu()
 
     def _setup_icon(self):
-        idle_media_dir = BEHAVIORS_DIR / "idle" / "media"
-
-        if idle_media_dir.exists():
-            # Try PNG first, then GIF
-            media_files = sorted(idle_media_dir.glob("*.png"))
-            if not media_files:
-                media_files = sorted(idle_media_dir.glob("*.gif"))
-            if media_files:
-                self.setIcon(QIcon(str(media_files[0])))
-
-        self.setToolTip("Desktop Pet")
+        icon_path = _PROJECT_ROOT / "assets" / "icon.png"
+        if icon_path.exists():
+            self.setIcon(QIcon(str(icon_path)))
+        self.setToolTip("PIXEL")
 
     def _setup_menu(self):
         menu = QMenu()

@@ -13,10 +13,13 @@ class HabitStore:
 
     def __init__(self, db_path: Path) -> None:
         self._db_path = db_path
+        is_new_db = not db_path.exists()
         self._conn = sqlite3.connect(str(db_path))
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._create_tables()
+        if is_new_db:
+            self._seed_defaults()
 
     def _create_tables(self) -> None:
         self._conn.execute(
@@ -47,6 +50,26 @@ class HabitStore:
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_completions_habit_date ON habit_completions(habit_id, date)"
         )
+        self._conn.commit()
+
+    _DEFAULT_HABITS = [
+        ("💧", "Drink Water"),
+        ("🏋️", "Exercise"),
+        ("📖", "Read"),
+        ("🧘", "Take a Break"),
+    ]
+
+    def _seed_defaults(self) -> None:
+        """Insert starter habits into a freshly created database."""
+        now = datetime.now().isoformat()
+        for order, (icon, title) in enumerate(self._DEFAULT_HABITS):
+            self._conn.execute(
+                """
+                INSERT INTO habits (id, title, icon, frequency, target_count, sort_order, created_at)
+                VALUES (?, ?, ?, 'daily', 1, ?, ?)
+                """,
+                (str(uuid.uuid4()), title, icon, order, now),
+            )
         self._conn.commit()
 
     def _row_to_dict(self, row: sqlite3.Row) -> dict:
