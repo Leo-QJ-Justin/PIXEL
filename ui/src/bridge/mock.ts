@@ -62,6 +62,19 @@ const SAMPLE_SETTINGS: Settings = {
       sound_enabled: true,
       sessions_per_cycle: 4,
     },
+    encouraging: {
+      enabled: true,
+      cooldown_min_minutes: 5,
+      cooldown_max_minutes: 15,
+      triggers: {
+        restless: { enabled: true, threshold_minutes: 30 },
+        observant: { enabled: true },
+        excited: { enabled: true, idle_threshold_minutes: 10 },
+        proud: { enabled: true, streak_threshold: 3 },
+        curious: { enabled: true },
+        impressed: { enabled: true, milestone_interval: 5 },
+      },
+    },
   },
 }
 

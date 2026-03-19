@@ -95,7 +95,17 @@ uv run python main.py
 Start-Process '.venv\Scripts\pythonw.exe' -ArgumentList 'main.py' -WindowStyle Hidden
 ```
 
+### Rebuilding the UI
+
+After any changes to files in `ui/src/`, you must rebuild the frontend before restarting the app:
+
+```bash
+cd ui && npm run build && cd ..
+```
+
 ### React UI Development Mode
+
+For active frontend development, use the Vite dev server for hot-reload instead of rebuilding manually:
 
 ```bash
 # Terminal 1: Vite dev server with hot-reload
