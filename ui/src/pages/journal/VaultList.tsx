@@ -3,7 +3,6 @@ import { motion } from 'framer-motion'
 import { Plus, Trash2 } from 'lucide-react'
 import { useBridge, useBridgeEvent } from '@/bridge/context'
 import type { JournalEntry } from '@/bridge/types'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 
 interface VaultListProps {
@@ -111,7 +110,7 @@ export function VaultList({ onEntryClick, onNewEntry }: VaultListProps) {
       </div>
 
       {/* Entry list */}
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto">
         {entries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-text-muted text-sm gap-2">
             <span className="text-3xl">📝</span>
@@ -191,7 +190,7 @@ export function VaultList({ onEntryClick, onNewEntry }: VaultListProps) {
             })}
           </div>
         )}
-      </ScrollArea>
+      </div>
     </motion.div>
   )
 }

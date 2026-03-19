@@ -4,7 +4,6 @@ import { Save } from 'lucide-react'
 import { useBridge, useBridgeEvent } from '@/bridge/context'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { GeneralTab } from './GeneralTab'
 import { BehaviorsTab } from './BehaviorsTab'
 import { IntegrationsTab } from './IntegrationsTab'
@@ -83,16 +82,14 @@ export function SettingsPage() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="flex flex-col h-full overflow-hidden"
-    >
-      {/* Tabs (contains header) */}
-      <Tabs defaultValue="general" className="flex-1 flex flex-col">
+    <Tabs defaultValue="general">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+      >
         {/* Sticky header bar */}
-        <div className="bg-white px-5 pt-5 pb-0 shadow-[0_2px_8px_rgb(44_24_16/0.06)]">
+        <div className="sticky top-0 z-10 bg-white px-5 pt-5 pb-0 shadow-[0_2px_8px_rgb(44_24_16/0.06)]">
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-xl font-heading font-bold text-text">Settings</h1>
             {dirty && (
@@ -115,27 +112,25 @@ export function SettingsPage() {
           </TabsList>
         </div>
 
-        {/* Scrollable content */}
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="p-4">
-            <TabsContent value="general">
-              <GeneralTab settings={settings} onChange={handleChange} />
-            </TabsContent>
+        {/* Content — main handles the scroll */}
+        <div className="p-4">
+          <TabsContent value="general">
+            <GeneralTab settings={settings} onChange={handleChange} />
+          </TabsContent>
 
-            <TabsContent value="behaviors">
-              <BehaviorsTab settings={settings} onChange={handleChange} />
-            </TabsContent>
+          <TabsContent value="behaviors">
+            <BehaviorsTab settings={settings} onChange={handleChange} />
+          </TabsContent>
 
-            <TabsContent value="integrations">
-              <IntegrationsTab settings={settings} onChange={handleChange} />
-            </TabsContent>
+          <TabsContent value="integrations">
+            <IntegrationsTab settings={settings} onChange={handleChange} />
+          </TabsContent>
 
-            <TabsContent value="personality">
-              <PersonalityTab settings={settings} onChange={handleChange} />
-            </TabsContent>
-          </div>
-        </ScrollArea>
-      </Tabs>
-    </motion.div>
+          <TabsContent value="personality">
+            <PersonalityTab settings={settings} onChange={handleChange} />
+          </TabsContent>
+        </div>
+      </motion.div>
+    </Tabs>
   )
 }
