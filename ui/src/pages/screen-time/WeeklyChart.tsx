@@ -24,7 +24,7 @@ export function WeeklyChart({ dailyTotals }: WeeklyChartProps) {
       <h3 className="text-xs font-heading font-semibold text-text-muted uppercase tracking-wide mb-2">
         This Week
       </h3>
-      <div className="bg-surface border border-border rounded-default p-3" style={{ height: 200 }}>
+      <div className="bg-surface border border-border rounded-default p-3" style={{ height: 200, minWidth: 0 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
             <XAxis dataKey="day" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />

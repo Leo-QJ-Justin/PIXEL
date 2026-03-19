@@ -87,7 +87,7 @@ export function SettingsPage() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="flex flex-col h-full"
+      className="flex flex-col h-full overflow-hidden"
     >
       {/* Tabs (contains header) */}
       <Tabs defaultValue="general" className="flex-1 flex flex-col">

@@ -28,23 +28,25 @@ export function WeeklyChart({ daily }: WeeklyChartProps) {
   }))
 
   return (
-    <ResponsiveContainer width="100%" height={120}>
-      <BarChart data={data} barCategoryGap="30%">
-        <XAxis
-          dataKey="name"
-          axisLine={false}
-          tickLine={false}
-          tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }}
-        />
-        <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={24}>
-          {data.map((entry, index) => (
-            <Cell
-              key={index}
-              fill={entry.count > 0 ? 'var(--color-primary)' : 'var(--color-border)'}
-            />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
+    <div style={{ minWidth: 0 }}>
+      <ResponsiveContainer width="100%" height={120}>
+        <BarChart data={data} barCategoryGap="30%">
+          <XAxis
+            dataKey="name"
+            axisLine={false}
+            tickLine={false}
+            tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }}
+          />
+          <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={24}>
+            {data.map((entry, index) => (
+              <Cell
+                key={index}
+                fill={entry.count > 0 ? 'var(--color-primary)' : 'var(--color-border)'}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   )
 }
