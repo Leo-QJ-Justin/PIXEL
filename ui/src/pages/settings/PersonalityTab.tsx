@@ -1,6 +1,7 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Select } from '@/components/ui/select'
 import type { Settings } from '@/bridge/types'
 
 interface PersonalityTabProps {
@@ -38,16 +39,16 @@ export function PersonalityTab({ settings, onChange }: PersonalityTabProps) {
 
         <div className="space-y-2">
           <Label htmlFor="pe_provider">Provider</Label>
-          <select
+          <Select
             id="pe_provider"
             value={pe.provider ?? 'openai'}
-            onChange={(e) => updatePE({ provider: e.target.value })}
-            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm cursor-pointer focus:border-ring focus:ring-3 focus:ring-ring/50 outline-none transition-colors"
-          >
-            <option value="openai">OpenAI</option>
-            <option value="anthropic">Anthropic</option>
-            <option value="custom">Custom</option>
-          </select>
+            onChange={(value) => updatePE({ provider: value })}
+            options={[
+              { value: 'openai', label: 'OpenAI' },
+              { value: 'anthropic', label: 'Anthropic' },
+              { value: 'custom', label: 'Custom' },
+            ]}
+          />
         </div>
 
         <div className="space-y-2">
