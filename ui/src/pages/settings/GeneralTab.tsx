@@ -1,6 +1,7 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Select } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import type { Settings } from '@/bridge/types'
 
@@ -72,15 +73,15 @@ export function GeneralTab({ settings, onChange }: GeneralTabProps) {
         </label>
         <div className="space-y-2">
           <Label htmlFor="facing">Default facing</Label>
-          <select
+          <Select
             id="facing"
             value={general.sprite_default_facing ?? 'right'}
-            onChange={(e) => updateGeneral({ sprite_default_facing: e.target.value })}
-            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm cursor-pointer focus:border-ring focus:ring-3 focus:ring-ring/50 outline-none transition-colors"
-          >
-            <option value="right">Right</option>
-            <option value="left">Left</option>
-          </select>
+            onChange={(value) => updateGeneral({ sprite_default_facing: value })}
+            options={[
+              { value: 'right', label: 'Right' },
+              { value: 'left', label: 'Left' },
+            ]}
+          />
         </div>
       </section>
 
