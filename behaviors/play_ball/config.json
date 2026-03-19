@@ -1,0 +1,5 @@
+{
+  "priority": 1,
+  "can_be_interrupted": true,
+  "loop": false
+}

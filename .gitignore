@@ -1,0 +1,87 @@
+# Environment and secrets
+.env
+CLAUDE.md
+
+# Google Calendar token
+google_calendar_token.json
+
+# Runtime data files
+api_usage.json
+event_cache.json
+settings.json
+integrations/pomodoro/stats.json
+integrations/journal/journal.db
+integrations/tasks/tasks.db
+integrations/habits/habits.db
+integrations/screen_time/screen_time.db
+integrations/workspaces/workspaces.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# UV
+.uv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+
+# Logs
+logs/
+
+
+# Sprite assets (user-provided, not distributed)
+behaviors/*/media/*.gif
+behaviors/*/media/*.png
+integrations/*/behaviors/*/media/*.gif
+integrations/*/behaviors/*/media/*.png
+
+# React UI
+ui/node_modules/
+!ui/src/lib/
+
+#Local Development
+plans/
+docs/
+notebooks/
+_bmad/
+_bmad-output/
+.claude/
+.superpowers/

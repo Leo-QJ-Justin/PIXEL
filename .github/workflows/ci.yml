@@ -1,0 +1,148 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --extra dev --extra linux
+
+      - name: Run ruff check
+        run: uv run ruff check .
+
+      - name: Run ruff format check
+        run: uv run ruff format --check .
+
+  test-unit:
+    name: Unit Tests (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install Qt dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libxkbcommon0 libxcb-cursor0 libpulse0
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: uv sync --extra dev --extra linux
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: uv sync --extra dev --extra macos
+
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: uv sync --extra dev
+
+      - name: Run unit tests
+        run: uv run pytest tests/unit -v --tb=short -p no:pytest_qt
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+  test-ui:
+    name: UI Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: uv sync --extra dev --extra linux
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: uv sync --extra dev --extra macos
+
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: uv sync --extra dev
+
+      # Linux needs xvfb for Qt
+      - name: Install xvfb (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb libegl1 libxkbcommon0 libxcb-cursor0 libpulse0
+
+      - name: Run UI tests (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a uv run pytest -m ui -v --tb=short
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PYTEST_QT_API: pyqt6
+
+      - name: Run UI tests (Windows/macOS)
+        if: runner.os != 'Linux'
+        run: uv run pytest -m ui -v --tb=short
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PYTEST_QT_API: pyqt6
+
+  coverage:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+    needs: [test-unit]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --extra dev --extra linux
+
+      - name: Install xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb libegl1 libxkbcommon0 libxcb-cursor0 libpulse0
+
+      - name: Run tests with coverage
+        run: xvfb-run -a uv run pytest --cov=src --cov=config --cov-report=xml --cov-report=term-missing
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PYTEST_QT_API: pyqt6
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+        continue-on-error: true

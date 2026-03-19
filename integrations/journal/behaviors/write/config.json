@@ -1,0 +1,6 @@
+{
+  "priority": 6,
+  "loop": true,
+  "interruptible": false,
+  "description": "Mofu writes in a book during journaling sessions"
+}

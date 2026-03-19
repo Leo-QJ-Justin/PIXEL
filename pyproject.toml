@@ -1,0 +1,96 @@
+[project]
+name = "pixel"
+version = "1.0.0"
+description = "Personal Interactive eXtensible Everyday Life companion - a modular desktop pet"
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "PyQt6>=6.4.0",
+    "PyQt6-WebEngine>=6.6",
+    "telethon>=1.28.0",
+    "qasync>=0.24.0",
+    "python-dotenv>=1.0.0",
+    "aiohttp>=3.9.0",
+    "litellm>=1.40.0",
+    "Pillow>=10.0.0",
+    "psutil>=5.9.0",
+    "google-api-python-client>=2.100.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-qt>=4.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "ruff>=0.2.0",
+    "pre-commit>=3.6.0",
+]
+macos = [
+    "pyobjc-framework-Cocoa>=10.0",
+    "pyobjc-framework-Quartz>=10.0",
+]
+linux = [
+    "python-xlib>=0.33",
+]
+sprites = [
+    "google-genai>=1.0.0",
+    "Pillow>=10.0.0",
+    "backgroundremover>=0.2.0",
+]
+
+[tool.uv]
+# pymatting 1.1.14 pins numba==0.53.1 which only supports Python <3.10.
+# Override to 1.1.15+ which uses numba>=0.63 (supports Python 3.13).
+override-dependencies = ["pymatting>=1.1.15"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+qt_api = "pyqt6"
+markers = [
+    "unit: Unit tests (fast, no external dependencies)",
+    "ui: UI tests (require Qt)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src", "config", "integrations"]
+
+[tool.coverage.run]
+source = ["src", "config", "integrations"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
